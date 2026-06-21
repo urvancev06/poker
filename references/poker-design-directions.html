@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker — Design Directions</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHN0eWxlPgogICAgcGF0aCB7IHN0cm9rZTogIzAwMDsgfQogICAgQG1lZGlhIChwcmVmZXJzLWNvbG9yLXNjaGVtZTogZGFyaykgeyBwYXRoIHsgc3Ryb2tlOiAjZmZmOyB9IH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik02MSA0MSBMNjEgMzE4IFE2MSA0ODIgMjU2IDQ4MiBRNDUxIDQ4MiA0NTEgMzE4IEw0NTEgNDEiIHN0cm9rZS13aWR0aD0iMjAiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiIG9wYWNpdHk9IjAuMiIvPgogIDxwYXRoIGQ9Ik0xMjMgNzIgTDEyMyAzMDcgUTEyMyA0MzEgMjU2IDQzMSBRMzg5IDQzMSAzODkgMzA3IEwzODkgNzIiIHN0cm9rZS13aWR0aD0iMjYiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiIG9wYWNpdHk9IjAuNTUiLz4KICA8cGF0aCBkPSJNMTk0IDEwMiBMMTk0IDI4NyBRMTk0IDM2OSAyNTYgMzY5IFEzMTggMzY5IDMxOCAyODcgTDMxOCAxMDIiIHN0cm9rZS13aWR0aD0iMzEiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiLz4KPC9zdmc+Cg==">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Libre+Franklin:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#202327;
+    color:#d9dade;
+    font-family:'Libre Franklin',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  .page{max-width:920px;margin:0 auto;padding:30px 20px 90px}
+
+  /* ---- neutral chrome ---- */
+  .intro{margin-bottom:30px;padding:0 4px}
+  .intro h1{font-family:'Hanken Grotesk',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#8b8f98}
+  .intro p{font-size:15px;color:#b6b9c0;margin-top:8px;max-width:640px}
+  .intro p b{color:#e6e8ec}
+
+  .eyebrow{display:flex;align-items:baseline;gap:10px;margin:0 4px 12px}
+  .eyebrow .num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6f7178}
+  .eyebrow .nm{font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:800;color:#e6e8ec;letter-spacing:.2px}
+  .eyebrow .ds{font-size:13px;color:#83868d}
+
+  .dir{border-radius:16px;overflow:hidden;margin-bottom:34px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
+
+  /* ===================================================================
+     SHARED COMPONENT STRUCTURE — appearance is driven by CSS variables
+     set on each .dir-* parent below.
+     =================================================================== */
+  .demo{background:var(--bg);color:var(--ink);padding:30px 30px 32px;font-family:var(--font-ui)}
+
+  .wm{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .wm svg{width:30px;height:30px;color:var(--logo);display:block}
+  .wm .name{font-family:var(--font-display);color:var(--ink)}
+
+  .stage{display:grid;grid-template-columns:1fr 264px;gap:20px;align-items:stretch}
+
+  .felt-pane{
+    background:var(--pane);
+    border:1px solid var(--pane-line);
+    border-radius:var(--radius);
+    padding:20px;
+    display:flex;flex-direction:column;gap:16px;
+    position:relative;overflow:hidden;
+  }
+
+  .seat{display:flex;align-items:center;gap:11px}
+  .av{width:36px;height:36px;border-radius:var(--av-radius);display:grid;place-items:center;
+    font-family:var(--font-num);font-weight:700;font-size:13px;background:var(--av-bg);color:var(--av-ink);flex-shrink:0}
+  .seat .who{flex:1;min-width:0}
+  .seat .nm{font-size:13px;font-weight:700;color:var(--ink)}
+  .seat .arch{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .seat .arch b{color:var(--accent);font-weight:700}
+  .seat .stk{font-family:var(--font-num);font-size:13px;font-weight:600;color:var(--ink);text-align:right}
+  .seat .stk span{color:var(--muted);font-weight:400;font-size:11px}
+  .seat .hud{font-family:var(--font-num);font-size:10px;color:var(--muted);text-align:right;margin-top:1px}
+
+  .mini-cards{display:flex;gap:5px}
+
+  .row{display:flex;align-items:center;justify-content:space-between}
+  .pot{font-family:var(--font-num);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .pot b{color:var(--accent);font-size:15px;letter-spacing:0;margin-left:4px}
+  .rule{height:1px;background:var(--pane-line);margin:2px 0}
+
+  .board{display:flex;gap:8px;justify-content:center}
+  .heroblock{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .heroblock .lab{font-family:var(--font-num);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .hero{display:flex;gap:7px}
+
+  /* cards */
+  .card{
+    width:46px;height:64px;border-radius:var(--card-radius);
+    background:var(--card-bg);color:var(--card-ink);
+    border:1px solid var(--card-line);
+    position:relative;box-shadow:var(--card-shadow);
+    font-family:var(--font-card);
+  }
+  .card .idx{position:absolute;top:5px;left:6px;font-size:13px;font-weight:700;line-height:.92}
+  .card .idx.br{top:auto;left:auto;bottom:5px;right:6px;transform:rotate(180deg)}
+  .card .pip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:21px;opacity:.9}
+  .card.red{color:var(--card-red)}
+  .card .idx i{font-style:normal}
+  .hero .card{width:54px;height:76px}
+  .hero .card .idx{font-size:15px}.hero .card .pip{font-size:25px}
+
+  .card.back{border:1px solid var(--back-line);background:var(--back-bg);box-shadow:var(--card-shadow)}
+  .card.back.sm{width:30px;height:42px;border-radius:calc(var(--card-radius) - 1px)}
+
+  /* coaching panel */
+  .coach{background:var(--panel);border:1px solid var(--panel-line);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:14px}
+  .coach .ct{font-family:var(--font-display);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .hand-t{font-family:var(--font-display);font-size:19px;font-weight:600;color:var(--ink);line-height:1.15}
+  .hand-s{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .eqwrap{display:flex;flex-direction:column;gap:7px}
+  .eqtop{display:flex;align-items:baseline;justify-content:space-between}
+  .eqtop .l{font-size:11px;color:var(--muted)}
+  .eqtop .v{font-family:var(--font-num);font-size:22px;font-weight:700;color:var(--accent)}
+  .eqbar{height:7px;border-radius:4px;background:var(--track);overflow:hidden;position:relative;border:1px solid var(--panel-line)}
+  .eqfill{height:100%;width:66%;background:var(--accent);border-radius:4px}
+  .eqtick{position:absolute;top:-2px;bottom:-2px;width:1.5px;background:var(--ink);opacity:.45;left:29%}
+
+  .odds{display:flex;gap:10px}
+  .odds .o{flex:1;border:1px solid var(--panel-line);border-radius:calc(var(--radius) - 4px);padding:8px 9px;text-align:center;background:var(--track)}
+  .odds .o .k{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+  .odds .o .n{font-family:var(--font-num);font-size:14px;font-weight:700;margin-top:2px;color:var(--ink)}
+
+  .read{font-size:12.5px;color:var(--ink);line-height:1.45;padding-left:11px;border-left:2px solid var(--accent)}
+  .read b{color:var(--ink)}
+
+  /* actions */
+  .acts{display:flex;gap:8px;margin-top:20px}
+  .btn{flex:1;text-align:center;padding:12px 10px;border-radius:var(--btn-radius);font-family:var(--font-ui);font-weight:700;font-size:13px;border:1px solid transparent;letter-spacing:.2px}
+  .btn .n{font-family:var(--font-num);font-weight:600}
+  .btn.ghost{background:transparent;border-color:var(--btn-ghost-line);color:var(--muted)}
+  .btn.call{background:var(--btn-call-bg);border-color:var(--btn-call-line);color:var(--ink)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+  /* ===================================================================
+     DIRECTION 01 — FELT & BRASS  (warm, low-lit, premium lounge)
+     =================================================================== */
+  .dir-felt{
+    --bg:#16140e; --ink:#ece4d2; --muted:#9a9078; --accent:#c9a44e; --accent-ink:#1c1608;
+    --logo:#c9a44e;
+    --pane:radial-gradient(130% 130% at 50% 25%, #1f3d30 0%, #16302506 0%, #142a20 55%, #0f2018 100%);
+    --pane-line:#0d1c15; --radius:14px;
+    --panel:#1d1a12; --panel-line:#2b2618; --track:#15130d;
+    --card-bg:#f4efe1; --card-ink:#1d1813; --card-red:#9e2b25; --card-line:#d8cfb8; --card-radius:7px;
+    --card-shadow:0 8px 18px -8px rgba(0,0,0,.6); --font-card:'Fraunces',serif;
+    --back-bg:repeating-linear-gradient(45deg,#3a2f12 0 7px,#2c2410 7px 14px); --back-line:#1f1908;
+    --av-bg:#2a2618; --av-ink:#e6d9b6; --av-radius:50%;
+    --btn-ghost-line:#322c1b; --btn-call-bg:#211d12; --btn-call-line:#352e1c; --btn-radius:10px;
+    --font-display:'Fraunces',serif; --font-ui:'Hanken Grotesk',sans-serif; --font-num:'Hanken Grotesk',sans-serif;
+  }
+  .dir-felt .wm .name{font-size:21px;font-weight:600;letter-spacing:.3px}
+  .dir-felt .demo{background:radial-gradient(120% 90% at 50% -20%,#1c1910,#16140e 60%)}
+  .dir-felt .stk,.dir-felt .eqtop .v,.dir-felt .odds .o .n{font-variant-numeric:tabular-nums}
+
+  /* ===================================================================
+     DIRECTION 02 — LEDGER  (light, analytical, the math is the hero)
+     =================================================================== */
+  .dir-ledger{
+    --bg:#efeae0; --ink:#1e1c18; --muted:#7d7665; --accent:#2f5d4e; --accent-ink:#f4f1e7;
+    --logo:#2a2823;
+    --pane:#f8f4ec; --pane-line:#e0d9c9; --radius:8px;
+    --panel:#f8f4ec; --panel-line:#e0d9c9; --track:#efeada;
+    --card-bg:#fdfbf6; --card-ink:#1e1c18; --card-red:#b3322b; --card-line:#ddd6c6; --card-radius:5px;
+    --card-shadow:0 5px 14px -8px rgba(60,50,30,.3); --font-card:'Newsreader',serif;
+    --back-bg:repeating-linear-gradient(45deg,#dfe7e2 0 6px,#d3ddd6 6px 12px); --back-line:#cdd6cf;
+    --av-bg:#e7e0d0; --av-ink:#4a4636; --av-radius:6px;
+    --btn-ghost-line:#d8d0bf; --btn-call-bg:#f1ecdf; --btn-call-line:#ddd5c4; --btn-radius:6px;
+    --font-display:'Newsreader',serif; --font-ui:'Newsreader',serif; --font-num:'IBM Plex Mono',monospace;
+  }
+  .dir-ledger .wm .name{font-size:23px;font-weight:600;letter-spacing:0}
+  /* faint ledger grid on the table pane */
+  .dir-ledger .felt-pane{
+    background-image:
+      linear-gradient(var(--pane-line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--pane-line) 1px,transparent 1px);
+    background-size:22px 22px;background-position:-1px -1px;background-color:#f8f4ec;
+  }
+  .dir-ledger .btn{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;letter-spacing:.3px}
+  .dir-ledger .arch b,.dir-ledger .read{font-family:'IBM Plex Mono',monospace}
+  .dir-ledger .read{font-size:11.5px}
+
+  /* ===================================================================
+     DIRECTION 03 — DECK  (black, red, bone — the deck as the interface)
+     =================================================================== */
+  .dir-deck{
+    --bg:#ece5d6; --ink:#17130d; --muted:#6f6857; --accent:#c4271f; --accent-ink:#f7f1e3;
+    --logo:#17130d;
+    --pane:#f4efe3; --pane-line:#17130d; --radius:4px;
+    --panel:#f4efe3; --panel-line:#17130d; --track:#ece5d6;
+    --card-bg:#fcf8ef; --card-ink:#17130d; --card-red:#c4271f; --card-line:#17130d; --card-radius:6px;
+    --card-shadow:0 6px 16px -9px rgba(20,15,5,.45); --font-card:'Libre Franklin',sans-serif;
+    --back-bg:repeating-linear-gradient(45deg,#c4271f 0 5px,#a51f18 5px 10px); --back-line:#17130d;
+    --av-bg:#17130d; --av-ink:#f4efe3; --av-radius:50%;
+    --btn-ghost-line:#17130d; --btn-call-bg:transparent; --btn-call-line:#17130d; --btn-radius:4px;
+    --font-display:'Bricolage Grotesque',sans-serif; --font-ui:'Libre Franklin',sans-serif; --font-num:'Libre Franklin',sans-serif;
+  }
+  .dir-deck .demo{background:repeating-linear-gradient(45deg,#ece5d6 0 13px,#e8e0cf 13px 26px)}
+  .dir-deck .wm .name{font-size:22px;font-weight:800;letter-spacing:-.3px;text-transform:lowercase}
+  .dir-deck .felt-pane,.dir-deck .coach{border-width:1.5px}
+  .dir-deck .card{border-width:1.5px}
+  .dir-deck .arch b{color:var(--accent)}
+  .dir-deck .btn.primary{font-weight:800}
+  .dir-deck .stk,.dir-deck .hud,.dir-deck .eqtop .v,.dir-deck .odds .o .n{font-variant-numeric:tabular-nums}
+
+  /* responsive */
+  @media (max-width:680px){
+    .stage{grid-template-columns:1fr}
+    .demo{padding:22px 18px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="intro">
+    <h1>Poker — pick a direction</h1>
+    <p>The <b>same hand</b> in each: you're on the button with A♠K♦ (top pair, top kicker) facing a TAG's c-bet on K♠9♥4♣. Only the look changes. All three drop the neon, the default fonts, and the glow — they differ in mood. Pick the one that feels right and I'll build the whole app in it.</p>
+  </div>
+
+  <!-- ============ 01 · FELT & BRASS ============ -->
+  <div class="eyebrow"><span class="num">01</span><span class="nm">Felt &amp; Brass</span><span class="ds">warm, low-lit, a quiet high-stakes room</span></div>
+  <div class="dir dir-felt">
+    <div class="demo">
+      <div class="wm">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Poker"><path d="M61 41 L61 318 Q61 482 256 482 Q451 482 451 318 L451 41" stroke="currentColor" stroke-width="20" stroke-linecap="square" opacity="0.2"/><path d="M123 72 L123 307 Q123 431 256 431 Q389 431 389 307 L389 72" stroke="currentColor" stroke-width="26" stroke-linecap="square" opacity="0.55"/><path d="M194 102 L194 287 Q194 369 256 369 Q318 369 318 287 L318 102" stroke="currentColor" stroke-width="31" stroke-linecap="square"/></svg>
+        <span class="name">Poker</span>
+      </div>
+      <div class="stage">
+        <div class="felt-pane">
+          <div class="seat">
+            <div class="av">DV</div>
+            <div class="who"><div class="nm">d_value</div><div class="arch"><b>TAG</b> · c-bet</div></div>
+            <div class="mini-cards"><div class="card back sm"></div><div class="card back sm"></div></div>
+            <div style="text-align:right"><div class="stk">184<span> bb</span></div><div class="hud">24 / 20</div></div>
+          </div>
+          <div class="row"><span class="pot">Pot<b>24</b></span></div>
+          <div class="board">
+            <div class="card"><span class="idx"><i>K</i>♠</span><span class="pip">♠</span><span class="idx br"><i>K</i>♠</span></div>
+            <div class="card red"><span class="idx"><i>9</i>♥</span><span class="pip">♥</span><span class="idx br"><i>9</i>♥</span></div>
+            <div class="card"><span class="idx"><i>4</i>♣</span><span class="pip">♣</span><span class="idx br"><i>4</i>♣</span></div>
+          </div>
+          <div class="rule"></div>
+          <div class="heroblock"><span class="lab">You · BTN</span>
+            <div class="hero">
+              <div class="card"><span class="idx"><i>A</i>♠</span><span class="pip">♠</span><span class="idx br"><i>A</i>♠</span></div>
+              <div class="card red"><span class="idx"><i>K</i>♦</span><span class="pip">♦</span><span class="idx br"><i>K</i>♦</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="coach">
+          <div class="ct">Coach</div>
+          <div><div class="hand-t">Top pair, top kicker</div><div class="hand-s">strong on a dry board</div></div>
+          <div class="eqwrap"><div class="eqtop"><span class="l">Equity</span><span class="v">66%</span></div><div class="eqbar"><div class="eqfill"></div><div class="eqtick"></div></div></div>
+          <div class="odds"><div class="o"><div class="k">Pot odds</div><div class="n">29%</div></div><div class="o"><div class="k">You</div><div class="n">66%</div></div></div>
+          <div class="read">Ahead of a c-bet range — <b>raise for value</b>.</div>
+        </div>
+      </div>
+      <div class="acts"><div class="btn ghost">Fold</div><div class="btn call">Call <span class="n">10</span></div><div class="btn primary">Raise to <span class="n">30</span></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 02 · LEDGER ============ -->
+  <div class="eyebrow"><span class="num">02</span><span class="nm">Ledger</span><span class="ds">light, analytical — the math is the hero</span></div>
+  <div class="dir dir-ledger">
+    <div class="demo">
+      <div class="wm">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Poker"><path d="M61 41 L61 318 Q61 482 256 482 Q451 482 451 318 L451 41" stroke="currentColor" stroke-width="20" stroke-linecap="square" opacity="0.2"/><path d="M123 72 L123 307 Q123 431 256 431 Q389 431 389 307 L389 72" stroke="currentColor" stroke-width="26" stroke-linecap="square" opacity="0.55"/><path d="M194 102 L194 287 Q194 369 256 369 Q318 369 318 287 L318 102" stroke="currentColor" stroke-width="31" stroke-linecap="square"/></svg>
+        <span class="name">Poker</span>
+      </div>
+      <div class="stage">
+        <div class="felt-pane">
+          <div class="seat">
+            <div class="av">DV</div>
+            <div class="who"><div class="nm">d_value</div><div class="arch"><b>TAG</b> · c-bet</div></div>
+            <div class="mini-cards"><div class="card back sm"></div><div class="card back sm"></div></div>
+            <div style="text-align:right"><div class="stk">184<span> bb</span></div><div class="hud">24 / 20</div></div>
+          </div>
+          <div class="row"><span class="pot">Pot<b>24</b></span></div>
+          <div class="board">
+            <div class="card"><span class="idx"><i>K</i>♠</span><span class="pip">♠</span><span class="idx br"><i>K</i>♠</span></div>
+            <div class="card red"><span class="idx"><i>9</i>♥</span><span class="pip">♥</span><span class="idx br"><i>9</i>♥</span></div>
+            <div class="card"><span class="idx"><i>4</i>♣</span><span class="pip">♣</span><span class="idx br"><i>4</i>♣</span></div>
+          </div>
+          <div class="rule"></div>
+          <div class="heroblock"><span class="lab">You · BTN</span>
+            <div class="hero">
+              <div class="card"><span class="idx"><i>A</i>♠</span><span class="pip">♠</span><span class="idx br"><i>A</i>♠</span></div>
+              <div class="card red"><span class="idx"><i>K</i>♦</span><span class="pip">♦</span><span class="idx br"><i>K</i>♦</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="coach">
+          <div class="ct">Analysis</div>
+          <div><div class="hand-t">Top pair, top kicker</div><div class="hand-s">A♠K♦ · K♠9♥4♣ · dry</div></div>
+          <div class="eqwrap"><div class="eqtop"><span class="l">Equity vs range</span><span class="v">66%</span></div><div class="eqbar"><div class="eqfill"></div><div class="eqtick"></div></div></div>
+          <div class="odds"><div class="o"><div class="k">Pot odds</div><div class="n">29%</div></div><div class="o"><div class="k">Edge</div><div class="n">+37</div></div></div>
+          <div class="read">+EV raise &gt; call. Build the pot while best.</div>
+        </div>
+      </div>
+      <div class="acts"><div class="btn ghost">Fold</div><div class="btn call">Call <span class="n">10</span></div><div class="btn primary">Raise <span class="n">30</span></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 03 · DECK ============ -->
+  <div class="eyebrow"><span class="num">03</span><span class="nm">Deck</span><span class="ds">black, red, bone — the deck as the interface</span></div>
+  <div class="dir dir-deck">
+    <div class="demo">
+      <div class="wm">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Poker"><path d="M61 41 L61 318 Q61 482 256 482 Q451 482 451 318 L451 41" stroke="currentColor" stroke-width="20" stroke-linecap="square" opacity="0.2"/><path d="M123 72 L123 307 Q123 431 256 431 Q389 431 389 307 L389 72" stroke="currentColor" stroke-width="26" stroke-linecap="square" opacity="0.55"/><path d="M194 102 L194 287 Q194 369 256 369 Q318 369 318 287 L318 102" stroke="currentColor" stroke-width="31" stroke-linecap="square"/></svg>
+        <span class="name">Poker</span>
+      </div>
+      <div class="stage">
+        <div class="felt-pane">
+          <div class="seat">
+            <div class="av">DV</div>
+            <div class="who"><div class="nm">d_value</div><div class="arch"><b>TAG</b> · c-bet</div></div>
+            <div class="mini-cards"><div class="card back sm"></div><div class="card back sm"></div></div>
+            <div style="text-align:right"><div class="stk">184<span> bb</span></div><div class="hud">24 / 20</div></div>
+          </div>
+          <div class="row"><span class="pot">Pot<b>24</b></span></div>
+          <div class="board">
+            <div class="card"><span class="idx"><i>K</i>♠</span><span class="pip">♠</span><span class="idx br"><i>K</i>♠</span></div>
+            <div class="card red"><span class="idx"><i>9</i>♥</span><span class="pip">♥</span><span class="idx br"><i>9</i>♥</span></div>
+            <div class="card"><span class="idx"><i>4</i>♣</span><span class="pip">♣</span><span class="idx br"><i>4</i>♣</span></div>
+          </div>
+          <div class="rule"></div>
+          <div class="heroblock"><span class="lab">You · BTN</span>
+            <div class="hero">
+              <div class="card"><span class="idx"><i>A</i>♠</span><span class="pip">♠</span><span class="idx br"><i>A</i>♠</span></div>
+              <div class="card red"><span class="idx"><i>K</i>♦</span><span class="pip">♦</span><span class="idx br"><i>K</i>♦</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="coach">
+          <div class="ct">Read</div>
+          <div><div class="hand-t">Top pair, top kicker</div><div class="hand-s">strong on a dry board</div></div>
+          <div class="eqwrap"><div class="eqtop"><span class="l">Equity</span><span class="v">66%</span></div><div class="eqbar"><div class="eqfill"></div><div class="eqtick"></div></div></div>
+          <div class="odds"><div class="o"><div class="k">Pot odds</div><div class="n">29%</div></div><div class="o"><div class="k">You</div><div class="n">66%</div></div></div>
+          <div class="read">Ahead of a c-bet range — <b>raise for value</b>.</div>
+        </div>
+      </div>
+      <div class="acts"><div class="btn ghost">Fold</div><div class="btn call">Call <span class="n">10</span></div><div class="btn primary">Raise <span class="n">30</span></div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

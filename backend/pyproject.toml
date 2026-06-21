@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poker"
+version = "0.1.0"
+description = "Private single-user 6-max NLHE poker trainer — the backend brain (engine, math, bots, API)."
+requires-python = ">=3.11"
+dependencies = [
+    "pokerkit",   # game-state machine + hand evaluation (do not hand-roll)
+    "treys",      # fast pure-Python evaluator for Monte Carlo equity
+    "fastapi",    # the API the frontend talks to
+    "uvicorn",    # ASGI server (plain build; uvloop/httptools extras skipped for 3.14 wheel safety)
+    "sqlalchemy", # SQLite-backed hand history + my stats
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+# Flat layout: ship only the `poker` package; tests/ and scripts/ stay out of the install.
+include = ["poker*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Put backend/ on sys.path so tests can import the (uninstalled) scripts/ helpers.
+pythonpath = ["."]
