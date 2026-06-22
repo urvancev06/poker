@@ -3,9 +3,12 @@ import { Board } from './Board'
 import { Card, DealtCard } from './Card'
 import { seatLabel, type VisibilityMode } from './Seat'
 
-// Portrait, Offsuit-style layout for phones: opponents across the top, the board
-// in the middle, your hand at the bottom (the big action buttons live in App,
-// directly below). The desktop oval table is used on large screens instead.
+type SeatData = SessionState['state']['seats'][number]
+
+// Portrait layout for phones (Offsuit-style structure): opponents in ONE even
+// row across the top, the board given room in the middle, your hand pinned at
+// the bottom with the action buttons directly beneath (in App). The desktop oval
+// is used on large screens instead.
 export function MobileTable({
   session,
   mode,
@@ -22,57 +25,56 @@ export function MobileTable({
   })
   const n = session.archetypes.length
   const opponents = Array.from({ length: n - 1 }, (_, i) => i + 1) // players 1..n-1
-  const heroSeat = state.seats[session.hero_seat]
+  const hero = state.seats[session.hero_seat]
 
   return (
-    <div className="felt flex h-full w-full flex-col gap-2 rounded-3xl border-4 border-[#2a2014]/70 p-3 ring-1 ring-black/40">
-      {/* opponents */}
-      <div className="flex flex-wrap items-start justify-center gap-1.5">
+    <div className="felt flex h-full w-full flex-col justify-between gap-3 rounded-2xl p-3 ring-1 ring-black/30">
+      {/* opponents — a single, evenly spaced row */}
+      <div className="flex items-start justify-between gap-1">
         {opponents.map((player) => {
           const sd = state.seats[playerToSeat[player]]
           if (!sd) return null
           return (
-            <OppSeat
+            <Opp
               key={player}
               seat={sd}
               archetype={session.archetypes[player]}
               isButton={player === session.button_player}
               mode={mode}
-              handOver={session.hand_over}
               read={reads?.[String(player)]}
             />
           )
         })}
       </div>
 
-      {/* board + pot */}
+      {/* board + pot, with room */}
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <Board board={state.board} pot={state.pot} cardWidth={44} />
+        <Board board={state.board} pot={state.pot} cardWidth={48} />
       </div>
 
-      {/* hero */}
-      {heroSeat && (
-        <div className="relative flex flex-col items-center gap-1">
-          {session.button_player === 0 && (
-            <div className="absolute right-1/2 top-0 grid h-5 w-5 translate-x-10 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-ink ring-2 ring-bg">
-              D
-            </div>
-          )}
-          <div className="flex items-end gap-1.5">
-            {heroSeat.hole_cards ? (
-              heroSeat.hole_cards.map((c) => <DealtCard key={c} card={c} width={54} />)
+      {/* hero hand, pinned at the bottom */}
+      {hero && (
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="flex items-end gap-2">
+            {hero.hole_cards ? (
+              hero.hole_cards.map((c) => <DealtCard key={c} card={c} width={60} />)
             ) : (
               <>
-                <Card faceDown width={54} />
-                <Card faceDown width={54} />
+                <Card faceDown width={60} />
+                <Card faceDown width={60} />
               </>
             )}
           </div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide">
-            <span className="font-semibold text-muted">{heroSeat.position}</span>
+            {session.button_player === 0 && (
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-ink">
+                D
+              </span>
+            )}
+            <span className="font-semibold text-muted">{hero.position}</span>
             <span className="text-accent">You</span>
-            <span className="text-base font-bold tabular-nums text-ink">{heroSeat.stack}</span>
-            {heroSeat.bet > 0 && <span className="tabular-nums text-accent">· bet {heroSeat.bet}</span>}
+            <span className="text-base font-bold tabular-nums text-ink">{hero.stack}</span>
+            {hero.bet > 0 && <span className="tabular-nums text-accent">· bet {hero.bet}</span>}
           </div>
         </div>
       )}
@@ -80,55 +82,43 @@ export function MobileTable({
   )
 }
 
-function OppSeat({
+function Opp({
   seat,
   archetype,
   isButton,
   mode,
-  handOver,
   read,
 }: {
-  seat: SessionState['state']['seats'][number]
+  seat: SeatData
   archetype: string
   isButton: boolean
   mode: VisibilityMode
-  handOver: boolean
   read?: Reads[string]
 }) {
-  const showCards = handOver && !!seat.hole_cards
-  const cards = showCards ? seat.hole_cards : null
-  const faceDown = !cards && !seat.folded
   const label = seatLabel(false, mode, archetype, read)
-
   return (
-    <div
-      className={`relative flex w-[72px] flex-col items-center gap-0.5 rounded-lg bg-bg2 px-1.5 py-1.5 shadow-md ${
-        seat.is_actor ? 'ring-2 ring-accent' : 'ring-1 ring-line'
-      } ${seat.folded ? 'opacity-45' : ''}`}
-    >
-      {isButton && (
-        <div className="absolute -right-1 -top-1 z-10 grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-ink ring-1 ring-bg">
-          D
-        </div>
-      )}
-      <div className="flex h-9 items-end justify-center gap-0.5">
-        {cards ? (
-          cards.map((c, i) => <Card key={i} card={c} width={24} />)
-        ) : faceDown ? (
-          <>
-            <Card faceDown width={24} />
-            <Card faceDown width={24} />
-          </>
-        ) : (
-          <span className="text-[9px] uppercase tracking-wide text-muted/70">folded</span>
+    <div className={`relative flex min-w-0 flex-1 flex-col items-center ${seat.folded ? 'opacity-40' : ''}`}>
+      <div
+        className={`flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition ${
+          seat.is_actor ? 'bg-black/25 ring-1 ring-accent' : ''
+        }`}
+      >
+        {isButton && (
+          <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-ink ring-2 ring-bg">
+            D
+          </span>
+        )}
+        <span className="text-sm font-bold leading-none tabular-nums text-ink">{seat.stack}</span>
+        <span className="max-w-full truncate text-[9px] uppercase leading-tight text-muted/90">
+          {seat.position}
+        </span>
+        <span className="max-w-full truncate text-[9px] uppercase leading-tight text-muted">{label}</span>
+        {seat.bet > 0 && (
+          <span className="mt-0.5 rounded-full bg-black/55 px-1.5 text-[9px] tabular-nums text-accent ring-1 ring-accent/40">
+            {seat.bet}
+          </span>
         )}
       </div>
-      <div className="max-w-full truncate text-[9px] uppercase tracking-wide">
-        <span className="text-muted/80">{seat.position}</span>{' '}
-        <span className="text-muted">{label}</span>
-      </div>
-      <div className="text-sm font-bold leading-none tabular-nums text-ink">{seat.stack}</div>
-      {seat.bet > 0 && <div className="text-[10px] tabular-nums text-accent">{seat.bet}</div>}
     </div>
   )
 }
