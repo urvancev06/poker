@@ -246,7 +246,15 @@ class GameSession:
         unless the hand is over)."""
         h = self._hand
         assert h is not None
-        return h.snapshot(viewer=self._player_to_seat[HERO], reveal_all=h.is_over)
+        snap = h.snapshot(viewer=self._player_to_seat[HERO], reveal_all=h.is_over)
+        # At a showdown the hero lost, PokerKit mucks the losing hand and clears
+        # its hole cards — so overlay the cards we captured at the deal. The hero
+        # must always see their own cards (and at hand-over even if they folded,
+        # for review). Mid-hand a folded hero stays "folded".
+        hero = snap.seats[self._player_to_seat[HERO]]
+        if self._hero_hole and not hero.hole_cards and (h.is_over or not hero.folded):
+            hero.hole_cards = list(self._hero_hole)
+        return snap
 
     def live_villain_seats(self) -> list[int]:
         """Seats of bots still in the hand (for coaching equity)."""

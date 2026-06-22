@@ -84,3 +84,27 @@ def test_hero_report_aggregates():
     assert rep["overall"]["hands"] == len(summaries)
     assert 0 <= rep["overall"]["vpip"] <= 100
     assert "vpip" in rep["targets"]
+
+
+def test_hero_always_sees_own_cards_through_showdown():
+    """Regression: at a showdown the hero lost, PokerKit mucks the hand and clears
+    its hole cards — but the hero must always see their own two cards."""
+    gs = GameSession(session_id="t", villains=["station"] * 5, seed=1)
+    showdowns = 0
+    for _ in range(60):
+        gs.start_hand()
+        while gs.hero_to_act:
+            legal = gs.state().legal_actions
+            if legal.can_check:
+                gs.submit_hero_action(Action(ActionType.CHECK))
+            elif legal.can_call:
+                gs.submit_hero_action(Action(ActionType.CALL))
+            else:  # pragma: no cover
+                gs.submit_hero_action(Action(ActionType.FOLD))
+        st = gs.state()
+        hero = st.seats[gs.hero_seat]
+        # hero never folded above, so cards must be visible even after a loss
+        assert hero.hole_cards is not None and len(hero.hole_cards) == 2
+        if st.results is not None and len(st.board) == 5:
+            showdowns += 1
+    assert showdowns > 0  # we actually exercised the showdown/muck path

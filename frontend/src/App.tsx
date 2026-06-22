@@ -8,6 +8,7 @@ import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
 import { ActionLog } from './components/ActionLog'
+import { StylePreview, applyTypeStyle, loadTypeStyle, type TypeStyle } from './components/StylePreview'
 import type { VisibilityMode } from './components/Seat'
 
 // Pause between bot actions when watching a hand unfold (ms).
@@ -18,7 +19,7 @@ const MODES: Array<[VisibilityMode, string, string]> = [
   ['hud', 'HUD', 'stats after a sample'],
   ['live', 'Live', 'read it yourself'],
 ]
-type View = 'table' | 'study' | 'stats' | 'history' | 'lab'
+type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'type'
 
 export default function App() {
   const [session, setSession] = useState<SessionState | null>(null)
@@ -30,6 +31,11 @@ export default function App() {
   const [mode, setMode] = useState<VisibilityMode>('labeled')
   const [view, setView] = useState<View>('table')
   const [study, setStudy] = useState(false)
+  const [typeStyle, setTypeStyle] = useState<TypeStyle>(loadTypeStyle())
+
+  useEffect(() => {
+    applyTypeStyle(typeStyle)
+  }, [typeStyle])
 
   const refreshReads = useCallback((s: SessionState) => {
     api.reads(s.session_id).then(setReads).catch(() => {})
@@ -169,6 +175,13 @@ export default function App() {
             </>
           )}
           <button
+            onClick={() => setView('type')}
+            title="Type & feel — compare heading styles"
+            className="rounded-lg border border-line px-3 py-1.5 font-display text-sm leading-none text-muted hover:text-ink"
+          >
+            Aa
+          </button>
+          <button
             onClick={newSession}
             className="rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted hover:text-ink"
           >
@@ -189,6 +202,7 @@ export default function App() {
           {view === 'stats' && <StatsView />}
           {view === 'history' && <HistoryView sessionId={session?.session_id} />}
           {view === 'lab' && <LabView />}
+          {view === 'type' && <StylePreview active={typeStyle} onApply={setTypeStyle} />}
         </div>
       )}
 
@@ -203,16 +217,21 @@ export default function App() {
 
                 <div className="mt-3 flex min-h-[72px] flex-col items-center justify-center gap-3">
                   {session.hand_over ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="text-sm text-muted">
-                        Hand over —{' '}
-                        <span
-                          className={`font-bold tabular-nums ${heroNet > 0 ? 'text-win' : heroNet < 0 ? 'text-loss' : 'text-ink'}`}
-                        >
+                    <div className="flex flex-col items-center gap-3">
+                      <div
+                        className={`flex items-center gap-2.5 rounded-xl px-6 py-2.5 text-lg font-bold uppercase tracking-wide ring-1 ${
+                          heroNet > 0
+                            ? 'bg-win/15 text-win ring-win/40'
+                            : heroNet < 0
+                              ? 'bg-loss/15 text-loss ring-loss/40'
+                              : 'bg-bg2 text-ink ring-line'
+                        }`}
+                      >
+                        <span>{heroNet > 0 ? 'You won' : heroNet < 0 ? 'You lost' : 'Chop'}</span>
+                        <span className="tabular-nums">
                           {heroNet > 0 ? '+' : ''}
                           {heroNet}
-                        </span>{' '}
-                        for you
+                        </span>
                       </div>
                       <button
                         onClick={nextHand}
