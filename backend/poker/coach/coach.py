@@ -96,25 +96,31 @@ def _suggest(
     is_draw: bool,
     equity_frac: float,
     required: float | None,
+    villain_desc: str,
 ) -> tuple[str, str]:
-    """A candid verdict + rationale, derived from the computed numbers."""
+    """A candid verdict + rationale, derived from the computed numbers. ``is_strong``
+    means a real value hand (two pair or better)."""
+    pct = f"{equity_frac * 100:.0f}%"
     if can_check:
         if is_strong:
-            return ("Bet for value.", f"You have {tier_name} — get money in while ahead.")
+            return ("Bet for value.", f"You have {tier_name} (~{pct} equity) — bet to get value while ahead.")
         if is_draw:
             return ("Bet as a semi-bluff, or check.", "A draw with fold equity can bet; otherwise take the free card.")
         return ("Check / give up.", "No made hand and no real draw — don't bet without a reason.")
 
     # facing a bet
     assert required is not None
+    req = f"{required * 100:.0f}%"
     margin = equity_frac - required
-    if is_strong and equity_frac > 0.65:
-        return ("Raise for value.", f"{tier_name}, ~{equity_frac*100:.0f}% equity — raise to get value, not just call.")
+    if equity_frac >= 0.78:
+        return ("Raise for value.", f"{tier_name}, ~{pct} equity vs {villain_desc} — you're way ahead; raise to get value, don't just call.")
+    if is_strong and equity_frac > 0.62:
+        return ("Raise or call for value.", f"{tier_name}, ~{pct} vs the ~{req} you need — clearly ahead; raise for value, at least call.")
     if margin >= 0.05:
-        return ("Call.", f"~{equity_frac*100:.0f}% equity beats the ~{required*100:.0f}% you need — a clear call.")
+        return ("Call.", f"~{pct} equity beats the ~{req} you need — a clear call.")
     if margin >= -0.02:
-        return ("Marginal call.", f"~{equity_frac*100:.0f}% vs ~{required*100:.0f}% needed — borderline; confirm exact frequencies in GTO Wizard.")
-    return ("Fold.", f"~{equity_frac*100:.0f}% equity is below the ~{required*100:.0f}% you need to call.")
+        return ("Marginal call.", f"~{pct} vs ~{req} needed — borderline; confirm exact frequencies in GTO Wizard.")
+    return ("Fold.", f"~{pct} equity is below the ~{req} you need vs {villain_desc} — fold.")
 
 
 def build_coaching(session, trials: int = 4000) -> Coaching:
@@ -131,7 +137,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     assert legal is not None
 
     hc = classify(hole, board)
-    is_strong = hc.made.value >= 4  # trips+ (strong made hand)
+    is_strong = hc.made.value >= 3  # two pair or better — a value hand
     is_draw = Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws
 
     dead = set(hole) | set(board)
@@ -172,8 +178,15 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         call_ev = None
         required_pct = None
 
+    if len(villain_models) == 1:
+        villain_desc = f"{villain_models[0].archetype}'s modelled range"
+    elif villain_models:
+        villain_desc = f"the {len(villain_models)} modelled ranges"
+    else:
+        villain_desc = "the field"
+
     verdict, rationale = _suggest(
-        can_check, hc.label or hc.made.name.lower(), is_strong, is_draw, equity_frac, required
+        can_check, hc.label or hc.made.name.lower(), is_strong, is_draw, equity_frac, required, villain_desc
     )
 
     return Coaching(
