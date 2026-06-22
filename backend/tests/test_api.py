@@ -104,6 +104,45 @@ def test_hands_are_persisted(client: TestClient):
     assert "data" in detail and detail["data"]["actions"]
 
 
+def _play_hands(client: TestClient, sid: str, n: int) -> None:
+    for _ in range(n):
+        sess = client.get(f"/session/{sid}").json()
+        while not sess["hand_over"]:
+            if not sess["hero_to_act"]:
+                break
+            sess = client.post(f"/session/{sid}/action", json=_hero_action(sess)).json()
+        client.post(f"/session/{sid}/next-hand")
+
+
+def test_my_stats_and_reads_endpoints(client: TestClient):
+    sess = _new_session(client, seed=4)
+    sid = sess["session_id"]
+    _play_hands(client, sid, 6)
+
+    me = client.get("/stats/me", params={"session_id": sid}).json()
+    assert me["overall"]["hands"] >= 1
+    assert "vpip" in me["overall"] and "vpip" in me["targets"]
+
+    reads = client.get(f"/session/{sid}/reads").json()
+    assert set(reads.keys()) == {"1", "2", "3", "4", "5"}
+    assert all("hands" in r and "ready" in r for r in reads.values())
+
+
+def test_review_and_leaks_endpoints(client: TestClient):
+    sess = _new_session(client, seed=8)
+    sid = sess["session_id"]
+    _play_hands(client, sid, 5)
+
+    hands = client.get("/hands", params={"session_id": sid}).json()
+    assert hands
+    review = client.get(f"/hands/{hands[0]['id']}/review").json()
+    assert "streets" in review and "decisions" in review and "leaks" in review
+
+    leaks = client.get("/stats/leaks", params={"session_id": sid}).json()
+    assert leaks["hands_reviewed"] >= 1
+    assert isinstance(leaks["by_type"], list)
+
+
 def test_illegal_action_rejected(client: TestClient):
     sess = _new_session(client, seed=5)
     sid = sess["session_id"]

@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from poker import __version__
-from poker.coach import build_coaching
+from poker.coach import build_coaching, leak_summary, review_hand
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
@@ -173,6 +173,20 @@ def create_app(db_url: str | None = None) -> FastAPI:
         if record is None:
             raise HTTPException(status_code=404, detail="hand not found")
         return {**record.summary(), "data": record.data}
+
+    @app.get("/hands/{hand_id}/review")
+    def hand_review(hand_id: int, db: Session = Depends(get_db)) -> dict:
+        """Street-by-street replay + computed coaching + leaks for one hand."""
+        record = get_hand(db, hand_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="hand not found")
+        return review_hand(record.data)
+
+    @app.get("/stats/leaks")
+    def leaks(session_id: str | None = None, limit: int = 200, db: Session = Depends(get_db)) -> dict:
+        """An honest, computed leak report aggregated over recent hands."""
+        records = list_hands(db, session_id=session_id, limit=limit)
+        return leak_summary([r.data for r in records])
 
     return app
 

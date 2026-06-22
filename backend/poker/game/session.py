@@ -100,6 +100,7 @@ class GameSession:
         self._seat_to_player = [(self._button + 1 + k) % self.n for k in range(self.n)]
         self._player_to_seat = {p: s for s, p in enumerate(self._seat_to_player)}
         per_seat = [self.stacks[self._seat_to_player[s]] for s in range(self.n)]
+        self._start_stacks = list(per_seat)
 
         self._hand = Hand.new(
             table_size=self.n,
@@ -165,6 +166,8 @@ class GameSession:
             "button_player": self._button,
             "hero_seat": hero_seat,
             "hero_position": snap.seats[hero_seat].position,
+            "blinds": list(self.blinds),
+            "start_stacks": getattr(self, "_start_stacks", [self.buy_in] * self.n),
             "hero_cards": "".join(self._hero_hole),
             "board": " ".join(snap.board),
             "pot": snap.total_pot,
