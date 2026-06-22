@@ -9,6 +9,9 @@ Endpoints:
     GET  /session/{id}/coach           computed coaching for the hero's current spot
     GET  /hands                        list persisted hands
     GET  /hands/{id}                   one persisted hand (full data for replay)
+    GET  /lab/archetypes               bot-lab metadata (target bands + tunable knobs)
+    POST /lab/simulate                 run a capped sim; emergent stats vs targets
+    POST /lab/cfr                      train CFR on Kuhn poker (learning module)
 
 Run:  backend/.venv/bin/uvicorn poker.api.app:app --reload
 """
@@ -26,9 +29,11 @@ from poker.coach import build_coaching, leak_summary, review_hand
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
+from poker.learn import train as train_cfr
 from poker.sim.hero_stats import hero_report
+from poker.sim.lab import archetypes_info, run_lab
 
-from .schemas import ActionRequest, CreateSessionRequest
+from .schemas import ActionRequest, CfrRequest, CreateSessionRequest, LabSimulateRequest
 from .serializers import session_to_dict
 
 _ACTION_TYPES = {
@@ -187,6 +192,34 @@ def create_app(db_url: str | None = None) -> FastAPI:
         """An honest, computed leak report aggregated over recent hands."""
         records = list_hands(db, session_id=session_id, limit=limit)
         return leak_summary([r.data for r in records])
+
+    # --- bot lab + learning (Phase 7) ---------------------------------- #
+    @app.get("/lab/archetypes")
+    def lab_archetypes() -> dict:
+        """Archetype metadata for the lab: target bands + tunable knob defaults."""
+        return archetypes_info()
+
+    @app.post("/lab/simulate")
+    def lab_simulate(req: LabSimulateRequest) -> dict:
+        """Run a (capped) headless simulation and return emergent stats vs targets."""
+        if not req.lineup:
+            raise HTTPException(status_code=400, detail="lineup must have at least one seat")
+        try:
+            return run_lab(
+                lineup=req.lineup,
+                hands=req.hands,
+                seed=req.seed,
+                blinds=(req.small_blind, req.big_blind),
+                starting_stack=req.starting_stack,
+                overrides=req.overrides,
+            )
+        except ValueError as exc:  # unknown archetype name
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/lab/cfr")
+    def lab_cfr(req: CfrRequest) -> dict:
+        """Train CFR on Kuhn poker; converges to the known equilibrium (value -1/18)."""
+        return train_cfr(iterations=req.iterations, seed=req.seed, checkpoints=req.checkpoints)
 
     return app
 

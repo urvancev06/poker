@@ -27,8 +27,11 @@ same in the app, tests, and scripts. Chips are integers throughout (smallest uni
 | `poker.engine` | Thin wrapper over **PokerKit** for 6-max NLHE cash: whose turn, legal actions + sizing, apply action, advance streets, showdown, side pots, and a serializable game-state object. We do **not** hand-roll rules or evaluation. | 1 |
 | `poker.math` | The computed coaching math: Monte Carlo equity (**treys**), pot odds / required equity / simple EV, a made-hand + draw classifier, and a range-string parser (`"22+, ATs+"` → combos, blockers removed). Pure functions, no solver fabrication. | 2 |
 | `poker.bots` | Bot interface `(game_state, legal_actions, own_cards) -> action`, a parameterized strategy (position ranges + postflop heuristic over `poker.math`), and the five archetypes (Nit, TAG, LAG, Calling Station, Maniac) as parameter sets. Strategy params live in clear config. | 3 |
-| `poker.sim` | Headless simulation harness: play archetypes against each other for N hands, logging every decision; plus the stats module (VPIP, PFR, 3-bet%, AF, WTSD, …) and the measured-vs-target tuning report. | 3 |
+| `poker.sim` | Headless simulation harness: play archetypes against each other for N hands, logging every decision; plus the stats module (VPIP, PFR, 3-bet%, AF, WTSD, …), the measured-vs-target tuning report, and `lab.py` — the same machinery exposed as a JSON feature for the bot lab (knob overrides → emergent stats vs bands). | 3, 7 |
+| `poker.coach` | The honest coaching + review layer: per-spot computed coaching (equity vs modelled ranges, pot odds, candid line), hand replay reconstruction, and computed leak detection. All math from `poker.math`; never fabricated GTO. | 4, 6 |
+| `poker.game` | The interactive session: hero + villains, carrying stacks/rebuys, button rotation, bots auto-acting, per-bot observed reads for the HUD. | 4, 5 |
 | `poker.db` | SQLAlchemy models + persistence: full hand histories and my stats over time, in SQLite. | 4 |
+| `poker.learn` | The quant "understand it from the inside" layer: `kuhn_cfr.py` runs vanilla **Counterfactual Regret Minimization** on Kuhn poker and converges to its *known* equilibrium (game value −1/18), with exact best-response exploitability. A real, checkable solver — not a fabricated one. | 7 |
 
 Supporting dirs (not part of the installed package):
 
@@ -52,16 +55,18 @@ backend/scripts/   runnable utilities — pokerkit_smoke.py, the console hand-ru
 ## Frontend — `frontend/`
 
 Standard Vite + React + TypeScript layout. Tailwind v4 is wired via the
-`@tailwindcss/vite` plugin (`@import "tailwindcss";` in `src/index.css`). The real
-table — layout from `references/poker-mockup.html`, styled in the "Felt & Brass"
-direction from `DESIGN.md`, with a bundled real SVG card deck — is built in Phase 5,
-**after** the Phase 3 statistical gate. Until then `src/App.tsx` is a placeholder.
+`@tailwindcss/vite` plugin (`@import "tailwindcss";` in `src/index.css`). The table —
+layout from `references/poker-mockup.html`, styled in the "Felt & Brass" direction
+from `DESIGN.md`, with a bundled real SVG card deck — was built in Phase 5, **after**
+the Phase 3 statistical gate.
 
 ```
 frontend/src/
-  main.tsx     React entry
-  App.tsx      placeholder now; the table + action bar + coaching panel later
-  index.css    Tailwind import (+ Felt & Brass tokens, later)
+  main.tsx        React entry (bundles the Fraunces + Hanken Grotesk fonts locally)
+  App.tsx         shell: view nav (Table / My stats / History / Lab), Study↔Play, visibility modes
+  api.ts          typed client mirroring poker.api serializers
+  index.css       Tailwind import + Felt & Brass @theme tokens
+  components/      Table, Seat, Board, Card, ActionBar, CoachPanel, StatsView, HistoryView, LabView
 ```
 
 State of record lives in the backend; the frontend renders it and never stores game

@@ -5,6 +5,7 @@ import { Table } from './components/Table'
 import { ActionBar } from './components/ActionBar'
 import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
+import { LabView } from './components/LabView'
 import type { VisibilityMode } from './components/Seat'
 
 const MODES: Array<[VisibilityMode, string, string]> = [
@@ -12,7 +13,7 @@ const MODES: Array<[VisibilityMode, string, string]> = [
   ['hud', 'HUD', 'stats after a sample'],
   ['live', 'Live', 'read it yourself'],
 ]
-type View = 'table' | 'stats' | 'history'
+type View = 'table' | 'stats' | 'history' | 'lab'
 
 export default function App() {
   const [session, setSession] = useState<SessionState | null>(null)
@@ -98,7 +99,7 @@ export default function App() {
             <span className="font-display text-xl text-ink">Poker</span>
           </div>
           <nav className="flex gap-1 text-xs uppercase tracking-wide">
-            {(['table', 'stats', 'history'] as View[]).map((v) => (
+            {(['table', 'stats', 'history', 'lab'] as View[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -156,6 +157,7 @@ export default function App() {
 
       {view === 'stats' && <StatsView />}
       {view === 'history' && <HistoryView sessionId={session?.session_id} />}
+      {view === 'lab' && <LabView />}
 
       {view === 'table' && (
         <div className="flex flex-1 flex-col gap-6 lg:flex-row">

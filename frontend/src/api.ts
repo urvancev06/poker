@@ -195,6 +195,76 @@ export interface LeakSummary {
   examples: Leak[]
 }
 
+// --- Bot lab + learning (Phase 7) ---
+export interface LabKnob {
+  key: string
+  label: string
+  min: number
+  max: number
+  step: number
+}
+export interface LabArchetype {
+  key: string
+  name: string
+  targets: Record<string, [number, number] | null>
+  knobs: Record<string, number>
+}
+export interface LabArchetypesInfo {
+  archetypes: LabArchetype[]
+  knob_meta: LabKnob[]
+  default_lineup: string[]
+  max_hands: number
+  default_hands: number
+}
+export interface LabStatCell {
+  value: number | null
+  band: [number, number] | null
+  ok: boolean | null
+}
+export interface LabRow {
+  archetype: string
+  hands: number
+  net_bb_per_100: number
+  stats: Record<string, LabStatCell>
+}
+export interface LabResult {
+  hands: number
+  seed: number
+  lineup: string[]
+  overrides: Record<string, Record<string, number>>
+  gate_pass: boolean
+  rows: LabRow[]
+  elapsed_ms: number
+}
+export interface LabSimulateBody {
+  lineup: string[]
+  hands: number
+  seed?: number
+  overrides?: Record<string, Record<string, number>>
+}
+
+export interface CfrStrategyRow {
+  infoset: string
+  card: string
+  history: string
+  label: string
+  pass: number
+  bet: number
+}
+export interface CfrCheckpoint {
+  iterations: number
+  game_value: number
+  exploitability: number
+}
+export interface CfrResult {
+  iterations: number
+  game_value: number
+  equilibrium_value: number
+  exploitability: number
+  trend: CfrCheckpoint[]
+  strategy: CfrStrategyRow[]
+}
+
 export const api = {
   createSession: (body: CreateSessionBody = {}) =>
     req<SessionState>('/session', { method: 'POST', body: JSON.stringify(body) }),
@@ -215,4 +285,9 @@ export const api = {
   handReview: (id: number) => req<HandReview>(`/hands/${id}/review`),
   leaks: (sessionId?: string) =>
     req<LeakSummary>(`/stats/leaks${sessionId ? `?session_id=${sessionId}` : ''}`),
+  labArchetypes: () => req<LabArchetypesInfo>('/lab/archetypes'),
+  labSimulate: (body: LabSimulateBody) =>
+    req<LabResult>('/lab/simulate', { method: 'POST', body: JSON.stringify(body) }),
+  cfr: (iterations: number, seed = 0) =>
+    req<CfrResult>('/lab/cfr', { method: 'POST', body: JSON.stringify({ iterations, seed }) }),
 }

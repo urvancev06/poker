@@ -93,7 +93,7 @@ load. To re-optimise, run SVGO with `frontend/svgo.cards.config.mjs`.
 
 ## Status
 
-The whole **backend brain is built and tested** (56 pytest tests passing):
+The whole **backend brain is built and tested** (73 pytest tests passing):
 
 - **Phase 0** — scaffold (monorepo, deps, CI-able test setup).
 - **Phase 1** — `poker.engine`: PokerKit wrapper (legal actions, side pots,
@@ -113,8 +113,16 @@ The whole **backend brain is built and tested** (56 pytest tests passing):
   hand-history browser with street-by-street replay + computed, candid leak
   detection.
 
-**V1 (Phases 0–6) is built and tested** (61 backend tests). Remaining is
-**Phase 7 (optional/later)**: a bot-lab UI, deployment to the deployment domain,
-and stretch goals (CFR toy, opponent-adapting bots, real hand-history import).
+- **Phase 7 (in progress)** — the **Lab**: a bot-lab UI that exposes the Phase-3
+  machinery (pick a lineup, tweak strategy knobs, run a capped sim, watch the
+  *emergent* stats land in their target bands), and a **CFR learning module** that
+  trains Counterfactual Regret Minimization on Kuhn poker and converges to its
+  known equilibrium (game value −1/18) — a real, checkable solver, not a
+  fabricated one. See `OVERVIEW.md` for the build + deploy guide.
+
+**V1 (Phases 0–6) is built and tested** (73 backend tests), and Phase 7's Lab
+(bot-lab + CFR) is in. Remaining Phase-7 items, **deferred** (they need a design
+call or my own files): deployment to the deployment domain, opponent-adapting bots
+(would break the validation gate), and real PokerStars/Hand2Note history import.
 Optional Phase-6 extras not yet built: SM-2 spaced-repetition drills and the
 isolated spot-trainer.

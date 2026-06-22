@@ -6,6 +6,7 @@ decisions use a separate RNG so the two streams are independent and stable.
 
 from __future__ import annotations
 
+import dataclasses
 import random
 
 from ..bots import Bot, archetypes
@@ -24,9 +25,27 @@ def run(
     blinds: tuple[int, int] = (1, 2),
     starting_stack: int = 200,
     progress_every: int | None = None,
+    overrides: dict[str, dict[str, float]] | None = None,
 ) -> StatsAccumulator:
+    """Simulate ``hands`` hands among ``lineup``.
+
+    ``overrides`` lets the bot lab tweak strategy knobs without editing the
+    archetype defaults: it maps an archetype key (``"tag"``, ``"station"``, …)
+    to ``{field: value}`` pairs applied to every instance of that archetype.
+    Only scalar ``StrategyParams`` fields make sense here — the caller (the lab)
+    validates which knobs are tunable; the runner just applies them.
+    """
     lineup = lineup or DEFAULT_LINEUP
-    bots = [Bot(archetypes.make(name)) for name in lineup]
+    overrides = overrides or {}
+
+    def build(name: str) -> Bot:
+        params = archetypes.make(name)
+        ov = overrides.get(name.lower().replace(" ", ""))
+        if ov:
+            params = dataclasses.replace(params, **ov)
+        return Bot(params)
+
+    bots = [build(name) for name in lineup]
     n = len(bots)
 
     random.seed(seed)               # deal stream
