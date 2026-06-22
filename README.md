@@ -77,6 +77,19 @@ npm run build    # type-check + production build
 
 ## Status
 
-Phase 0 (scaffold) complete. Building the headless brain next — see `PROJECT.md`
-for the phased plan. No frontend table until the bots pass the Phase 3 stat gate
-(≥100k-hand simulation, all archetypes' stats within their target bands).
+The whole **backend brain is built and tested** (56 pytest tests passing):
+
+- **Phase 0** — scaffold (monorepo, deps, CI-able test setup).
+- **Phase 1** — `poker.engine`: PokerKit wrapper (legal actions, side pots,
+  showdown, serializable state) + console runner.
+- **Phase 2** — `poker.math`: Monte Carlo equity, pot odds/EV, hand classifier,
+  range parser.
+- **Phase 3** — `poker.bots` + `poker.sim`: five archetypes, simulation harness,
+  stats, tuning report. **The ≥100k-hand stat gate PASSES** (VPIP/PFR/AF in band
+  for every archetype). Run it: `.venv/bin/python scripts/simulate.py --hands 100000`.
+- **Phase 4** — `poker.api` + `poker.coach` + `poker.db`: FastAPI session/play/
+  coaching endpoints and SQLite hand-history persistence.
+
+**Next: Phase 5 — the frontend table** (not started). It needs a deliberate
+card-deck choice (see §4 of `PROJECT.md`) and the Felt & Brass styling from
+`DESIGN.md`.
