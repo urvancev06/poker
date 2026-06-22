@@ -28,3 +28,9 @@ include = ["poker*"]
 testpaths = ["tests"]
 # Put backend/ on sys.path so tests can import the (uninstalled) scripts/ helpers.
 pythonpath = ["."]
+# Silence PokerKit's advisory hints (suboptimal fold, deal recommendation) that
+# our controlled engine/sim use intentionally triggers.
+filterwarnings = [
+    "ignore:There is no reason for this player to fold",
+    "ignore:A card being dealt",
+]
