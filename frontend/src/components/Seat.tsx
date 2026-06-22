@@ -14,8 +14,8 @@ const ARCH_LABEL: Record<string, string> = {
 function ChipStack({ amount }: { amount: number }) {
   if (!amount) return null
   return (
-    <div className="flex items-center gap-1 rounded-full bg-black/40 px-2 py-0.5 text-xs tabular-nums text-ink ring-1 ring-accent/40">
-      <span className="inline-block h-2 w-2 rounded-full bg-accent" />
+    <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-ink shadow-sm ring-1 ring-accent/55">
+      <span className="inline-block h-2 w-2 rounded-full bg-accent shadow-[0_0_4px_rgba(201,164,78,0.7)]" />
       {amount}
     </div>
   )
@@ -69,19 +69,26 @@ export function Seat({
   return (
     <div
       className={[
-        'relative flex w-36 flex-col items-center gap-1 rounded-xl px-3 py-2 transition',
-        'bg-bg2/90 ring-1',
-        seat.is_actor ? 'ring-accent shadow-[0_0_0_2px_rgba(201,164,78,0.35)]' : 'ring-line',
-        seat.folded ? 'opacity-40' : 'opacity-100',
+        'relative flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 transition',
+        isHero ? 'w-44' : 'w-36',
+        // A defined surface: solid panel, real border, drop shadow + top highlight
+        // so seats read as designed objects, not faint floating rectangles.
+        'bg-bg2 shadow-[inset_0_1px_0_rgba(236,228,210,0.05),0_10px_24px_-10px_rgba(0,0,0,0.85)]',
+        seat.is_actor
+          ? 'ring-2 ring-accent shadow-[0_0_22px_-4px_rgba(201,164,78,0.45)]'
+          : isHero
+            ? 'ring-1 ring-accent/40'
+            : 'ring-1 ring-line',
+        seat.folded ? 'opacity-45' : 'opacity-100',
       ].join(' ')}
     >
       {isButton && (
-        <div className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-ink ring-2 ring-bg">
+        <div className="absolute -right-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-ink shadow-md ring-2 ring-bg">
           D
         </div>
       )}
 
-      <div className="flex h-12 items-end gap-1">
+      <div className="flex min-h-[1.5rem] items-end justify-center gap-1">
         {cards ? (
           cards.map((c, i) => <Card key={i} card={c} width={cardWidth} />)
         ) : faceDown ? (
@@ -90,22 +97,22 @@ export function Seat({
             <Card faceDown width={cardWidth} />
           </>
         ) : (
-          <span className="text-xs text-muted">folded</span>
+          <span className="py-2 text-xs uppercase tracking-wider text-muted/70">folded</span>
         )}
       </div>
 
       <div className="flex w-full items-center justify-between text-[11px] uppercase tracking-wide">
-        <span className="text-muted/80">{seat.position}</span>
+        <span className="font-semibold text-muted">{seat.position}</span>
         {label}
       </div>
       <div className="flex w-full items-center justify-between">
-        <span className="text-base font-bold tabular-nums text-ink">{seat.stack}</span>
+        <span className="text-lg font-bold tabular-nums text-ink">{seat.stack}</span>
         {seat.all_in && !seat.folded && (
-          <span className="text-[10px] uppercase tracking-wider text-loss">all-in</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-loss">all-in</span>
         )}
       </div>
       {seat.bet > 0 && (
-        <div className="absolute -bottom-3">
+        <div className="absolute -bottom-3.5">
           <ChipStack amount={seat.bet} />
         </div>
       )}

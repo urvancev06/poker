@@ -41,6 +41,29 @@
     outline-offset: 2px;
     border-radius: 2px;
   }
+
+  /* On-theme scrollbars — slim, dark, brass on hover (no default chunky gray). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(154, 144, 120, 0.32) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(154, 144, 120, 0.32);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 164, 78, 0.55); /* brass */
+    background-clip: padding-box;
+  }
 }
 
 /* The felt: a desaturated radial green, soft inset depth, no glow. */

@@ -91,8 +91,8 @@ export default function App() {
   const heroSeatData = session?.state.seats[session.hero_seat]
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-5">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto flex h-[100dvh] max-w-7xl flex-col overflow-hidden px-6 py-4">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
@@ -155,18 +155,24 @@ export default function App() {
         </div>
       )}
 
-      {view === 'stats' && <StatsView />}
-      {view === 'history' && <HistoryView sessionId={session?.session_id} />}
-      {view === 'lab' && <LabView />}
+      {(view === 'stats' || view === 'history' || view === 'lab') && (
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          {view === 'stats' && <StatsView />}
+          {view === 'history' && <HistoryView sessionId={session?.session_id} />}
+          {view === 'lab' && <LabView />}
+        </div>
+      )}
 
       {view === 'table' && (
-        <div className="flex flex-1 flex-col gap-6 lg:flex-row">
-          <main className="flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+          <main className="flex min-h-0 flex-1 flex-col">
             {session ? (
               <>
-                <Table session={session} mode={mode} reads={reads} />
+                <div className="flex min-h-0 flex-1 items-center justify-center">
+                  <Table session={session} mode={mode} reads={reads} />
+                </div>
 
-                <div className="mt-8 flex min-h-[72px] flex-col items-center justify-center gap-3">
+                <div className="mt-3 flex min-h-[72px] flex-col items-center justify-center gap-3">
                   {session.hand_over ? (
                     <div className="flex flex-col items-center gap-2">
                       <div className="text-sm text-muted">

@@ -29,7 +29,7 @@ export function Table({
   })
 
   return (
-    <div className="relative mx-auto aspect-[16/10] w-full max-w-4xl">
+    <div className="relative mx-auto aspect-[16/10] h-full max-h-[620px] w-auto max-w-full">
       {/* felt */}
       <div className="felt absolute inset-0 rounded-[48%] border-[6px] border-[#2a2014]/80 ring-1 ring-black/40">
         <div className="absolute inset-6 rounded-[48%] ring-1 ring-white/5" />
@@ -60,7 +60,7 @@ export function Table({
               mode={mode}
               handOver={session.hand_over}
               read={reads?.[String(player)]}
-              cardWidth={player === 0 ? 56 : 40}
+              cardWidth={player === 0 ? 74 : 50}
             />
           </div>
         )
