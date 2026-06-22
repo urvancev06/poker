@@ -13,6 +13,9 @@ class CreateSessionRequest(BaseModel):
     big_blind: int = 2
     buy_in: int = 200
     seed: int | None = None
+    # The UI passes False to step bots one action at a time (watch the hand);
+    # default True keeps the simple "bots already acted" behaviour for API use.
+    auto_advance: bool = True
 
 
 class ActionRequest(BaseModel):

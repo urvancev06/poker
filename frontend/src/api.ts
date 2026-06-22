@@ -27,6 +27,14 @@ export interface Seat {
   hole_cards: string[] | null
 }
 
+export interface ActionLogEntry {
+  seat: number
+  position: string
+  street: string
+  action: ActionType
+  to_amount: number | null
+}
+
 export interface GameStateDict {
   table_size: number
   button: number
@@ -39,6 +47,7 @@ export interface GameStateDict {
   seats: Seat[]
   legal_actions: LegalActions | null
   results: number[] | null
+  history: ActionLogEntry[]
 }
 
 export interface HandResult {
@@ -114,6 +123,7 @@ export interface CreateSessionBody {
   big_blind?: number
   buy_in?: number
   seed?: number | null
+  auto_advance?: boolean
 }
 
 export interface BotRead {
@@ -274,6 +284,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ type, to_amount: toAmount ?? null }),
     }),
+  advance: (id: string) => req<SessionState>(`/session/${id}/advance`, { method: 'POST' }),
   nextHand: (id: string) =>
     req<SessionState>(`/session/${id}/next-hand`, { method: 'POST' }),
   coach: (id: string) => req<Coaching>(`/session/${id}/coach`),

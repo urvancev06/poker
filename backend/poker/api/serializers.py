@@ -34,6 +34,21 @@ def seat_to_dict(seat) -> dict:
     }
 
 
+def history_to_dict(state: GameState) -> list[dict]:
+    """The action log for the table feed. Deliberately omits each entry's
+    hole_cards so a mid-hand snapshot never leaks villain cards to the hero."""
+    return [
+        {
+            "seat": e.seat,
+            "position": e.position,
+            "street": e.street,
+            "action": e.action,
+            "to_amount": e.to_amount,
+        }
+        for e in state.history
+    ]
+
+
 def state_to_dict(state: GameState) -> dict:
     return {
         "table_size": state.table_size,
@@ -47,6 +62,7 @@ def state_to_dict(state: GameState) -> dict:
         "seats": [seat_to_dict(s) for s in state.seats],
         "legal_actions": legal_to_dict(state.legal_actions),
         "results": state.results,
+        "history": history_to_dict(state),
     }
 
 

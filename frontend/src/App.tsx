@@ -6,7 +6,11 @@ import { ActionBar } from './components/ActionBar'
 import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
+import { ActionLog } from './components/ActionLog'
 import type { VisibilityMode } from './components/Seat'
+
+// Pause between bot actions when watching a hand unfold (ms).
+const STEP_MS = 650
 
 const MODES: Array<[VisibilityMode, string, string]> = [
   ['labeled', 'Labeled', 'archetype shown'],
@@ -34,7 +38,8 @@ export default function App() {
     setError(null)
     setCoaching(null)
     try {
-      const s = await api.createSession()
+      // Step mode: bots don't pre-act, so we can watch the whole hand unfold.
+      const s = await api.createSession({ auto_advance: false })
       setSession(s)
       refreshReads(s)
     } catch (e) {
@@ -45,6 +50,28 @@ export default function App() {
   useEffect(() => {
     void newSession()
   }, [newSession])
+
+  // Watch-the-hand: while a bot is to act, step one action after a short pause.
+  // The effect re-runs on each new session, naturally pacing the whole street.
+  useEffect(() => {
+    if (!session || session.hand_over || session.hero_to_act) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const s = await api.advance(session.session_id)
+        if (!cancelled) {
+          setSession(s)
+          if (s.hand_over) refreshReads(s)
+        }
+      } catch {
+        /* a transient error just stops the auto-step; the user can act/retry */
+      }
+    }, STEP_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [session, refreshReads])
 
   const askCoach = useCallback(async (id: string) => {
     setCoachLoading(true)
@@ -220,9 +247,16 @@ export default function App() {
             )}
           </main>
 
-          {(study || coaching || coachLoading) && (
-            <CoachPanel coaching={coaching} loading={coachLoading} />
-          )}
+          <aside className="flex min-h-0 w-full flex-col gap-4 lg:w-72">
+            {(study || coaching || coachLoading) && (
+              <CoachPanel coaching={coaching} loading={coachLoading} />
+            )}
+            {session && (
+              <div className="min-h-0 flex-1">
+                <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
+              </div>
+            )}
+          </aside>
         </div>
       )}
     </div>

@@ -5,6 +5,7 @@ Endpoints:
     POST /session                      start a session (choose archetypes, blinds, stacks) + deal hand 1
     GET  /session/{id}                 current state (hero viewpoint) + session info
     POST /session/{id}/action          submit the hero's action; bots auto-respond
+    POST /session/{id}/advance         step one bot action (watch-the-hand pacing)
     POST /session/{id}/next-hand       deal the next hand
     GET  /session/{id}/coach           computed coaching for the hero's current spot
     GET  /hands                        list persisted hands
@@ -109,9 +110,19 @@ def create_app(db_url: str | None = None) -> FastAPI:
             blinds=(req.small_blind, req.big_blind),
             buy_in=req.buy_in,
             seed=req.seed,
+            auto_advance=req.auto_advance,
         )
         app.state.sessions[sid] = gs
         gs.start_hand()
+        _persist_if_finished(gs, db)
+        return session_to_dict(gs)
+
+    @app.post("/session/{session_id}/advance")
+    def advance(session_id: str, db: Session = Depends(get_db)) -> dict:
+        """Step a single pending bot action (for watch-the-hand pacing). No-op
+        when it's the hero's turn or the hand is over."""
+        gs = _session(session_id)
+        gs.advance_one()
         _persist_if_finished(gs, db)
         return session_to_dict(gs)
 

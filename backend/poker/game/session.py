@@ -31,6 +31,9 @@ class GameSession:
     blinds: tuple[int, int] = (1, 2)
     buy_in: int = 200
     seed: int | None = None
+    # When False, bots do NOT auto-act to the hero's turn; the caller steps them
+    # one action at a time via advance_one() so the UI can watch the hand unfold.
+    auto_advance: bool = True
 
     n: int = field(init=False)
     stacks: list[int] = field(init=False)       # carried, per player
@@ -110,19 +113,39 @@ class GameSession:
         )
         self._last_result = None
         self._hero_hole = self._hand.hole_cards(self._player_to_seat[HERO]) or []
-        self._advance_bots()
+        if self.auto_advance:
+            self._advance_bots()
 
     def _advance_bots(self) -> None:
         h = self._hand
         assert h is not None
         while not h.is_over and h.actor is not None and self._seat_to_player[h.actor] != HERO:
-            seat = h.actor
-            player = self._seat_to_player[seat]
-            ctx = build_context(h, self.blinds[1])
-            action = self._bots[player].act(ctx, self._rng)
-            h.apply(action)
+            self._apply_one_bot()
         if h.is_over:
             self._finalize()
+
+    def _apply_one_bot(self) -> None:
+        """Apply exactly one pending bot action (no finalize)."""
+        h = self._hand
+        assert h is not None and h.actor is not None
+        seat = h.actor
+        player = self._seat_to_player[seat]
+        ctx = build_context(h, self.blinds[1])
+        action = self._bots[player].act(ctx, self._rng)
+        h.apply(action)
+
+    def advance_one(self) -> bool:
+        """Step a single bot action. Returns True if one was applied, False when
+        it's the hero's turn or the hand is over (the UI stops stepping then)."""
+        h = self._hand
+        if h is None or h.is_over or h.actor is None:
+            return False
+        if self._seat_to_player[h.actor] == HERO:
+            return False
+        self._apply_one_bot()
+        if h.is_over:
+            self._finalize()
+        return True
 
     def submit_hero_action(self, action: Action) -> None:
         if not self.hero_to_act:
@@ -130,7 +153,7 @@ class GameSession:
         self._hand.apply(action)  # type: ignore[union-attr]
         if self._hand.is_over:  # type: ignore[union-attr]
             self._finalize()
-        else:
+        elif self.auto_advance:
             self._advance_bots()
 
     # ------------------------------------------------------------------ #

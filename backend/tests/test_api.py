@@ -156,3 +156,36 @@ def test_illegal_action_rejected(client: TestClient):
     if not legal["can_check"]:
         r = client.post(f"/session/{sid}/action", json={"type": "check"})
         assert r.status_code == 400
+
+
+def test_step_mode_advances_one_bot_at_a_time(client: TestClient):
+    """With auto_advance off, the hand starts un-advanced and /advance applies
+    exactly one bot action at a time until it's the hero's turn (or hand over)."""
+    resp = client.post("/session", json={"seed": 7, "auto_advance": False})
+    assert resp.status_code == 200
+    state = resp.json()
+
+    # No bot has acted yet: the action log is empty and it's not the hero's turn
+    # (someone before the hero is first to act preflop in a 6-max field).
+    assert state["state"]["history"] == []
+
+    steps = 0
+    while not state["hero_to_act"] and not state["hand_over"]:
+        prev_actions = len(state["state"]["history"])
+        state = client.post(f"/session/{state['session_id']}/advance").json()
+        # each /advance adds exactly one action to the log
+        assert len(state["state"]["history"]) == prev_actions + 1
+        steps += 1
+        assert steps < 50  # guard against an infinite loop
+
+    assert state["hero_to_act"] or state["hand_over"]
+
+
+def test_history_never_leaks_villain_holes(client: TestClient):
+    state = client.post("/session", json={"seed": 3, "auto_advance": False}).json()
+    for _ in range(20):
+        if state["hero_to_act"] or state["hand_over"]:
+            break
+        state = client.post(f"/session/{state['session_id']}/advance").json()
+    for entry in state["state"]["history"]:
+        assert "hole_cards" not in entry  # the log must not carry anyone's cards
