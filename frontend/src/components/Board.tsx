@@ -1,6 +1,14 @@
 import { BoardCard } from './Card'
 
-export function Board({ board, pot }: { board: string[]; pot: number }) {
+export function Board({
+  board,
+  pot,
+  cardWidth = 72,
+}: {
+  board: string[]
+  pot: number
+  cardWidth?: number
+}) {
   // Show the NEXT street's cards face-down, pre-placed on the table, so they flip
   // in: preflop = 3 down (flop); flop = +1 down (turn); turn = +1 down (river).
   const n = board.length
@@ -13,7 +21,7 @@ export function Board({ board, pot }: { board: string[]; pot: number }) {
       </div>
       <div className="flex gap-2.5">
         {Array.from({ length: positions }, (_, i) => (
-          <BoardCard key={i} card={board[i] ?? null} width={72} />
+          <BoardCard key={i} card={board[i] ?? null} width={cardWidth} />
         ))}
       </div>
     </div>

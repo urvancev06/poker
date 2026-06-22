@@ -234,7 +234,7 @@ export default function App() {
                   <Table session={session} mode={mode} reads={reads} />
                 </div>
 
-                <div className="mt-3 flex min-h-[128px] flex-col items-center justify-center gap-3">
+                <div className="mt-3 flex h-[128px] shrink-0 flex-col items-center justify-center gap-3 overflow-y-auto">
                   {session.hand_over ? (
                     <div className="flex flex-col items-center gap-3">
                       <div
