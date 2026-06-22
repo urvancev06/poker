@@ -18,6 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "httpx",  # FastAPI TestClient for API tests
 ]
 
 [tool.setuptools.packages.find]
