@@ -142,7 +142,7 @@ export default function App() {
                 key={v}
                 onClick={() => setView(v)}
                 className={`shrink-0 rounded-md px-3 py-1.5 transition ${
-                  view === v ? 'bg-bg2 text-ink ring-1 ring-line' : 'text-muted hover:text-ink'
+                  view === v ? 'bg-bg2 text-ink ring-1 ring-inset ring-line' : 'text-muted hover:text-ink'
                 }`}
               >
                 {v === 'stats' ? 'my stats' : v}
