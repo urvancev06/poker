@@ -93,6 +93,43 @@ export function DealtCard({ card, width = 64 }: { card: string; width?: number }
   )
 }
 
+/**
+ * A community card that sits face-down until its value is dealt, then flips in
+ * place — so the flop/turn/river are physically on the table and turn over,
+ * rather than appearing from nowhere. Key it by board POSITION (not value) so
+ * the same element persists and animates when `card` goes null -> value.
+ */
+export function BoardCard({ card, width = 72 }: { card: string | null; width?: number }) {
+  const [last, setLast] = useState<string | null>(card)
+  useEffect(() => {
+    if (card) setLast(card)
+  }, [card])
+  const height = Math.round(width * CARD_RATIO)
+  const faceUp = !!card
+  const front = card ?? last // keep showing the last card during a flip-down (board reset)
+  return (
+    <div className="shrink-0" style={{ width, height, perspective: 800 }}>
+      <div
+        className="relative h-full w-full transition-transform duration-[450ms] ease-out"
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: faceUp ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+        }}
+      >
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
+          {front ? <Card card={front} width={width} /> : <Card faceDown width={width} />}
+        </div>
+        <div
+          className="absolute inset-0"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+          <Card faceDown width={width} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** An empty card slot (e.g. an undealt board position). Softer than a real card. */
 export function CardSlot({ width = 64 }: { width?: number }) {
   return (
