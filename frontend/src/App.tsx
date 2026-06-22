@@ -132,7 +132,7 @@ export default function App() {
             <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
             <span className="font-display text-xl text-ink">Poker</span>
           </div>
-          <nav className="flex gap-1 text-xs uppercase tracking-wide">
+          <nav className="flex gap-1 text-xs lowercase tracking-wide">
             {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
               <button
                 key={v}
@@ -141,7 +141,7 @@ export default function App() {
                   view === v ? 'bg-bg2 text-ink ring-1 ring-line' : 'text-muted hover:text-ink'
                 }`}
               >
-                {v === 'stats' ? 'My stats' : v}
+                {v === 'stats' ? 'my stats' : v}
               </button>
             ))}
           </nav>
