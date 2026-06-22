@@ -8,7 +8,7 @@ const STREET_LABEL: Record<string, string> = {
   river: 'River',
 }
 
-function actionText(a: ActionLogEntry): string {
+export function actionText(a: ActionLogEntry): string {
   switch (a.action) {
     case 'fold':
       return 'folds'
@@ -43,7 +43,7 @@ export function ActionLog({ history, heroSeat }: { history: ActionLogEntry[]; he
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-line bg-bg2/70 p-3">
+    <div className="flex max-h-[55vh] min-h-0 flex-col rounded-xl border border-line bg-bg2/70 p-3">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Action</div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 text-sm">
         {groups.length === 0 && <p className="text-muted/70">Hand starting…</p>}

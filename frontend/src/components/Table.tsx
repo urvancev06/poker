@@ -5,12 +5,12 @@ import { Seat, type VisibilityMode } from './Seat'
 // Screen positions for up to 6 players; hero (player 0) sits bottom-centre and
 // opponents keep stable seats while the dealer button rotates.
 const POSITIONS = [
-  { left: '50%', top: '92%' }, // 0 hero
-  { left: '10%', top: '71%' }, // 1
+  { left: '50%', top: '85%' }, // 0 hero (kept clear of the action bar below)
+  { left: '10%', top: '70%' }, // 1
   { left: '11%', top: '27%' }, // 2
   { left: '50%', top: '8%' }, // 3
   { left: '89%', top: '27%' }, // 4
-  { left: '90%', top: '71%' }, // 5
+  { left: '90%', top: '70%' }, // 5
 ]
 
 export function Table({
@@ -60,7 +60,7 @@ export function Table({
               mode={mode}
               handOver={session.hand_over}
               read={reads?.[String(player)]}
-              cardWidth={player === 0 ? 74 : 50}
+              cardWidth={player === 0 ? 66 : 50}
             />
           </div>
         )

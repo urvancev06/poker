@@ -7,7 +7,7 @@ import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
-import { ActionLog } from './components/ActionLog'
+import { ActionLog, actionText } from './components/ActionLog'
 import { StylePreview, applyTypeStyle, loadTypeStyle, type TypeStyle } from './components/StylePreview'
 import type { VisibilityMode } from './components/Seat'
 
@@ -31,6 +31,7 @@ export default function App() {
   const [mode, setMode] = useState<VisibilityMode>('labeled')
   const [view, setView] = useState<View>('table')
   const [study, setStudy] = useState(false)
+  const [showLog, setShowLog] = useState(false)
   const [typeStyle, setTypeStyle] = useState<TypeStyle>(loadTypeStyle())
 
   useEffect(() => {
@@ -172,6 +173,15 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => setShowLog((s) => !s)}
+                title="Show the action log (who folded/called/raised)"
+                className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                  showLog ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
+                }`}
+              >
+                Log
+              </button>
             </>
           )}
           <button
@@ -259,7 +269,15 @@ export default function App() {
                       )}
                     </>
                   ) : (
-                    <div className="text-sm text-muted">bots acting…</div>
+                    <div className="text-sm text-muted">
+                      {(() => {
+                        const h = session.state.history
+                        const last = h && h.length ? h[h.length - 1] : null
+                        if (!last) return 'dealing…'
+                        const who = last.seat === session.hero_seat ? 'You' : last.position
+                        return `${who} ${actionText(last)}…`
+                      })()}
+                    </div>
                   )}
                 </div>
               </>
@@ -268,16 +286,16 @@ export default function App() {
             )}
           </main>
 
-          <aside className="flex min-h-0 w-full flex-col gap-4 lg:w-72">
-            {(study || coaching || coachLoading) && (
-              <CoachPanel coaching={coaching} loading={coachLoading} />
-            )}
-            {session && (
-              <div className="min-h-0 flex-1">
+          {(study || coaching || coachLoading || showLog) && (
+            <aside className="flex min-h-0 w-full flex-col gap-4 overflow-y-auto lg:w-72">
+              {(study || coaching || coachLoading) && (
+                <CoachPanel coaching={coaching} loading={coachLoading} />
+              )}
+              {showLog && session && (
                 <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
-              </div>
-            )}
-          </aside>
+              )}
+            </aside>
+          )}
         </div>
       )}
     </div>
