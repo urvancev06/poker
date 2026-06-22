@@ -36,10 +36,12 @@ class GameSession:
     def __post_init__(self) -> None:
         self.n = len(self.villains) + 1
         self.stacks = [self.buy_in] * self.n
-        self.archetype_of = ["hero"] + list(self.villains)
         self._bots: dict[int, Bot] = {
             p: Bot(archetypes.make(self.villains[p - 1])) for p in range(1, self.n)
         }
+        # Use the bots' canonical display names ("Nit", "Calling Station", …) so
+        # frontend labels and the coach's per-archetype range model both match.
+        self.archetype_of = ["hero"] + [self._bots[p].name for p in range(1, self.n)]
         self._rng = random.Random(self.seed)
         self._hand: Hand | None = None
         self._button = self.n - 1  # so hero (player 0) is SB on hand 0
@@ -56,6 +58,15 @@ class GameSession:
     @property
     def hero_seat(self) -> int:
         return self._player_to_seat[HERO]
+
+    @property
+    def seat_to_player(self) -> list[int]:
+        """Player identity occupying each PokerKit seat this hand."""
+        return list(self._seat_to_player)
+
+    @property
+    def button_player(self) -> int:
+        return self._button
 
     @property
     def hand_over(self) -> bool:

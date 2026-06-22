@@ -18,6 +18,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from poker import __version__
@@ -44,6 +45,13 @@ def create_app(db_url: str | None = None) -> FastAPI:
     SessionFactory = make_session_factory(engine)
 
     app = FastAPI(title="Poker", version=__version__)
+    # Local-first dev: the Vite dev server (any localhost port) may call the API.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.state.sessions: dict[str, GameSession] = {}
     app.state.saved: dict[str, set[int]] = {}
 

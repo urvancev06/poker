@@ -1,1 +1,63 @@
 @import "tailwindcss";
+
+/* Felt & Brass design tokens (DESIGN.md §1–2). One accent: brass. */
+@theme {
+  --color-bg: #16140e;
+  --color-bg2: #1d1a12;
+  --color-felt-core: #1f3d30;
+  --color-felt-edge: #0f2018;
+  --color-ink: #ece4d2;
+  --color-muted: #9a9078;
+  --color-line: #2b2618;
+  --color-accent: #c9a44e;
+  --color-accent-ink: #1c1608;
+  --color-card: #f4efe1;
+  --color-card-ink: #1c1813;
+  --color-card-red: #9e2b25;
+  --color-win: #7d9b6a;
+  --color-loss: #a8534a;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Brass keyboard focus ring on every control (DESIGN.md §5). */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* The felt: a desaturated radial green, soft inset depth, no glow. */
+@utility felt {
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    var(--color-felt-core),
+    var(--color-felt-edge) 78%
+  );
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

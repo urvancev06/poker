@@ -60,6 +60,8 @@ def session_to_dict(session: GameSession) -> dict:
         "hero_to_act": session.hero_to_act,
         "stacks_by_player": session.stacks,
         "archetypes": session.archetype_of,
+        "seat_to_player": session.seat_to_player,
+        "button_player": session.button_player,
         "state": state_to_dict(state),
         "last_result": session.last_result,
     }

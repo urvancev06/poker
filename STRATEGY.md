@@ -93,6 +93,16 @@ Each archetype is a **parameter set** over the strategy in §2–§3. Tune the p
 
 > The **point of the fish archetypes (Station, Maniac, and loose-passive play) is that they play badly on purpose** — realistic, beatable opponents are the whole reason to practice. Don't "fix" them into good players.
 
+### Reads are earned, not given (opponent visibility modes)
+
+Reading the opponent — *acquiring* the read from observed play — is itself a trained skill, not a given. The bots play **identically** in every mode; only what *I* can see about them changes. A per-table display setting (gates **display only** — never bot behaviour, never the coach's math):
+
+- **Live** — no labels, no opponent stats. I build the read purely from observed actions, like a live table. The realistic target.
+- **HUD** — opponent stats (VPIP/PFR/AF/3-bet…) show in the seat HUD, but **only after a minimum observed sample vs that specific bot** (~30 hands for a rough read, fuller by ~100). No archetype label — I read the numbers myself, like a real tracker.
+- **Labeled** — the archetype name (Nit/TAG/LAG/Station/Maniac) shown upfront. Training wheels: drill the exploit fast while learning the counters.
+
+Default **Labeled** for a new player; intended progression **Labeled → HUD → Live**. Labeled mode teaches the *exploit*; HUD/Live mode trains the *read*. (Implementation: display-gating in Phase 5; the mode toggle + per-bot observed-hand tracking that drives the HUD reveal in Phase 6 — no new phase.)
+
 ---
 
 ## 5. Stat definitions (for the dashboard + bot validation)
