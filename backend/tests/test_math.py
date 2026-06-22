@@ -140,6 +140,9 @@ def test_made_hand_tiers():
     assert classify(["Ah", "Qh"], ["Jh", "7h", "2h"]).made is MadeTier.FLUSH
     assert classify(["Ah", "Ad"], ["As", "Kc", "Kd"]).made is MadeTier.FULL_HOUSE
     assert classify(["7h", "7d"], ["7s", "7c", "2d"]).made is MadeTier.QUADS
+    # straight flush and royal flush (treys returns rank class 0 for the royal)
+    assert classify(["9h", "8h"], ["7h", "6h", "5h"]).made is MadeTier.STRAIGHT_FLUSH
+    assert classify(["Qc", "Kc"], ["Ac", "Jc", "Tc", "2c", "4s"]).made is MadeTier.STRAIGHT_FLUSH
 
 
 def test_flush_draw_detected():

@@ -39,8 +39,9 @@ class Draw(str, Enum):
     OVERCARDS = "overcards"
 
 
-# treys rank class (1=straight flush .. 9=high card) -> our MadeTier
-_TREYS_TO_TIER = {c: MadeTier(10 - c) for c in range(1, 10)}
+# treys rank class (1=straight flush .. 9=high card) -> our MadeTier.
+# Quirk: treys returns class 0 for a royal flush (best score) — also a straight flush.
+_TREYS_TO_TIER = {0: MadeTier.STRAIGHT_FLUSH, **{c: MadeTier(10 - c) for c in range(1, 10)}}
 
 
 @dataclass(frozen=True)
