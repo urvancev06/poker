@@ -1,19 +1,41 @@
-// A temporary side-by-side type/contrast preview so the user can pick the feel.
-// Both treatments use fonts already bundled (no new deps). Picking one sets a
-// CSS variable override (--font-display) persisted in localStorage — fully
-// reversible, no rebuild. Editorial = Fraunces serif headings (current);
-// Clean = Hanken Grotesk headings (more minimal/modern).
+// Side-by-side heading-style preview so the user can pick the feel. Each style
+// only changes the display font (--font-display); body text stays Hanken Grotesk.
+// Picking one applies it everywhere instantly and persists in localStorage —
+// fully reversible, no rebuild.
 
-export type TypeStyle = 'editorial' | 'clean'
+export type TypeStyle = string
 
-const FRAUNCES = '"Fraunces", ui-serif, Georgia, serif'
-const HANKEN = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
+const STACKS = {
+  fraunces: '"Fraunces", ui-serif, Georgia, serif',
+  hanken: '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif',
+  spaceGrotesk: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+  playfair: '"Playfair Display", ui-serif, Georgia, serif',
+  spaceMono: '"Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+}
 
-export function applyTypeStyle(style: TypeStyle) {
-  const root = document.documentElement
-  root.style.setProperty('--font-display', style === 'clean' ? HANKEN : FRAUNCES)
+export interface TypeStyleDef {
+  id: TypeStyle
+  name: string
+  note: string
+  font: string
+  tracking: string
+}
+
+export const TYPE_STYLES: TypeStyleDef[] = [
+  { id: 'editorial', name: 'Editorial', note: 'Characterful serif (default).', font: STACKS.fraunces, tracking: '' },
+  { id: 'clean', name: 'Clean', note: 'Minimal grotesk, matches the UI.', font: STACKS.hanken, tracking: '-tracking-tight' },
+  { id: 'modern', name: 'Modern', note: 'Geometric, techy.', font: STACKS.spaceGrotesk, tracking: '-tracking-tight' },
+  { id: 'elegant', name: 'Elegant', note: 'High-contrast display serif.', font: STACKS.playfair, tracking: '' },
+  { id: 'mono', name: 'Mono', note: 'Monospace, terminal/quant feel.', font: STACKS.spaceMono, tracking: '-tracking-tight' },
+]
+
+const DEFAULT_STYLE = TYPE_STYLES[0]
+
+export function applyTypeStyle(id: TypeStyle) {
+  const style = TYPE_STYLES.find((s) => s.id === id) ?? DEFAULT_STYLE
+  document.documentElement.style.setProperty('--font-display', style.font)
   try {
-    localStorage.setItem('poker-type', style)
+    localStorage.setItem('poker-type', style.id)
   } catch {
     /* ignore storage failures */
   }
@@ -21,50 +43,29 @@ export function applyTypeStyle(style: TypeStyle) {
 
 export function loadTypeStyle(): TypeStyle {
   try {
-    return localStorage.getItem('poker-type') === 'clean' ? 'clean' : 'editorial'
+    const saved = localStorage.getItem('poker-type')
+    return TYPE_STYLES.some((s) => s.id === saved) ? (saved as TypeStyle) : DEFAULT_STYLE.id
   } catch {
-    return 'editorial'
+    return DEFAULT_STYLE.id
   }
 }
 
-function Sample({ headingTracking }: { headingTracking: string }) {
+function Sample({ tracking }: { tracking: string }) {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
-        <span className={`font-display text-xl text-ink ${headingTracking}`}>Poker</span>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <img src="/brand/urvancev-logo-white.svg" alt="" className="h-6 w-6 opacity-90" />
+        <span className={`font-display text-lg text-ink ${tracking}`}>Poker</span>
       </div>
-
-      <h3 className={`font-display text-3xl text-ink ${headingTracking}`}>My stats</h3>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-line bg-bg2/70 p-4">
-          <div className="text-[11px] uppercase tracking-wider text-muted">VPIP</div>
-          <div className="text-3xl font-bold tabular-nums text-win">23</div>
-          <div className="text-[11px] text-muted tabular-nums">target 22–26</div>
+      <h3 className={`font-display text-2xl text-ink ${tracking}`}>My stats</h3>
+      <div className="flex gap-2">
+        <div className="rounded-lg border border-line bg-bg2/70 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted">VPIP</div>
+          <div className="text-xl font-bold tabular-nums text-win">23</div>
         </div>
-        <div className="rounded-xl border border-line bg-bg2/70 p-4">
-          <div className="text-[11px] uppercase tracking-wider text-muted">Net</div>
-          <div className="text-3xl font-bold tabular-nums text-accent">+4.2</div>
-          <div className="text-[11px] text-muted">bb/100</div>
-        </div>
-      </div>
-
-      <p className="text-sm leading-relaxed text-muted">
-        Two pair, ~93% equity vs Nit’s modelled range — you’re way ahead; raise to get value,
-        don’t just call. Computed math, not a solver number.
-      </p>
-
-      <div className="flex items-center gap-3">
-        <button className="rounded-lg bg-accent px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-accent-ink">
-          Raise to 8
-        </button>
-        <div className="flex w-36 flex-col items-center gap-1 rounded-xl bg-bg2 px-3 py-2 ring-1 ring-accent/40">
-          <div className="flex w-full justify-between text-[11px] uppercase tracking-wide">
-            <span className="font-semibold text-muted">SB</span>
-            <span className="text-accent">You</span>
-          </div>
-          <div className="w-full text-left text-lg font-bold tabular-nums text-ink">235</div>
+        <div className="rounded-lg border border-line bg-bg2/70 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted">Net</div>
+          <div className="text-xl font-bold tabular-nums text-accent">+4.2</div>
         </div>
       </div>
     </div>
@@ -78,56 +79,39 @@ export function StylePreview({
   active: TypeStyle
   onApply: (s: TypeStyle) => void
 }) {
-  const cols: Array<{ key: TypeStyle; title: string; note: string; font: string; tracking: string }> = [
-    {
-      key: 'editorial',
-      title: 'Editorial',
-      note: 'Fraunces serif headings — warm, characterful (current).',
-      font: FRAUNCES,
-      tracking: '',
-    },
-    {
-      key: 'clean',
-      title: 'Clean',
-      note: 'Hanken Grotesk headings — minimal, modern, less templated.',
-      font: HANKEN,
-      tracking: '-tracking-tight',
-    },
-  ]
-
   return (
     <div className="mx-auto max-w-5xl pb-10">
       <h2 className="font-display text-2xl text-ink">Type &amp; feel</h2>
       <p className="mb-6 mt-1 text-sm text-muted">
-        Same screen, two heading treatments. Pick one — it applies everywhere instantly and is
-        reversible. (Body text stays Hanken Grotesk either way; only the display font changes.)
+        Five heading treatments. Pick one — it applies everywhere instantly and is reversible. (Body
+        text stays Hanken Grotesk; only the display font changes.)
       </p>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        {cols.map((c) => (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {TYPE_STYLES.map((s) => (
           <div
-            key={c.key}
-            className={`rounded-2xl border p-6 transition ${
-              active === c.key ? 'border-accent ring-1 ring-accent/40' : 'border-line'
+            key={s.id}
+            className={`flex flex-col gap-4 rounded-2xl border p-5 transition ${
+              active === s.id ? 'border-accent ring-1 ring-accent/40' : 'border-line'
             }`}
-            style={{ ['--font-display' as string]: c.font }}
+            style={{ ['--font-display' as string]: s.font }}
           >
-            <div className="mb-1 flex items-baseline justify-between">
-              <span className="font-display text-lg text-ink">{c.title}</span>
-              {active === c.key && (
+            <div className="flex items-baseline justify-between">
+              <span className="font-display text-base text-ink">{s.name}</span>
+              {active === s.id && (
                 <span className="text-[11px] uppercase tracking-wider text-accent">Active</span>
               )}
             </div>
-            <p className="mb-5 text-xs text-muted">{c.note}</p>
+            <p className="-mt-3 text-xs text-muted">{s.note}</p>
 
-            <Sample headingTracking={c.tracking} />
+            <Sample tracking={s.tracking} />
 
             <button
-              onClick={() => onApply(c.key)}
-              disabled={active === c.key}
-              className="mt-6 w-full rounded-lg border border-line px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink transition hover:border-accent disabled:opacity-40"
+              onClick={() => onApply(s.id)}
+              disabled={active === s.id}
+              className="mt-1 w-full rounded-lg border border-line px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink transition hover:border-accent disabled:opacity-40"
             >
-              {active === c.key ? 'In use' : `Use ${c.title}`}
+              {active === s.id ? 'In use' : `Use ${s.name}`}
             </button>
           </div>
         ))}

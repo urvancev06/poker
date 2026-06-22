@@ -9,6 +9,12 @@ import '@fontsource/hanken-grotesk/400.css'
 import '@fontsource/hanken-grotesk/500.css'
 import '@fontsource/hanken-grotesk/700.css'
 import '@fontsource/hanken-grotesk/800.css'
+// Optional heading styles (chosen in the Aa type preview).
+import '@fontsource/space-grotesk/500.css'
+import '@fontsource/space-grotesk/700.css'
+import '@fontsource/playfair-display/600.css'
+import '@fontsource/playfair-display/700.css'
+import '@fontsource/space-mono/700.css'
 
 import './index.css'
 import App from './App.tsx'
