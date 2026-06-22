@@ -26,6 +26,7 @@ from poker.coach import build_coaching
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
+from poker.sim.hero_stats import hero_report
 
 from .schemas import ActionRequest, CreateSessionRequest
 from .serializers import session_to_dict
@@ -143,6 +144,24 @@ def create_app(db_url: str | None = None) -> FastAPI:
         if not gs.hero_to_act:
             raise HTTPException(status_code=409, detail="coaching is only available on the hero's turn")
         return build_coaching(gs).as_dict()
+
+    @app.get("/session/{session_id}/reads")
+    def reads(session_id: str) -> dict:
+        """Per-bot observed read for the HUD (revealed past the sample threshold)."""
+        gs = _session(session_id)
+        return {str(p): r for p, r in gs.reads().items()}
+
+    @app.get("/stats/me")
+    def my_stats(session_id: str | None = None, db: Session = Depends(get_db)) -> dict:
+        """The hero's stats over time vs target bands (STRATEGY.md §5)."""
+        records = list_hands(db, session_id=session_id, limit=100_000)
+        # list_hands is newest-first; reverse to chronological for the trend.
+        summaries = [
+            r.data["hero_summary"]
+            for r in reversed(records)
+            if isinstance(r.data, dict) and "hero_summary" in r.data
+        ]
+        return hero_report(summaries)
 
     @app.get("/hands")
     def hands(session_id: str | None = None, limit: int = 50, db: Session = Depends(get_db)) -> list[dict]:

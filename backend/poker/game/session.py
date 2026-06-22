@@ -12,12 +12,16 @@ seat k holds player ``(button + 1 + k) % n`` for the hand's button player.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from ..bots import Bot, archetypes, build_context
 from ..engine import Action, GameState, Hand
+from ..sim.stats import StatsAccumulator
+from ..sim.summarize import summarize_hand
 
 HERO = 0
+# Hands observed vs a bot before its HUD read is shown (STRATEGY.md §5 sample-size).
+HUD_MIN_HANDS = 30
 
 
 @dataclass
@@ -49,6 +53,7 @@ class GameSession:
         self._player_to_seat: dict[int, int] = {}
         self._last_result: dict | None = None
         self._hero_hole: list[str] = []  # captured at deal (folding clears it later)
+        self._reads = StatsAccumulator()  # per-player observed stats (keyed by player index)
 
     # ------------------------------------------------------------------ #
     @property
@@ -169,9 +174,41 @@ class GameSession:
             "actions": actions,
             "lineup": self.archetype_of,
         }
+
+        # Per-player summaries: accumulate observed stats (HUD reads) and stash the
+        # hero's summary for the stats-over-time dashboard.
+        summaries = summarize_hand(h, self._seat_to_player, self.n)
+        for p in range(self.n):
+            summaries[p].archetype = str(p)
+        self._reads.add_hand(summaries)
+        result["hero_summary"] = asdict(summaries[HERO])
+
         self._last_result = result
         self.hand_index += 1
         return result
+
+    def reads(self) -> dict[int, dict]:
+        """Per-bot observed read for the HUD: hands seen + stats (revealed once the
+        sample passes HUD_MIN_HANDS). Keyed by player index (1..n-1)."""
+        out: dict[int, dict] = {}
+        for player in range(1, self.n):
+            line = self._reads.line(str(player))
+            ready = line.hands >= HUD_MIN_HANDS
+            out[player] = {
+                "hands": line.hands,
+                "min_hands": HUD_MIN_HANDS,
+                "ready": ready,
+                "stats": None
+                if not ready
+                else {
+                    "vpip": round(line.vpip, 1),
+                    "pfr": round(line.pfr, 1),
+                    "threebet": round(line.threebet, 1),
+                    "af": None if line.af == float("inf") else round(line.af, 1),
+                    "wtsd": round(line.wtsd, 1),
+                },
+            }
+        return out
 
     @property
     def last_result(self) -> dict | None:
