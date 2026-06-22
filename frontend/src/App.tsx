@@ -238,7 +238,7 @@ export default function App() {
                   {session.hand_over ? (
                     <div className="flex flex-col items-center gap-3">
                       <div
-                        className={`flex items-center gap-2.5 rounded-xl px-6 py-2.5 text-lg font-bold uppercase tracking-wide ring-1 ${
+                        className={`animate-rise flex items-center gap-2.5 rounded-xl px-6 py-2.5 text-lg font-bold uppercase tracking-wide ring-1 ${
                           heroNet > 0
                             ? 'bg-win/15 text-win ring-win/40'
                             : heroNet < 0
@@ -296,7 +296,7 @@ export default function App() {
           </main>
 
           {(study || coaching || coachLoading || showLog) && (
-            <aside className="flex min-h-0 w-full flex-col gap-4 overflow-y-auto lg:w-72">
+            <aside className="flex min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden lg:w-80">
               {(study || coaching || coachLoading) && (
                 <CoachPanel coaching={coaching} loading={coachLoading} />
               )}

@@ -1,5 +1,5 @@
 import type { BotRead, Seat as SeatData } from '../api'
-import { Card } from './Card'
+import { Card, DealtCard } from './Card'
 
 export type VisibilityMode = 'labeled' | 'hud' | 'live'
 
@@ -14,7 +14,7 @@ const ARCH_LABEL: Record<string, string> = {
 function ChipStack({ amount }: { amount: number }) {
   if (!amount) return null
   return (
-    <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-ink shadow-sm ring-1 ring-accent/55">
+    <div className="animate-rise flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-ink shadow-sm ring-1 ring-accent/55">
       <span className="inline-block h-2 w-2 rounded-full bg-accent shadow-[0_0_4px_rgba(201,164,78,0.7)]" />
       {amount}
     </div>
@@ -90,7 +90,7 @@ export function Seat({
 
       <div className="flex min-h-[1.5rem] items-end justify-center gap-1">
         {cards ? (
-          cards.map((c, i) => <Card key={i} card={c} width={cardWidth} />)
+          cards.map((c) => <DealtCard key={c} card={c} width={cardWidth} />)
         ) : faceDown ? (
           <>
             <Card faceDown width={cardWidth} />

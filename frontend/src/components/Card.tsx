@@ -3,7 +3,7 @@
 // identically — only styling differs. `deckId` overrides the active deck (for
 // previews in Preferences). Card strings are like "Ah", "Td", "Kc".
 
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { deckById, useDeck, type Parts } from '../prefs'
 
 const SUIT_GLYPH: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
@@ -54,6 +54,42 @@ export function Card({
       <rect x="1" y="1" width="98" height="138" rx={deck.radius} fill={deck.bg} stroke={deck.stroke} />
       {deck.face(p, deck.color(p.suit))}
     </svg>
+  )
+}
+
+/**
+ * A card that flips from back to face-up when it mounts — the "deal" reveal.
+ * Key it by the card value so a new card (new hand / next street) remounts and
+ * flips, while existing cards stay put. Honours prefers-reduced-motion via the
+ * global CSS that zeroes transition durations.
+ */
+export function DealtCard({ card, width = 64 }: { card: string; width?: number }) {
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+  const height = Math.round(width * CARD_RATIO)
+  return (
+    <div className="shrink-0" style={{ width, height, perspective: 800 }}>
+      <div
+        className="relative h-full w-full transition-transform duration-[450ms] ease-out"
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: shown ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+        }}
+      >
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
+          <Card card={card} width={width} />
+        </div>
+        <div
+          className="absolute inset-0"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+          <Card faceDown width={width} />
+        </div>
+      </div>
+    </div>
   )
 }
 

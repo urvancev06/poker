@@ -23,7 +23,7 @@ export function CoachPanel({
   loading: boolean
 }) {
   return (
-    <aside className="w-80 shrink-0 rounded-2xl border border-line bg-bg2/80 p-5">
+    <aside className="w-full rounded-2xl border border-line bg-bg2/80 p-5">
       <h2 className="font-display text-lg text-ink">Coach</h2>
       <p className="mb-4 text-[11px] uppercase tracking-wider text-muted">computed, not solved</p>
 
