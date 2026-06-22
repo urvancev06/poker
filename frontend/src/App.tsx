@@ -223,7 +223,7 @@ export default function App() {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-line bg-bg p-2 shadow-2xl">
+                <div className="fixed right-3 top-16 z-50 w-56 rounded-xl border border-line bg-bg p-2 shadow-2xl">
                   {view === 'table' && (
                     <>
                       <button
