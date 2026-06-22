@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type ActionType, type Coaching, type Reads, type SessionState } from './api'
-import { CoachPanel } from './components/CoachPanel'
+import { CoachPanel, CoachStrip } from './components/CoachPanel'
 import { Table } from './components/Table'
+import { MobileTable } from './components/MobileTable'
 import { ActionBar } from './components/ActionBar'
 import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
@@ -134,12 +135,12 @@ export default function App() {
             <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
             <span className="font-display text-xl text-ink">Poker</span>
           </div>
-          <nav className="flex gap-1 text-xs lowercase tracking-wide">
+          <nav className="flex max-w-full gap-1 overflow-x-auto text-xs lowercase tracking-wide">
             {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1.5 transition ${
+                className={`shrink-0 rounded-md px-3 py-1.5 transition ${
                   view === v ? 'bg-bg2 text-ink ring-1 ring-line' : 'text-muted hover:text-ink'
                 }`}
               >
@@ -231,8 +232,22 @@ export default function App() {
             {session ? (
               <>
                 <div className="flex min-h-0 flex-1 items-center justify-center">
-                  <Table session={session} mode={mode} reads={reads} />
+                  {/* desktop oval */}
+                  <div className="hidden h-full w-full items-center justify-center lg:flex">
+                    <Table session={session} mode={mode} reads={reads} />
+                  </div>
+                  {/* phone portrait */}
+                  <div className="flex h-full w-full lg:hidden">
+                    <MobileTable session={session} mode={mode} reads={reads} />
+                  </div>
                 </div>
+
+                {/* compact coach line on phones (full panel is the desktop aside) */}
+                {(study || coaching || coachLoading) && (
+                  <div className="mt-2 shrink-0 lg:hidden">
+                    <CoachStrip coaching={coaching} loading={coachLoading} />
+                  </div>
+                )}
 
                 <div className="mt-3 flex h-[128px] shrink-0 flex-col items-center justify-center gap-3 overflow-y-auto">
                   {session.hand_over ? (
@@ -295,8 +310,9 @@ export default function App() {
             )}
           </main>
 
+          {/* desktop side panel */}
           {(study || coaching || coachLoading || showLog) && (
-            <aside className="flex min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden lg:w-80">
+            <aside className="hidden min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex lg:w-80">
               {(study || coaching || coachLoading) && (
                 <CoachPanel coaching={coaching} loading={coachLoading} />
               )}
@@ -304,6 +320,24 @@ export default function App() {
                 <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
               )}
             </aside>
+          )}
+
+          {/* phone: action log as a dismissible bottom sheet */}
+          {showLog && session && (
+            <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
+              <div className="mx-auto max-w-md rounded-2xl border border-line bg-bg p-3 shadow-2xl">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-muted">Action log</span>
+                  <button
+                    onClick={() => setShowLog(false)}
+                    className="text-lg leading-none text-muted hover:text-ink"
+                  >
+                    ×
+                  </button>
+                </div>
+                <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
+              </div>
+            </div>
           )}
         </div>
       )}

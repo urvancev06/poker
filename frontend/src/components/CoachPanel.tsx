@@ -1,5 +1,21 @@
 import type { Coaching } from '../api'
 
+/** A one-line coach summary for the phone layout (the full panel is desktop). */
+export function CoachStrip({ coaching, loading }: { coaching: Coaching | null; loading: boolean }) {
+  if (loading) return <div className="text-center text-xs text-muted">computing…</div>
+  if (!coaching) return null
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-lg border border-line bg-bg2/80 px-3 py-1.5 text-xs">
+      <span className="font-bold text-ink">{coaching.verdict}</span>
+      <span className="tabular-nums text-accent">{coaching.equity_pct}% eq</span>
+      {coaching.required_equity_pct != null && (
+        <span className="tabular-nums text-muted">need {coaching.required_equity_pct}%</span>
+      )}
+      <span className="text-muted">{coaching.hand_label}</span>
+    </div>
+  )
+}
+
 function EquityBar({ equity, required }: { equity: number; required: number | null }) {
   return (
     <div className="relative h-3 w-full overflow-hidden rounded-full bg-black/40 ring-1 ring-line">

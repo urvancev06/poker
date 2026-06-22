@@ -11,6 +11,31 @@ const ARCH_LABEL: Record<string, string> = {
   Maniac: 'Maniac',
 }
 
+/** The mode-gated seat label (archetype / HUD stats / nothing), shared by the
+ * desktop and mobile tables. Display only — never affects bot behaviour. */
+export function seatLabel(
+  isHero: boolean,
+  mode: VisibilityMode,
+  archetype: string,
+  read?: BotRead,
+): React.ReactNode {
+  if (isHero) return <span className="text-accent">You</span>
+  if (mode === 'labeled') return <span className="text-muted">{ARCH_LABEL[archetype] ?? archetype}</span>
+  if (mode === 'hud') {
+    return read?.ready && read.stats ? (
+      <span className="tabular-nums text-muted">
+        {read.stats.vpip}/{read.stats.pfr}
+        {read.stats.af != null && <span className="text-muted/70"> · AF {read.stats.af}</span>}
+      </span>
+    ) : (
+      <span className="italic text-muted/60">
+        read {read?.hands ?? 0}/{read?.min_hands ?? 30}
+      </span>
+    )
+  }
+  return null
+}
+
 function ChipStack({ amount }: { amount: number }) {
   if (!amount) return null
   return (
@@ -49,22 +74,7 @@ export function Seat({
   const cards = isHero || showOppCards ? seat.hole_cards : null
   const faceDown = !cards && !seat.folded
 
-  let label: React.ReactNode = null
-  if (isHero) {
-    label = <span className="text-accent">You</span>
-  } else if (mode === 'labeled') {
-    label = <span className="text-muted">{ARCH_LABEL[archetype] ?? archetype}</span>
-  } else if (mode === 'hud') {
-    label =
-      read?.ready && read.stats ? (
-        <span className="tabular-nums text-muted">
-          {read.stats.vpip}/{read.stats.pfr}
-          {read.stats.af != null && <span className="text-muted/70"> · AF {read.stats.af}</span>}
-        </span>
-      ) : (
-        <span className="italic text-muted/60">read {read?.hands ?? 0}/{read?.min_hands ?? 30}</span>
-      )
-  }
+  const label = seatLabel(isHero, mode, archetype, read)
 
   return (
     <div
