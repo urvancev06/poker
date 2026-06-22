@@ -34,50 +34,23 @@ export function ActionBar({
   const aggressType: ActionType = legal.can_bet ? 'bet' : 'raise'
 
   const btn =
-    'rounded-lg px-5 py-2.5 text-sm font-bold uppercase tracking-wide transition disabled:opacity-40'
+    'flex-1 rounded-lg px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition disabled:opacity-40'
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
-      {legal.can_fold && (
-        <button
-          className={`${btn} border border-line text-muted hover:text-ink hover:border-muted`}
-          onClick={() => onAction('fold')}
-          disabled={disabled}
-        >
-          Fold
-        </button>
-      )}
-      {legal.can_check && (
-        <button
-          className={`${btn} bg-bg2 text-ink ring-1 ring-line hover:ring-muted`}
-          onClick={() => onAction('check')}
-          disabled={disabled}
-        >
-          Check
-        </button>
-      )}
-      {legal.can_call && (
-        <button
-          className={`${btn} bg-bg2 text-ink ring-1 ring-line hover:ring-muted`}
-          onClick={() => onAction('call')}
-          disabled={disabled}
-        >
-          Call <span className="tabular-nums text-accent">{legal.call_amount}</span>
-        </button>
-      )}
-
+    <div className="flex w-full max-w-xl flex-col items-center gap-2">
+      {/* sizing row */}
       {canAggress && (
-        <div className="flex items-center gap-3 rounded-xl border border-line bg-bg2/70 px-3 py-2">
+        <div className="flex w-full items-center gap-2">
           <input
             type="range"
             min={min}
             max={max}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="h-1 w-40 accent-accent"
+            className="h-1 flex-1 accent-accent"
             disabled={disabled}
           />
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             {QUICK.map(([label, f]) => (
               <button
                 key={label}
@@ -96,16 +69,48 @@ export function ActionBar({
               all-in
             </button>
           </div>
+        </div>
+      )}
+
+      {/* action buttons row */}
+      <div className="flex w-full items-stretch justify-center gap-2">
+        {legal.can_fold && (
+          <button
+            className={`${btn} border border-line text-muted hover:border-muted hover:text-ink`}
+            onClick={() => onAction('fold')}
+            disabled={disabled}
+          >
+            Fold
+          </button>
+        )}
+        {legal.can_check && (
+          <button
+            className={`${btn} bg-bg2 text-ink ring-1 ring-line hover:ring-muted`}
+            onClick={() => onAction('check')}
+            disabled={disabled}
+          >
+            Check
+          </button>
+        )}
+        {legal.can_call && (
+          <button
+            className={`${btn} bg-bg2 text-ink ring-1 ring-line hover:ring-muted`}
+            onClick={() => onAction('call')}
+            disabled={disabled}
+          >
+            Call <span className="tabular-nums text-accent">{legal.call_amount}</span>
+          </button>
+        )}
+        {canAggress && (
           <button
             className={`${btn} bg-accent text-accent-ink hover:brightness-110`}
             onClick={() => onAction(aggressType, amount)}
             disabled={disabled}
           >
-            {legal.can_bet ? 'Bet' : 'Raise to'}{' '}
-            <span className="tabular-nums">{amount}</span>
+            {legal.can_bet ? 'Bet' : 'Raise'} <span className="tabular-nums">{amount}</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

@@ -34,6 +34,7 @@ export default function App() {
   const [view, setView] = useState<View>('table')
   const [study, setStudy] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [typeStyle, setTypeStyle] = useState<TypeStyle>(loadTypeStyle())
 
   useEffect(() => {
@@ -149,63 +150,137 @@ export default function App() {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-3">
-          {view === 'table' && (
-            <>
-              <button
-                onClick={() => setStudy((s) => !s)}
-                title="Coach shows live advice on your turn; Play hides it until review"
-                className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
-                  study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
-                }`}
-              >
-                {study ? 'Coach' : 'Play'}
-              </button>
-              <div className="flex overflow-hidden rounded-lg border border-line">
-                {MODES.map(([m, label, hint]) => (
+        <div className="flex items-center gap-2">
+          {/* desktop controls */}
+          <div className="hidden items-center gap-3 lg:flex">
+            {view === 'table' && (
+              <>
+                <button
+                  onClick={() => setStudy((s) => !s)}
+                  title="Coach shows live advice on your turn; Play hides it until review"
+                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                    study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
+                  }`}
+                >
+                  {study ? 'Coach' : 'Play'}
+                </button>
+                <div className="flex overflow-hidden rounded-lg border border-line">
+                  {MODES.map(([m, label, hint]) => (
+                    <button
+                      key={m}
+                      title={hint}
+                      onClick={() => setMode(m)}
+                      className={`px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                        mode === m ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setShowLog((s) => !s)}
+                  title="Show the action log (who folded/called/raised)"
+                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                    showLog ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
+                  }`}
+                >
+                  Log
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setView('prefs')}
+              title="Preferences — deck & felt"
+              className="rounded-lg border border-line px-3 py-1.5 text-sm leading-none text-muted hover:text-ink"
+            >
+              ⚙
+            </button>
+            <button
+              onClick={() => setView('type')}
+              title="Type & feel — compare heading styles"
+              className="rounded-lg border border-line px-3 py-1.5 font-display text-sm leading-none text-muted hover:text-ink"
+            >
+              Aa
+            </button>
+            <button
+              onClick={newSession}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted hover:text-ink"
+            >
+              New game
+            </button>
+          </div>
+
+          {/* phone menu */}
+          <div className="relative lg:hidden">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Menu"
+              className="rounded-lg border border-line px-3 py-1.5 text-lg leading-none text-muted hover:text-ink"
+            >
+              ☰
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-line bg-bg p-2 shadow-2xl">
+                  {view === 'table' && (
+                    <>
+                      <button
+                        onClick={() => setStudy((s) => !s)}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-ink hover:bg-bg2"
+                      >
+                        <span>Live coach</span>
+                        <span className={study ? 'text-accent' : 'text-muted'}>{study ? 'on' : 'off'}</span>
+                      </button>
+                      <div className="px-2 py-1.5">
+                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted">Opponents</div>
+                        <div className="flex overflow-hidden rounded-lg border border-line">
+                          {MODES.map(([m, label]) => (
+                            <button
+                              key={m}
+                              onClick={() => setMode(m)}
+                              className={`flex-1 px-2 py-1.5 text-xs uppercase tracking-wide ${
+                                mode === m ? 'bg-accent text-accent-ink' : 'text-muted'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowLog((s) => !s)}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-ink hover:bg-bg2"
+                      >
+                        <span>Action log</span>
+                        <span className={showLog ? 'text-accent' : 'text-muted'}>{showLog ? 'on' : 'off'}</span>
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                    </>
+                  )}
                   <button
-                    key={m}
-                    title={hint}
-                    onClick={() => setMode(m)}
-                    className={`px-3 py-1.5 text-xs uppercase tracking-wide transition ${
-                      mode === m ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink'
-                    }`}
+                    onClick={() => { setView('prefs'); setMenuOpen(false) }}
+                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-ink hover:bg-bg2"
                   >
-                    {label}
+                    Preferences · deck &amp; felt
                   </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowLog((s) => !s)}
-                title="Show the action log (who folded/called/raised)"
-                className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
-                  showLog ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
-                }`}
-              >
-                Log
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setView('prefs')}
-            title="Preferences — deck & felt"
-            className="rounded-lg border border-line px-3 py-1.5 text-sm leading-none text-muted hover:text-ink"
-          >
-            ⚙
-          </button>
-          <button
-            onClick={() => setView('type')}
-            title="Type & feel — compare heading styles"
-            className="rounded-lg border border-line px-3 py-1.5 font-display text-sm leading-none text-muted hover:text-ink"
-          >
-            Aa
-          </button>
-          <button
-            onClick={newSession}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted hover:text-ink"
-          >
-            New game
-          </button>
+                  <button
+                    onClick={() => { setView('type'); setMenuOpen(false) }}
+                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-ink hover:bg-bg2"
+                  >
+                    Type &amp; feel
+                  </button>
+                  <button
+                    onClick={() => { void newSession(); setMenuOpen(false) }}
+                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-accent hover:bg-bg2"
+                  >
+                    New game
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
