@@ -105,7 +105,16 @@ The whole **backend brain is built and tested** (56 pytest tests passing):
   for every archetype). Run it: `.venv/bin/python scripts/simulate.py --hands 100000`.
 - **Phase 4** — `poker.api` + `poker.coach` + `poker.db`: FastAPI session/play/
   coaching endpoints and SQLite hand-history persistence.
+- **Phase 5** — the React table (Felt & Brass, Byron Knoll cards), wired to the
+  API: play full 6-max sessions vs the archetypes in the browser. Includes the
+  opponent **visibility modes** (Labeled / HUD / Live).
+- **Phase 6** — the learning layer: Study/Play toggle (live coach), my-stats
+  dashboard vs target bands, per-bot HUD reads (revealed past a sample), and a
+  hand-history browser with street-by-street replay + computed, candid leak
+  detection.
 
-**Next: Phase 5 — the frontend table** (not started). It needs a deliberate
-card-deck choice (see §4 of `PROJECT.md`) and the Felt & Brass styling from
-`DESIGN.md`.
+**V1 (Phases 0–6) is built and tested** (61 backend tests). Remaining is
+**Phase 7 (optional/later)**: a bot-lab UI, deployment to the deployment domain,
+and stretch goals (CFR toy, opponent-adapting bots, real hand-history import).
+Optional Phase-6 extras not yet built: SM-2 spaced-repetition drills and the
+isolated spot-trainer.
