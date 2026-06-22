@@ -1,4 +1,4 @@
-import type { Seat as SeatData } from '../api'
+import type { BotRead, Seat as SeatData } from '../api'
 import { Card } from './Card'
 
 export type VisibilityMode = 'labeled' | 'hud' | 'live'
@@ -33,6 +33,7 @@ export function Seat({
   isButton,
   mode,
   handOver,
+  read,
   cardWidth = 44,
 }: {
   seat: SeatData
@@ -41,19 +42,28 @@ export function Seat({
   isButton: boolean
   mode: VisibilityMode
   handOver: boolean
+  read?: BotRead
   cardWidth?: number
 }) {
   const showOppCards = handOver && !!seat.hole_cards
   const cards = isHero || showOppCards ? seat.hole_cards : null
   const faceDown = !cards && !seat.folded
 
-  let read: React.ReactNode = null
+  let label: React.ReactNode = null
   if (isHero) {
-    read = <span className="text-accent">You</span>
+    label = <span className="text-accent">You</span>
   } else if (mode === 'labeled') {
-    read = <span className="text-muted">{ARCH_LABEL[archetype] ?? archetype}</span>
+    label = <span className="text-muted">{ARCH_LABEL[archetype] ?? archetype}</span>
   } else if (mode === 'hud') {
-    read = <span className="text-muted/70 italic">read forming…</span>
+    label =
+      read?.ready && read.stats ? (
+        <span className="tabular-nums text-muted">
+          {read.stats.vpip}/{read.stats.pfr}
+          {read.stats.af != null && <span className="text-muted/70"> · AF {read.stats.af}</span>}
+        </span>
+      ) : (
+        <span className="italic text-muted/60">read {read?.hands ?? 0}/{read?.min_hands ?? 30}</span>
+      )
   }
 
   return (
@@ -86,7 +96,7 @@ export function Seat({
 
       <div className="flex w-full items-center justify-between text-[11px] uppercase tracking-wide">
         <span className="text-muted/80">{seat.position}</span>
-        {read}
+        {label}
       </div>
       <div className="flex w-full items-center justify-between">
         <span className="text-base font-bold tabular-nums text-ink">{seat.stack}</span>

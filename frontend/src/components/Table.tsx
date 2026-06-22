@@ -1,4 +1,4 @@
-import type { SessionState } from '../api'
+import type { Reads, SessionState } from '../api'
 import { Board } from './Board'
 import { Seat, type VisibilityMode } from './Seat'
 
@@ -13,7 +13,15 @@ const POSITIONS = [
   { left: '90%', top: '71%' }, // 5
 ]
 
-export function Table({ session, mode }: { session: SessionState; mode: VisibilityMode }) {
+export function Table({
+  session,
+  mode,
+  reads,
+}: {
+  session: SessionState
+  mode: VisibilityMode
+  reads?: Reads
+}) {
   const { state } = session
   const playerToSeat: number[] = []
   session.seat_to_player.forEach((player, seat) => {
@@ -51,6 +59,7 @@ export function Table({ session, mode }: { session: SessionState; mode: Visibili
               isButton={player === session.button_player}
               mode={mode}
               handOver={session.hand_over}
+              read={reads?.[String(player)]}
               cardWidth={player === 0 ? 56 : 40}
             />
           </div>

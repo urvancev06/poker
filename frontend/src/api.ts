@@ -116,6 +116,85 @@ export interface CreateSessionBody {
   seed?: number | null
 }
 
+export interface BotRead {
+  hands: number
+  min_hands: number
+  ready: boolean
+  stats: { vpip: number; pfr: number; threebet: number; af: number | null; wtsd: number } | null
+}
+export type Reads = Record<string, BotRead>
+
+export interface HeroStatLine {
+  hands: number
+  vpip: number
+  pfr: number
+  threebet: number
+  ats: number
+  af: number | null
+  wtsd: number
+  wsd: number
+  wwsf: number
+  cbet: number
+  net_bb_per_100: number
+}
+export interface MyStats {
+  overall: HeroStatLine
+  trend: HeroStatLine[]
+  targets: Record<string, [number, number]>
+}
+
+export interface HandSummary {
+  id: number
+  created_at: string | null
+  session_id: string
+  hand_index: number
+  hero_position: string
+  hero_cards: string
+  board: string
+  pot: number
+  hero_net: number
+  went_to_showdown: boolean
+}
+
+export interface Leak {
+  type: string
+  note: string
+  street?: string
+  hand_index?: number
+}
+export interface ReviewDecision {
+  street: string
+  board: string[]
+  pot: number
+  to_call: number
+  action: string
+  to_amount: number | null
+  hand_label: string
+  equity_pct: number | null
+  required_pct: number | null
+  leaks: Leak[]
+}
+export interface ReviewStreet {
+  street: string
+  board: string[]
+  actions: Array<{ player: number; position: string; action: string; to_amount: number | null; is_hero: boolean }>
+}
+export interface HandReview {
+  hand_index: number
+  hero_cards: string[] | null
+  board: string[]
+  hero_net: number
+  went_to_showdown: boolean
+  streets: ReviewStreet[]
+  decisions: ReviewDecision[]
+  leaks: Leak[]
+}
+export interface LeakSummary {
+  hands_reviewed: number
+  by_type: Array<{ type: string; count: number }>
+  examples: Leak[]
+}
+
 export const api = {
   createSession: (body: CreateSessionBody = {}) =>
     req<SessionState>('/session', { method: 'POST', body: JSON.stringify(body) }),
@@ -128,4 +207,12 @@ export const api = {
   nextHand: (id: string) =>
     req<SessionState>(`/session/${id}/next-hand`, { method: 'POST' }),
   coach: (id: string) => req<Coaching>(`/session/${id}/coach`),
+  reads: (id: string) => req<Reads>(`/session/${id}/reads`),
+  myStats: (sessionId?: string) =>
+    req<MyStats>(`/stats/me${sessionId ? `?session_id=${sessionId}` : ''}`),
+  listHands: (sessionId?: string, limit = 50) =>
+    req<HandSummary[]>(`/hands?limit=${limit}${sessionId ? `&session_id=${sessionId}` : ''}`),
+  handReview: (id: number) => req<HandReview>(`/hands/${id}/review`),
+  leaks: (sessionId?: string) =>
+    req<LeakSummary>(`/stats/leaks${sessionId ? `?session_id=${sessionId}` : ''}`),
 }
