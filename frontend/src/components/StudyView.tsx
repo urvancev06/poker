@@ -70,6 +70,15 @@ const STATS: Array<[string, string, string]> = [
   ['C-bet%', '55–70', 'Continuation-bet the flop as preflop raiser (board-dependent).'],
 ]
 
+const POSITIONS: Array<[string, string, string]> = [
+  ['UTG', 'Under the Gun', 'First to act preflop — the earliest, worst seat. Everyone acts after you, so play the tightest range.'],
+  ['MP / HJ', 'Middle / Hijack', 'Still early-ish. Open a little wider than UTG, but respect the players left to act behind you.'],
+  ['CO', 'Cutoff', 'Late position. Open wide and attack the blinds when it folds to you.'],
+  ['BTN', 'Button', 'The best seat — you act LAST on every postflop street. Widest opening range, most profitable position.'],
+  ['SB', 'Small Blind', 'Posts half a blind and is out of position postflop. Tricky — lean toward raise-or-fold.'],
+  ['BB', 'Big Blind', 'Posts the full blind and closes the preflop action, so you get a price to defend wide — but you’re out of position after the flop.'],
+]
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-line bg-bg2/60 p-5">
@@ -98,6 +107,24 @@ export function StudyView() {
           .
         </p>
       </div>
+
+      <Card title="Positions (worst → best preflop)">
+        <p className="mb-3 text-sm text-muted">
+          Acting later means more information, which means more profit — so play tighter early and
+          wider late. Worst to best: UTG → MP → CO → BTN; the blinds (SB, BB) post forced bets and
+          play out of position after the flop.
+        </p>
+        <div className="space-y-2">
+          {POSITIONS.map(([abbr, name, desc]) => (
+            <div key={abbr} className="grid grid-cols-[64px_1fr] gap-2 text-sm">
+              <span className="font-semibold text-accent">{abbr}</span>
+              <span className="text-muted">
+                <span className="text-ink">{name}.</span> {desc}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Card title="Preflop — Raise First In (folded to you)">
         <div className="space-y-2">
@@ -152,7 +179,7 @@ export function StudyView() {
         </Card>
       </div>
 
-      <Card title="The five archetypes — and how to beat each">
+      <Card title="Player types — the five archetypes, and how to beat each">
         <div className="space-y-3">
           {ARCHETYPES.map((a) => (
             <div key={a.name} className="rounded-lg border border-line/60 p-3">
