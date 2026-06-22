@@ -35,11 +35,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Brass keyboard focus ring on every control (DESIGN.md §5). */
+  /* Brass keyboard focus ring on every control (DESIGN.md §5). The outline
+     follows each control's own border-radius — don't override it (that made a
+     sharp-cornered outline poke out past rounded buttons). */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-    border-radius: 2px;
   }
 
   /* On-theme scrollbars — slim, dark, brass on hover (no default chunky gray). */

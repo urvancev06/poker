@@ -33,7 +33,10 @@ const DEFAULT_STYLE = TYPE_STYLES[0]
 
 export function applyTypeStyle(id: TypeStyle) {
   const style = TYPE_STYLES.find((s) => s.id === id) ?? DEFAULT_STYLE
-  document.documentElement.style.setProperty('--font-display', style.font)
+  const root = document.documentElement
+  // Apply to BOTH the heading and body font so the whole app changes.
+  root.style.setProperty('--font-display', style.font)
+  root.style.setProperty('--font-ui', style.font)
   try {
     localStorage.setItem('poker-type', style.id)
   } catch {
@@ -83,8 +86,7 @@ export function StylePreview({
     <div className="mx-auto max-w-5xl pb-10">
       <h2 className="font-display text-2xl text-ink">Type &amp; feel</h2>
       <p className="mb-6 mt-1 text-sm text-muted">
-        Five heading treatments. Pick one — it applies everywhere instantly and is reversible. (Body
-        text stays Hanken Grotesk; only the display font changes.)
+        Five typefaces. Pick one — the whole app switches to it instantly, and it's reversible.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,7 +96,7 @@ export function StylePreview({
             className={`flex flex-col gap-4 rounded-2xl border p-5 transition ${
               active === s.id ? 'border-accent ring-1 ring-accent/40' : 'border-line'
             }`}
-            style={{ ['--font-display' as string]: s.font }}
+            style={{ ['--font-display' as string]: s.font, ['--font-ui' as string]: s.font }}
           >
             <div className="flex items-baseline justify-between">
               <span className="font-display text-base text-ink">{s.name}</span>
