@@ -12,9 +12,12 @@ import '@fontsource/hanken-grotesk/800.css'
 
 import './index.css'
 import App from './App.tsx'
+import { PrefsProvider } from './prefs'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <PrefsProvider>
+      <App />
+    </PrefsProvider>
   </StrictMode>,
 )

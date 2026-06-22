@@ -1,92 +1,58 @@
-// Custom minimal playing cards, drawn as inline SVG (no image deck), styled
-// after the Offsuit look the user likes: a bold rank in the top-left, one suit
-// centred below it, generously rounded corners, soft shadow. Face-down = a clean
-// diagonal hatch. Card strings are like "Ah", "Td", "Kc".
+// Renders a single playing card as inline SVG using the user's chosen deck
+// (see prefs.tsx). All decks share the same 100x140 viewBox, so every deck fits
+// identically — only styling differs. `deckId` overrides the active deck (for
+// previews in Preferences). Card strings are like "Ah", "Td", "Kc".
 
 import { useId } from 'react'
+import { deckById, useDeck, type Parts } from '../prefs'
 
 const SUIT_GLYPH: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
-const RED = new Set(['h', 'd'])
-const CARD_RATIO = 1.4 // height / width, standard playing-card proportion
+const CARD_RATIO = 1.4
 
-function parts(card: string) {
+function parts(card: string): Parts {
   const rank = card[0] === 'T' ? '10' : card[0].toUpperCase()
   const suit = card[1].toLowerCase()
-  return { rank, glyph: SUIT_GLYPH[suit] ?? '?', red: RED.has(suit) }
+  return { rank, glyph: SUIT_GLYPH[suit] ?? '?', suit }
 }
 
 export function Card({
   card,
   faceDown = false,
   width = 64,
+  deckId,
 }: {
   card?: string | null
   faceDown?: boolean
   width?: number
+  deckId?: string
 }) {
-  const id = useId()
+  const uid = useId()
+  const active = useDeck()
+  const deck = deckId ? deckById(deckId) : active
   const height = Math.round(width * CARD_RATIO)
   const shadow = 'drop-shadow(0 4px 9px rgba(0,0,0,0.45))'
 
+  const svgProps = {
+    width,
+    height,
+    viewBox: '0 0 100 140',
+    className: 'select-none',
+    style: { filter: shadow },
+  }
+
   if (faceDown || !card) {
     return (
-      <svg
-        width={width}
-        height={height}
-        viewBox="0 0 100 140"
-        className="select-none"
-        style={{ filter: shadow }}
-        aria-label="face-down card"
-      >
-        <defs>
-          <pattern
-            id={`hatch-${id}`}
-            width="13"
-            height="13"
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(45)"
-          >
-            <rect width="13" height="13" fill="var(--color-card)" />
-            <rect width="6" height="13" fill="rgba(28,24,19,0.13)" />
-          </pattern>
-        </defs>
-        <rect
-          x="1"
-          y="1"
-          width="98"
-          height="138"
-          rx="12"
-          fill={`url(#hatch-${id})`}
-          stroke="rgba(0,0,0,0.16)"
-        />
+      <svg {...svgProps} aria-label="face-down card">
+        {deck.back(`back-${uid}`)}
       </svg>
     )
   }
 
-  const { rank, glyph, red } = parts(card)
-  const color = red ? 'var(--color-card-red)' : 'var(--color-card-ink)'
-  const rankSize = rank.length > 1 ? 28 : 34 // "10" is wider
-
+  const p = parts(card)
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 100 140"
-      className="select-none"
-      style={{ filter: shadow }}
-      aria-label={card}
-    >
-      <rect x="1" y="1" width="98" height="138" rx="12" fill="var(--color-card)" stroke="rgba(0,0,0,0.14)" />
-      <g fontFamily="var(--font-ui), sans-serif" fill={color}>
-        {/* bold rank, top-left */}
-        <text x="26" y="40" fontSize={rankSize} fontWeight="800" textAnchor="middle">
-          {rank}
-        </text>
-        {/* one suit, centred below */}
-        <text x="50" y="104" fontSize="50" textAnchor="middle">
-          {glyph}
-        </text>
-      </g>
+    <svg {...svgProps} aria-label={card}>
+      <rect x="1" y="1" width="98" height="138" rx={deck.radius} fill={deck.bg} stroke={deck.stroke} />
+      {deck.face(p, deck.color(p.suit))}
     </svg>
   )
 }

@@ -9,6 +9,7 @@ import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
 import { ActionLog, actionText } from './components/ActionLog'
 import { StylePreview, applyTypeStyle, loadTypeStyle, type TypeStyle } from './components/StylePreview'
+import { PreferencesView } from './components/PreferencesView'
 import type { VisibilityMode } from './components/Seat'
 
 // Pause between bot actions when watching a hand unfold (ms).
@@ -19,7 +20,7 @@ const MODES: Array<[VisibilityMode, string, string]> = [
   ['hud', 'HUD', 'stats after a sample'],
   ['live', 'Live', 'read it yourself'],
 ]
-type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'type'
+type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'type' | 'prefs'
 
 export default function App() {
   const [session, setSession] = useState<SessionState | null>(null)
@@ -185,6 +186,13 @@ export default function App() {
             </>
           )}
           <button
+            onClick={() => setView('prefs')}
+            title="Preferences — deck & felt"
+            className="rounded-lg border border-line px-3 py-1.5 text-sm leading-none text-muted hover:text-ink"
+          >
+            ⚙
+          </button>
+          <button
             onClick={() => setView('type')}
             title="Type & feel — compare heading styles"
             className="rounded-lg border border-line px-3 py-1.5 font-display text-sm leading-none text-muted hover:text-ink"
@@ -213,6 +221,7 @@ export default function App() {
           {view === 'history' && <HistoryView sessionId={session?.session_id} />}
           {view === 'lab' && <LabView />}
           {view === 'type' && <StylePreview active={typeStyle} onApply={setTypeStyle} />}
+          {view === 'prefs' && <PreferencesView />}
         </div>
       )}
 
