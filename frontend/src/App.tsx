@@ -6,6 +6,7 @@ import { ActionBar } from './components/ActionBar'
 import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
+import { StudyView } from './components/StudyView'
 import { ActionLog } from './components/ActionLog'
 import type { VisibilityMode } from './components/Seat'
 
@@ -17,7 +18,7 @@ const MODES: Array<[VisibilityMode, string, string]> = [
   ['hud', 'HUD', 'stats after a sample'],
   ['live', 'Live', 'read it yourself'],
 ]
-type View = 'table' | 'stats' | 'history' | 'lab'
+type View = 'table' | 'study' | 'stats' | 'history' | 'lab'
 
 export default function App() {
   const [session, setSession] = useState<SessionState | null>(null)
@@ -126,7 +127,7 @@ export default function App() {
             <span className="font-display text-xl text-ink">Poker</span>
           </div>
           <nav className="flex gap-1 text-xs uppercase tracking-wide">
-            {(['table', 'stats', 'history', 'lab'] as View[]).map((v) => (
+            {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -144,12 +145,12 @@ export default function App() {
             <>
               <button
                 onClick={() => setStudy((s) => !s)}
-                title="Study shows the coach live; Play hides it until review"
+                title="Coach shows live advice on your turn; Play hides it until review"
                 className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
                   study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
                 }`}
               >
-                {study ? 'Study' : 'Play'}
+                {study ? 'Coach' : 'Play'}
               </button>
               <div className="flex overflow-hidden rounded-lg border border-line">
                 {MODES.map(([m, label, hint]) => (
@@ -182,8 +183,9 @@ export default function App() {
         </div>
       )}
 
-      {(view === 'stats' || view === 'history' || view === 'lab') && (
+      {view !== 'table' && (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          {view === 'study' && <StudyView />}
           {view === 'stats' && <StatsView />}
           {view === 'history' && <HistoryView sessionId={session?.session_id} />}
           {view === 'lab' && <LabView />}
