@@ -113,8 +113,8 @@ export function Seat({
 
       {seat.hand_label && (
         <div
-          className={`max-w-full truncate text-center leading-tight ${
-            isHero ? 'text-xs font-semibold text-accent' : 'text-[10px] text-muted'
+          className={`max-w-full text-center leading-tight ${
+            isHero ? 'text-xs font-semibold text-accent' : 'truncate text-[10px] text-muted'
           }`}
         >
           {seat.hand_label}
