@@ -56,6 +56,7 @@ class GameSession:
         self._player_to_seat: dict[int, int] = {}
         self._last_result: dict | None = None
         self._hero_hole: list[str] = []  # captured at deal (folding clears it later)
+        self._dealt_holes: list[list[str]] = []  # all seats' cards, captured at deal
         self._reads = StatsAccumulator()  # per-player observed stats (keyed by player index)
 
     # ------------------------------------------------------------------ #
@@ -112,7 +113,10 @@ class GameSession:
             seed=self._rng.randint(0, 2**31 - 1),
         )
         self._last_result = None
-        self._hero_hole = self._hand.hole_cards(self._player_to_seat[HERO]) or []
+        # Capture every seat's cards now: PokerKit clears them on fold/muck, but we
+        # want to reveal non-folded hands at a showdown (and the hero always).
+        self._dealt_holes = [self._hand.hole_cards(s) or [] for s in range(self.n)]
+        self._hero_hole = self._dealt_holes[self._player_to_seat[HERO]]
         if self.auto_advance:
             self._advance_bots()
 
@@ -254,6 +258,14 @@ class GameSession:
         hero = snap.seats[self._player_to_seat[HERO]]
         if self._hero_hole and not hero.hole_cards and (h.is_over or not hero.folded):
             hero.hole_cards = list(self._hero_hole)
+        # At a finished hand that went to showdown (2+ players standing, incl. an
+        # all-in runout), reveal every non-folded hand — PokerKit mucks the losers.
+        if h.is_over:
+            live = [s for s in range(self.n) if not snap.seats[s].folded]
+            if len(live) >= 2:
+                for s in live:
+                    if not snap.seats[s].hole_cards and s < len(self._dealt_holes) and self._dealt_holes[s]:
+                        snap.seats[s].hole_cards = list(self._dealt_holes[s])
         return snap
 
     def live_villain_seats(self) -> list[int]:

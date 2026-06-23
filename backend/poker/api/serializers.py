@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ..engine import GameState, LegalActions
 from ..game import GameSession
+from ..math import classify
 
 
 def legal_to_dict(legal: LegalActions | None) -> dict | None:
@@ -21,7 +22,12 @@ def legal_to_dict(legal: LegalActions | None) -> dict | None:
     }
 
 
-def seat_to_dict(seat) -> dict:
+def seat_to_dict(seat, board: list[str]) -> dict:
+    # When a seat's cards are visible (hero always; villains at showdown), label
+    # the made hand so the UI can show "what do I/they have" — updates per street.
+    hand_label = None
+    if seat.hole_cards and len(seat.hole_cards) == 2:
+        hand_label = classify(seat.hole_cards, board).label
     return {
         "seat": seat.seat,
         "position": seat.position,
@@ -31,6 +37,7 @@ def seat_to_dict(seat) -> dict:
         "all_in": seat.all_in,
         "is_actor": seat.is_actor,
         "hole_cards": seat.hole_cards,
+        "hand_label": hand_label,
     }
 
 
@@ -59,7 +66,7 @@ def state_to_dict(state: GameState) -> dict:
         "pot": state.total_pot,
         "actor": state.actor,
         "is_over": state.is_over,
-        "seats": [seat_to_dict(s) for s in state.seats],
+        "seats": [seat_to_dict(s, state.board) for s in state.seats],
         "legal_actions": legal_to_dict(state.legal_actions),
         "results": state.results,
         "history": history_to_dict(state),

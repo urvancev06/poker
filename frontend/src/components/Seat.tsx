@@ -111,6 +111,16 @@ export function Seat({
         )}
       </div>
 
+      {seat.hand_label && (
+        <div
+          className={`max-w-full truncate text-center leading-tight ${
+            isHero ? 'text-xs font-semibold text-accent' : 'text-[10px] text-muted'
+          }`}
+        >
+          {seat.hand_label}
+        </div>
+      )}
+
       <div className="flex w-full items-center justify-between text-[11px] uppercase tracking-wide">
         <span className="font-semibold text-muted">{seat.position}</span>
         {label}

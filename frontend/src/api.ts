@@ -25,6 +25,7 @@ export interface Seat {
   all_in: boolean
   is_actor: boolean
   hole_cards: string[] | null
+  hand_label: string | null // made-hand label when cards are visible (hero always; villains at showdown)
 }
 
 export interface ActionLogEntry {

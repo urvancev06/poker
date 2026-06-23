@@ -65,6 +65,9 @@ export function MobileTable({
               </>
             )}
           </div>
+          {hero.hand_label && (
+            <div className="text-xs font-semibold text-accent">{hero.hand_label}</div>
+          )}
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide">
             {session.button_player === 0 && (
               <span className="grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-ink">
@@ -117,6 +120,19 @@ function Opp({
           <span className="mt-0.5 rounded-full bg-black/55 px-1.5 text-[9px] tabular-nums text-accent ring-1 ring-accent/40">
             {seat.bet}
           </span>
+        )}
+        {/* revealed at showdown */}
+        {seat.hole_cards && (
+          <div className="mt-1 flex flex-col items-center gap-0.5">
+            <div className="flex gap-0.5">
+              {seat.hole_cards.map((c, i) => (
+                <Card key={i} card={c} width={18} />
+              ))}
+            </div>
+            {seat.hand_label && (
+              <span className="max-w-full truncate text-[8px] leading-tight text-muted">{seat.hand_label}</span>
+            )}
+          </div>
         )}
       </div>
     </div>

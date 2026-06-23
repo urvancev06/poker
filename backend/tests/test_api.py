@@ -189,3 +189,30 @@ def test_history_never_leaks_villain_holes(client: TestClient):
         state = client.post(f"/session/{state['session_id']}/advance").json()
     for entry in state["state"]["history"]:
         assert "hole_cards" not in entry  # the log must not carry anyone's cards
+
+
+def test_showdown_reveals_villain_cards_and_labels(client: TestClient):
+    """At a showdown the opponents' cards are revealed (not mucked away) and every
+    visible hand carries a 'hand_label'. Hero always has a label."""
+    state = client.post("/session", json={"seed": 7, "auto_advance": False}).json()
+    sid = state["session_id"]
+    # Drive a hand to the end, hero calling everything to reach showdowns.
+    for _ in range(400):
+        if state["hand_over"]:
+            break
+        if state["hero_to_act"]:
+            legal = state["state"]["legal_actions"]
+            act = "check" if legal["can_check"] else "call" if legal["can_call"] else "fold"
+            state = client.post(f"/session/{sid}/action", json={"type": act}).json()
+        else:
+            state = client.post(f"/session/{sid}/advance").json()
+
+    seats = state["state"]["seats"]
+    hero_seat = state["hero_seat"]
+    # hero always has a label (cards always visible)
+    assert seats[hero_seat]["hand_label"]
+    live = [s for s in seats if not s["folded"]]
+    if len(live) >= 2:  # a genuine showdown
+        for s in live:
+            assert s["hole_cards"] is not None and len(s["hole_cards"]) == 2
+            assert s["hand_label"]
