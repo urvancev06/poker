@@ -205,7 +205,9 @@ def _random_action(legal, rng):
         options.append(Action(ActionType.CHECK))
     if legal.can_call:
         options.append(Action(ActionType.CALL))
-    if legal.can_fold:
+    # Folding for free is no longer a legal action (a free check dominates it and
+    # it can burn chips) — only fold when actually facing a bet.
+    if legal.can_fold and not legal.can_check:
         options.append(Action(ActionType.FOLD))
     if legal.can_aggress:
         to = rng.randint(legal.min_raise_to, legal.max_raise_to)

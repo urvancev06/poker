@@ -228,6 +228,13 @@ class Hand:
         if t is ActionType.FOLD:
             if not legal.can_fold:
                 raise IllegalAction("folding is not legal here")
+            # Folding when a free check is available is a "non-standard fold":
+            # never correct in cash play, and PokerKit can leave a side pot with
+            # no eligible claimant, which BURNS chips (breaking conservation) and
+            # can even assert mid-push. A free check strictly dominates folding, so
+            # reject it as illegal rather than corrupt the pot.
+            if legal.can_check:
+                raise IllegalAction("cannot fold for free — check instead")
             self._state.fold()
             self._folded.add(seat)
         elif t is ActionType.CHECK:

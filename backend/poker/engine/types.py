@@ -36,7 +36,9 @@ class ActionType(str, Enum):
 # rotates which player sits in which seat to move the button. Names follow
 # STRATEGY.md (UTG, MP, CO, BTN, SB, BB).
 _POSITIONS: dict[int, list[str]] = {
-    2: ["SB", "BB"],  # heads-up: SB is the button
+    # Heads-up is PokerKit's special case: seat 0 posts the BB, seat 1 posts the
+    # SB and is the button (it acts first preflop). So seat 0 = BB, seat 1 = SB.
+    2: ["BB", "SB"],
     3: ["SB", "BB", "BTN"],
     4: ["SB", "BB", "UTG", "BTN"],
     5: ["SB", "BB", "UTG", "CO", "BTN"],
