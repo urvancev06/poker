@@ -124,11 +124,11 @@ export default function App() {
 
   return (
     <div className="mx-auto flex h-[100dvh] max-w-7xl flex-col overflow-hidden px-6 py-4">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
-            <span className="font-display text-xl text-ink">Poker</span>
+            <span className="font-display text-xl -tracking-[0.02em] text-ink">Poker</span>
           </div>
           <nav className="flex max-w-full gap-1 overflow-x-auto text-xs lowercase tracking-wide">
             {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
@@ -152,7 +152,7 @@ export default function App() {
                 <button
                   onClick={() => setStudy((s) => !s)}
                   title="Coach shows live advice on your turn; Play hides it until review"
-                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                  className={`rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
                     study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
                   }`}
                 >
@@ -164,7 +164,7 @@ export default function App() {
                       key={m}
                       title={hint}
                       onClick={() => setMode(m)}
-                      className={`px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                      className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
                         mode === m ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink'
                       }`}
                     >
@@ -175,7 +175,7 @@ export default function App() {
                 <button
                   onClick={() => setShowLog((s) => !s)}
                   title="Show the action log (who folded/called/raised)"
-                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-wide transition ${
+                  className={`rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
                     showLog ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
                   }`}
                 >
@@ -192,7 +192,7 @@ export default function App() {
             </button>
             <button
               onClick={newSession}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted hover:text-ink"
+              className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
             >
               New game
             </button>
@@ -227,7 +227,7 @@ export default function App() {
                             <button
                               key={m}
                               onClick={() => setMode(m)}
-                              className={`flex-1 px-2 py-1.5 text-xs uppercase tracking-wide ${
+                              className={`flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-wide ${
                                 mode === m ? 'bg-accent text-accent-ink' : 'text-muted'
                               }`}
                             >
@@ -341,14 +341,14 @@ export default function App() {
                       {!study && (
                         <button
                           onClick={() => askCoach(session.session_id)}
-                          className="text-xs uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+                          className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint underline-offset-4 hover:text-accent hover:underline"
                         >
-                          Ask the coach
+                          Ask the coach →
                         </button>
                       )}
                     </>
                   ) : (
-                    <div className="text-sm text-muted">
+                    <div className="font-mono text-xs uppercase tracking-[0.12em] text-faint">
                       {(() => {
                         const h = session.state.history
                         const last = h && h.length ? h[h.length - 1] : null
@@ -382,7 +382,7 @@ export default function App() {
             <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
               <div className="mx-auto max-w-md rounded-2xl border border-line bg-bg p-3 shadow-2xl">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-muted">Action log</span>
+                  <span className="font-mono text-xs uppercase tracking-wider text-muted">Action log</span>
                   <button
                     onClick={() => setShowLog(false)}
                     className="text-lg leading-none text-muted hover:text-ink"

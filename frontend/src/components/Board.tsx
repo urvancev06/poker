@@ -15,9 +15,10 @@ export function Board({
   const incoming = n === 0 ? 3 : n < 5 ? 1 : 0
   const positions = n + incoming
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="rounded-full bg-black/40 px-5 py-1.5 text-sm uppercase tracking-[0.22em] text-muted shadow-md ring-1 ring-accent/25">
-        pot <span className="ml-1.5 font-bold tabular-nums text-accent">{pot}</span>
+    <div className="flex flex-col items-center gap-3">
+      <div className="text-center leading-none">
+        <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-faint">Pot</div>
+        <div className="mt-1 text-[28px] font-light tabular-nums text-ink">{pot}</div>
       </div>
       <div className="flex gap-2.5">
         {Array.from({ length: positions }, (_, i) => (

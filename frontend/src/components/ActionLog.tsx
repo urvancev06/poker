@@ -43,23 +43,23 @@ export function ActionLog({ history, heroSeat }: { history: ActionLogEntry[]; he
   }
 
   return (
-    <div className="flex max-h-[55vh] min-h-0 flex-col rounded-xl border border-line bg-bg2/70 p-3">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Action</div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 text-sm">
-        {groups.length === 0 && <p className="text-muted/70">Hand starting…</p>}
+    <div className="flex max-h-[55vh] min-h-0 flex-col rounded-lg border border-line p-3">
+      <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint">Action</div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 font-mono text-[11px] leading-relaxed">
+        {groups.length === 0 && <p className="text-faint">awaiting…</p>}
         {groups.map((g, gi) => (
           <div key={gi}>
-            <div className="text-[10px] uppercase tracking-wider text-accent/80">
+            <div className="text-[9px] uppercase tracking-[0.16em] text-accent/70">
               {STREET_LABEL[g.street] ?? g.street}
             </div>
             {g.entries.map((e, i) => {
               const isHero = e.seat === heroSeat
               return (
-                <div key={i} className="flex items-baseline gap-1.5 tabular-nums">
-                  <span className={isHero ? 'font-semibold text-accent' : 'text-muted'}>
-                    {isHero ? 'You' : e.position}
+                <div key={i} className="flex gap-2 tabular-nums">
+                  <span className={`w-7 shrink-0 ${isHero ? 'text-accent' : 'text-faint'}`}>
+                    {isHero ? 'YOU' : e.position}
                   </span>
-                  <span className={e.action === 'fold' ? 'text-muted/60' : 'text-ink'}>
+                  <span className={e.action === 'fold' ? 'text-faint' : 'text-muted'}>
                     {actionText(e)}
                   </span>
                 </div>
