@@ -1,19 +1,27 @@
 import type { Coaching } from '../api'
 
-const verdictTone = (verdict: string) =>
-  verdict.toLowerCase().startsWith('fold') ? 'loss' : 'accent'
+type Tone = 'loss' | 'accent' | 'close'
+const verdictTone = (verdict: string): Tone => {
+  const v = verdict.toLowerCase()
+  if (v.startsWith('fold')) return 'loss'
+  if (v.startsWith('close')) return 'close'
+  return 'accent'
+}
+const toneText = (t: Tone) => (t === 'loss' ? 'text-loss' : t === 'close' ? 'text-muted' : 'text-accent')
 
 /** A one-line coach summary for the phone layout (the full panel is desktop). */
 export function CoachStrip({ coaching, loading }: { coaching: Coaching | null; loading: boolean }) {
   if (loading) return <div className="text-center text-xs text-muted">computing…</div>
   if (!coaching) return null
   const tone = verdictTone(coaching.verdict)
+  // Money behind -> the decision turns on *realized* equity; river/all-in -> raw.
+  const eq = coaching.action_closed ? coaching.equity_pct : coaching.realized_equity_pct
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-lg border border-line px-3 py-1.5 text-xs">
-      <span className={`font-semibold uppercase tracking-wide ${tone === 'loss' ? 'text-loss' : 'text-accent'}`}>
+      <span className={`font-semibold uppercase tracking-wide ${toneText(tone)}`}>
         {coaching.verdict.replace(/\.$/, '')}
       </span>
-      <span className="tabular-nums text-ink">{coaching.equity_pct}% eq</span>
+      <span className="tabular-nums text-ink">{eq}% eq</span>
       {coaching.required_equity_pct != null && (
         <span className="tabular-nums text-faint">need {coaching.required_equity_pct}%</span>
       )}
@@ -22,11 +30,19 @@ export function CoachStrip({ coaching, loading }: { coaching: Coaching | null; l
   )
 }
 
-/** Thin 2px equity track with a required-equity tick (DESIGN.md: thin bars, no radius). */
-function EquityBar({ equity, required }: { equity: number; required: number | null }) {
+/** Thin 2px equity track with a required-equity tick (DESIGN.md: thin bars, no radius).
+ * The fill is realized equity; a faint hollow tick marks raw equity when they differ. */
+function EquityBar({ equity, required, raw }: { equity: number; required: number | null; raw?: number }) {
   return (
     <div className="relative mt-2 h-0.5 w-full bg-hair">
       <div className="h-full bg-accent" style={{ width: `${Math.min(100, equity)}%` }} />
+      {raw != null && Math.abs(raw - equity) >= 1 && (
+        <div
+          className="absolute -top-0.5 h-[6px] w-px bg-accent/40"
+          style={{ left: `calc(${Math.min(100, raw)}% - 0.5px)` }}
+          title={`raw ${raw}%`}
+        />
+      )}
       {required != null && (
         <div
           className="absolute -top-1 h-[10px] w-px bg-faint"
@@ -69,24 +85,45 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
 
       {!loading && coaching && (
         <div className="mt-4 space-y-5">
-          {/* the live figure */}
-          <div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-faint">Equity</span>
-              <span className="text-sm text-muted">{coaching.hand_label}</span>
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="font-mono text-[40px] font-light leading-none text-accent tabular-nums">
-                {coaching.equity_pct}
-              </span>
-              <span className="font-mono text-lg font-light text-faint">%</span>
-            </div>
-            <EquityBar equity={coaching.equity_pct} required={coaching.required_equity_pct} />
-            <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-faint tabular-nums">
-              <span>win {coaching.win_pct} · tie {coaching.tie_pct}</span>
-              {coaching.required_equity_pct != null && <span>need {coaching.required_equity_pct}%</span>}
-            </div>
-          </div>
+          {/* the live figure — realized equity drives the call when money's behind;
+              on the river / all-in raw equity is fully realized, so show that. */}
+          {(() => {
+            const closed = coaching.action_closed
+            const headline = closed ? coaching.equity_pct : coaching.realized_equity_pct
+            const discounted = !closed && Math.abs(coaching.realized_equity_pct - coaching.equity_pct) >= 1
+            return (
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.14em] text-faint">
+                    {closed ? 'Equity' : 'Realized equity'}
+                  </span>
+                  <span className="text-sm text-muted">{coaching.hand_label}</span>
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="font-mono text-[40px] font-light leading-none text-accent tabular-nums">
+                    {headline}
+                  </span>
+                  <span className="font-mono text-lg font-light text-faint">%</span>
+                </div>
+                <EquityBar
+                  equity={headline}
+                  required={coaching.required_equity_pct}
+                  raw={discounted ? coaching.equity_pct : undefined}
+                />
+                <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-faint tabular-nums">
+                  <span>win {coaching.win_pct} · tie {coaching.tie_pct}</span>
+                  {coaching.required_equity_pct != null && <span>need {coaching.required_equity_pct}%</span>}
+                </div>
+                {discounted && (
+                  <p className="mt-1.5 text-[10px] normal-case leading-snug text-faint">
+                    {coaching.equity_pct}% raw, realizing ~{coaching.realization_pct}%{' '}
+                    {coaching.in_position ? 'in position' : 'out of position'}
+                    {coaching.players_behind > 0 && ` · ${coaching.players_behind} still to act behind`}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {/* price readout */}
           {coaching.to_call > 0 && (
@@ -108,7 +145,9 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
               className={`inline-block rounded border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] ${
                 tone === 'loss'
                   ? 'border-loss/50 bg-loss/10 text-loss'
-                  : 'border-accent/50 bg-accent-soft text-accent'
+                  : tone === 'close'
+                    ? 'border-line bg-bg2 text-muted'
+                    : 'border-accent/50 bg-accent-soft text-accent'
               }`}
             >
               {coaching.verdict.replace(/\.$/, '')}

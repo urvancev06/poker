@@ -92,6 +92,8 @@ export interface Coaching {
   made_tier: string
   draws: string[]
   equity_pct: number
+  realized_equity_pct: number
+  realization_pct: number
   win_pct: number
   tie_pct: number
   lose_pct: number
@@ -100,6 +102,9 @@ export interface Coaching {
   required_equity_pct: number | null
   pot_odds: string | null
   call_ev: number | null
+  in_position: boolean
+  action_closed: boolean
+  players_behind: number
   villains: VillainModel[]
   verdict: string
   rationale: string
