@@ -36,8 +36,8 @@ export function Table({
       </div>
 
       {/* board + pot, centred */}
-      <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2">
-        <Board board={state.board} pot={state.pot} />
+      <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2">
+        <Board board={state.board} pot={state.pot} cardWidth={58} />
       </div>
 
       {/* seats */}
@@ -60,7 +60,7 @@ export function Table({
               mode={mode}
               handOver={session.hand_over}
               read={reads?.[String(player)]}
-              cardWidth={player === 0 ? 66 : 50}
+              cardWidth={player === 0 ? 54 : 44}
             />
           </div>
         )
