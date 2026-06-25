@@ -142,6 +142,17 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
 
     dead = set(hole) | set(board)
     villain_seats = session.live_villain_seats()
+    # Model equity only against opponents who have actually committed chips to
+    # contest this pot — the aggressor and any callers (their street bet matches
+    # the level the hero faces) — not players still to act or sitting in the
+    # blinds. Counting yet-to-act blinds as tight live ranges systematically
+    # under-rated calls in multiway/preflop spots (the "always fold" bug).
+    if legal.call_amount > 0:
+        level = state.seats[hero_seat].bet + legal.call_amount
+        contesting = [s for s in villain_seats if state.seats[s].bet >= level]
+        if contesting:
+            villain_seats = contesting
+
     villain_models: list[VillainModel] = []
     ranges = []
     for s in villain_seats:

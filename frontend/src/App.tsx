@@ -340,10 +340,14 @@ export default function App() {
                       />
                       {!study && (
                         <button
-                          onClick={() => askCoach(session.session_id)}
+                          onClick={() =>
+                            coaching || coachLoading
+                              ? setCoaching(null)
+                              : askCoach(session.session_id)
+                          }
                           className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint underline-offset-4 hover:text-accent hover:underline"
                         >
-                          Ask the coach →
+                          {coaching || coachLoading ? 'hide coach ✕' : 'ask the coach →'}
                         </button>
                       )}
                     </>
@@ -365,17 +369,16 @@ export default function App() {
             )}
           </main>
 
-          {/* desktop side panel */}
-          {(study || coaching || coachLoading || showLog) && (
-            <aside className="hidden min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex lg:w-80">
-              {(study || coaching || coachLoading) && (
-                <CoachPanel coaching={coaching} loading={coachLoading} />
-              )}
-              {showLog && session && (
-                <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
-              )}
-            </aside>
-          )}
+          {/* desktop side panel — always reserved so the table never reflows/rescales
+              when the coach or log appears or disappears */}
+          <aside className="hidden min-h-0 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex lg:w-80">
+            {(study || coaching || coachLoading) && (
+              <CoachPanel coaching={coaching} loading={coachLoading} />
+            )}
+            {showLog && session && (
+              <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
+            )}
+          </aside>
 
           {/* phone: action log as a dismissible bottom sheet */}
           {showLog && session && (
