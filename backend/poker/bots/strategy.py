@@ -97,8 +97,13 @@ def heuristic_equity(hc, cards_to_come: int, all_in: bool) -> float:
     if Draw.OVERCARDS in hc.draws and tier == MadeTier.HIGH_CARD:
         outs += 3
     outs = min(outs, 15)
+    # Rule of 2 and 4: each out is worth ~2% per card to come. With both cards
+    # guaranteed (we're all-in on the flop) use ~4%/out; otherwise ~2%/out for the
+    # single next card. ``per`` is already the *total* per-out equity for the cards
+    # we'll actually see — do NOT multiply by cards_to_come again (that double-
+    # counted, e.g. a 9-out flush draw read as 72% instead of ~35%).
     per = 0.04 if (all_in and cards_to_come == 2) else 0.021
-    draw_eq = min(0.92, outs * per * max(cards_to_come, 1))
+    draw_eq = min(0.92, outs * per)
     return max(base, draw_eq)
 
 
