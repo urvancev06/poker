@@ -43,7 +43,10 @@ def _pct(num: int, den: int) -> float:
 
 
 class StatsAccumulator:
-    def __init__(self) -> None:
+    def __init__(self, big_blind: int = 2) -> None:
+        # bb/100 must divide net chips by the *actual* big blind, not a constant.
+        # Store it so every line() is correct for non-(1,2) games (e.g. the lab).
+        self._bb = big_blind
         self._c: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     def add_hand(self, summaries: list[PlayerHandSummary]) -> None:
@@ -69,13 +72,14 @@ class StatsAccumulator:
             c["cbet_opp"] += s.cbet_opp
             c["net"] += s.net
 
-    def line(self, archetype: str, big_blind: int = 2) -> StatLine:
+    def line(self, archetype: str, big_blind: int | None = None) -> StatLine:
+        bb = self._bb if big_blind is None else big_blind
         c = self._c[archetype]
         hands = c["hands"]
         af_den = c["pf_calls"]
         af = (c["pf_bets"] + c["pf_raises"]) / af_den if af_den else float("inf")
         net_bb_per_100 = (
-            100.0 * (c["net"] / big_blind) / hands if hands else 0.0
+            100.0 * (c["net"] / bb) / hands if hands else 0.0
         )
         return StatLine(
             archetype=archetype,

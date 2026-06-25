@@ -50,7 +50,7 @@ def run(
 
     random.seed(seed)               # deal stream
     decision_rng = random.Random(seed ^ 0x9E3779B9)  # bot-decision stream
-    acc = StatsAccumulator()
+    acc = StatsAccumulator(big_blind=blinds[1])
 
     for h in range(hands):
         button = h % n

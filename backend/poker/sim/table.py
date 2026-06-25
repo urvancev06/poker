@@ -110,8 +110,13 @@ def play_hand(
                 s.pf_calls += 1
             elif a is ActionType.FOLD:
                 folded_street.setdefault(player, ctx.street)
-            if ctx.is_pfr and ctx.street == "flop" and a is ActionType.BET and ctx.first_to_act:
-                s.cbet_flop = True
+            # A c-bet *opportunity* is the PFR facing an unbet flop (first to act
+            # or checked to). If a villain donk-bets into them they never had the
+            # chance to open a c-bet, so it must not count against their c-bet%.
+            if ctx.is_pfr and ctx.street == "flop" and ctx.first_to_act:
+                s.cbet_opp = True
+                if a is ActionType.BET:
+                    s.cbet_flop = True
 
         hand.apply(action)
 
@@ -132,7 +137,6 @@ def play_hand(
         s.won = s.net > 0
         s.was_pfr = p == last_pf_raiser
         s.saw_flop = flop_reached and folded_street.get(p) != "preflop"
-        s.cbet_opp = s.was_pfr and s.saw_flop
         in_live = p in live_players
         s.wtsd = showdown and in_live
         s.won_at_showdown = s.wtsd and s.won

@@ -80,9 +80,14 @@ def summarize_hand(hand: Hand, seat_to_player: list[int], n: int) -> list[Player
                 s.pf_calls += 1
             elif e.action == "fold":
                 folded_street.setdefault(player_at[e.seat], e.street)
+            # C-bet opportunity = the PFR faces an unbet flop (first to act or
+            # checked to). A donk-bet into them removes the chance to c-bet, so it
+            # must not count against c-bet% (mirror of table.py's live tracker).
             is_aggressor = e.seat == last_pf_raiser_seat
-            if is_aggressor and e.street == "flop" and e.action == "bet" and not street_has_bet:
-                s.cbet_flop = True
+            if is_aggressor and e.street == "flop" and not street_has_bet:
+                s.cbet_opp = True
+                if e.action == "bet":
+                    s.cbet_flop = True
 
         if e.action in ("bet", "raise"):
             street_has_bet = True
@@ -102,7 +107,6 @@ def summarize_hand(hand: Hand, seat_to_player: list[int], n: int) -> list[Player
         s.won = s.net > 0
         s.was_pfr = p == pfr_player
         s.saw_flop = flop_reached and folded_street.get(p) != "preflop"
-        s.cbet_opp = s.was_pfr and s.saw_flop
         s.wtsd = showdown and p in live
         s.won_at_showdown = s.wtsd and s.won
 
