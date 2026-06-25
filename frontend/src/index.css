@@ -4,15 +4,15 @@
    One accent: terminal green. Surfaces are drawn with hairlines, not fills/shadows. */
 @theme {
   --color-bg: #0b0b0c;
-  --color-bg2: #121214; /* raised surface (modals/popovers) */
-  --color-felt-core: #100f12; /* the table "felt" — a flat, faintly-raised dark */
-  --color-felt-edge: #0c0c0e;
+  --color-bg2: #161619; /* raised surface — a clear step above the bg so panels read */
+  --color-felt-core: #161619; /* the table "felt" — a flat, distinctly-raised dark */
+  --color-felt-edge: #101013;
 
   --color-ink: #ffffff; /* primary text / numerals / headings */
   --color-muted: #a1a1aa; /* secondary text */
-  --color-faint: #52525b; /* tertiary / caption labels / axis */
-  --color-line: #1a1a1c; /* borders */
-  --color-hair: #161618; /* faint internal dividers */
+  --color-faint: #6b6b76; /* tertiary / caption labels / axis */
+  --color-line: #2c2c33; /* borders — visible hairline */
+  --color-hair: #232328; /* faint internal dividers */
 
   --color-accent: #2bd673; /* terminal green */
   --color-accent-soft: rgba(43, 214, 115, 0.12);
