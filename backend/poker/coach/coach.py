@@ -5,9 +5,13 @@ and labelled by basis (computed math vs assumption about villain ranges). It
 never states exact GTO frequencies — where those matter it defers to GTO Wizard
 (STRATEGY.md §7 / PROJECT.md §3,§7).
 
-Villain ranges are *modelled*, not known: each live bot is assumed to hold the
-top X% of hands for its archetype (a stated assumption, X below). This is the
-honest "what I'm estimating against", not a solver output.
+Villain ranges are *modelled*, not known, and *action-conditioned*: each live bot
+starts from the top-X% of hands for its archetype, then we narrow and strengthen
+it by the bets/calls they've actually made this hand (villain_model.py), with the
+bluff frequencies measured from the bots themselves. Computing equity against the
+static preflop range would inflate hero equity on later streets — the structural
+cause of over-calling. This is the honest "what I'm estimating against", not a
+solver output.
 
 Decision model (the important part): we do NOT compare *raw* equity to pot odds.
 Raw (showdown) equity is only what you collect when the hand checks down for free
@@ -25,31 +29,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..bots.preflop_strength import top_fraction
-from ..math.cards import Combo
 from ..math.classify import Draw, MadeTier, classify
 from ..math.equity import equity
 from ..math.odds import analyze_call
-from ..math.ranges import parse_token
+from .villain_model import condition_range
 
-# Modelled preflop looseness per archetype (fraction of all combos). A stated
-# assumption for the equity estimate, not a solver range.
-ARCHETYPE_RANGE_PCT = {
-    "Nit": 0.12,
-    "TAG": 0.22,
-    "LAG": 0.32,
-    "Calling Station": 0.50,
-    "Maniac": 0.62,
-}
-_DEFAULT_PCT = 0.30
+# As later streets carry the "they're strong" signal in the action-conditioned
+# villain range, the realization discount shrinks toward 1 (don't double-count it).
+_STREET_WEIGHT = {"preflop": 1.0, "flop": 0.7, "turn": 0.4, "river": 0.0}
+_STREET_OF = {0: "preflop", 3: "flop", 4: "turn", 5: "river"}
+_ACTION_RANK = {"check": 0, "call": 1, "bet": 2, "raise": 3}
 
 
 @dataclass
 class VillainModel:
     seat: int
     archetype: str
-    range_pct: float
     combos: int
+    description: str          # the action-conditioned read, e.g. "TAG, barreled turn → ~top 9%"
+    bluff_pct: float          # air share of this villain's range (the bluff-catch threshold)
 
 
 @dataclass
@@ -102,12 +100,31 @@ class Coaching:
         }
 
 
-def _villain_range(archetype: str, dead: set[str]) -> list[Combo]:
-    pct = ARCHETYPE_RANGE_PCT.get(archetype, _DEFAULT_PCT)
-    combos: set = set()
-    for name in top_fraction(pct):
-        combos |= parse_token(name)
-    return [c for c in combos if c[0] not in dead and c[1] not in dead]
+def _villain_line(history, seat: int) -> tuple[str, dict[str, str]]:
+    """Reconstruct a villain's line this hand from the action history: their
+    preflop role ("3bet+"/"raise"/"call"/"passive") and their strongest action on
+    each postflop street — the inputs the conditioned range is built from."""
+    pre_raises = 0
+    raised_depth = 0
+    called_pre = False
+    postflop: dict[str, str] = {}
+    for e in history:
+        is_me = e.seat == seat
+        if e.street == "preflop" and e.action in ("bet", "raise"):
+            pre_raises += 1
+            if is_me:
+                raised_depth = pre_raises
+        if not is_me:
+            continue
+        if e.street == "preflop":
+            if e.action == "call":
+                called_pre = True
+        else:
+            cur = postflop.get(e.street)
+            if cur is None or _ACTION_RANK.get(e.action, 0) > _ACTION_RANK.get(cur, -1):
+                postflop[e.street] = e.action
+    role = "3bet+" if raised_depth >= 2 else "raise" if raised_depth == 1 else "call" if called_pre else "passive"
+    return role, postflop
 
 
 def _realization_factor(
@@ -117,14 +134,18 @@ def _realization_factor(
     is_draw: bool,
     in_position: bool,
     num_opponents: int,
+    players_behind: int = 0,
+    street: str = "flop",
     action_closed: bool,
 ) -> float:
     """How much of raw equity we expect to actually realize (R). 1.0 when the
     action closes (river / all-in: nothing left to lose equity to). Otherwise
-    discounted for being OOP, multiway, and for hand types that realize poorly
-    (bare high-card air) — while strong made hands and real draws (implied odds /
-    semi-bluff equity) realize close to fully. These are deliberately rough,
-    honest rules of thumb, not solver outputs."""
+    discounted for being OOP, multiway, having players still to act behind, and
+    for hand types that realize poorly (bare high-card air) — while strong made
+    hands and real draws realize close to fully. The discount then shrinks by
+    street (``_STREET_WEIGHT``): on later streets the action-conditioned range
+    already encodes "they're strong", so a full R discount would double-count it.
+    Deliberately rough, honest rules of thumb — not solver outputs."""
     if action_closed:
         return 1.0
     r = 1.0
@@ -132,6 +153,8 @@ def _realization_factor(
         r *= 0.90
     if num_opponents >= 2:
         r *= 0.88  # multiway: someone usually has a piece; marginal hands realize less
+    if players_behind:
+        r *= max(0.80, 1.0 - 0.05 * players_behind)  # yet-to-act players can still raise you off it
     if is_strong:
         r *= 1.0
     elif is_draw:
@@ -140,7 +163,8 @@ def _realization_factor(
         r *= 0.90
     else:
         r *= 0.78  # bare high card / air realizes poorly with money behind
-    return max(0.5, min(r, 1.0))
+    r = max(0.5, min(r, 1.0))
+    return 1.0 - (1.0 - r) * _STREET_WEIGHT.get(street, 0.6)
 
 
 def _suggest(
@@ -263,14 +287,16 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     ranges = []
     for s in villain_seats:
         arch = session.archetype_at_seat(s)
-        combos = _villain_range(arch, dead)
-        ranges.append(combos)
+        role, postflop = _villain_line(state.history, s)
+        cr = condition_range(arch, board, role, postflop, dead)
+        ranges.append(cr.combos)
         villain_models.append(
             VillainModel(
                 seat=s,
                 archetype=arch,
-                range_pct=round(ARCHETYPE_RANGE_PCT.get(arch, _DEFAULT_PCT) * 100, 1),
-                combos=len(combos),
+                combos=len(cr.combos),
+                description=cr.description,
+                bluff_pct=round(cr.bluff_fraction * 100, 1),
             )
         )
 
@@ -296,12 +322,15 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     all_villains_allin = bool(villain_seats) and all(state.seats[s].stack == 0 for s in villain_seats)
     action_closed = to_call > 0 and (is_river or to_call >= hero_stack or all_villains_allin)
 
+    street = _STREET_OF.get(len(board), "flop")
     r = _realization_factor(
         is_strong=is_strong,
         is_pair=is_pair,
         is_draw=is_draw,
         in_position=in_position,
         num_opponents=len(villain_seats),
+        players_behind=players_behind,
+        street=street,
         action_closed=action_closed,
     )
     realized = equity_frac * r
@@ -346,12 +375,14 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         hand_label=hc.label or hc.made.name.replace("_", " ").lower(),
         made_tier=hc.made.name,
         draws=[d.value for d in hc.draws],
-        equity_pct=round(equity_frac * 100, 1),
-        realized_equity_pct=round(realized * 100, 1),
-        realization_pct=round(r * 100, 1),
-        win_pct=round(win * 100, 1),
-        tie_pct=round(tie * 100, 1),
-        lose_pct=round(lose * 100, 1),
+        # Round the Monte-Carlo / heuristic figures to whole percent — the second
+        # decimal is noise (R is a rule of thumb, equity is sampled).
+        equity_pct=round(equity_frac * 100),
+        realized_equity_pct=round(realized * 100),
+        realization_pct=round(r * 100),
+        win_pct=round(win * 100),
+        tie_pct=round(tie * 100),
+        lose_pct=round(lose * 100),
         to_call=to_call,
         pot=state.total_pot,
         required_equity_pct=required_pct,
@@ -366,8 +397,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         basis=[
             "Hand classification and equity are computed (Monte Carlo, treys).",
             "Pot odds and required equity are exact arithmetic.",
-            "Equity realization (raw → realized) is a rough position/hand-type estimate, not a solver output.",
-            "Villain ranges are modelled (top-X% per archetype), an assumption — not a solver output.",
+            "Equity realization (raw → realized) is a rough position/hand-type/street estimate, not a solver output.",
+            "Villain ranges are action-conditioned: the archetype range narrowed by their bets/calls this hand (bluff rates measured from the bots).",
             "For exact GTO frequencies, confirm in GTO Wizard.",
         ],
     )

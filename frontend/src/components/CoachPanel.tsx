@@ -157,12 +157,16 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
 
           {coaching.villains.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-faint">vs modelled ranges</div>
-              <div className="mt-1 space-y-0.5 text-xs text-muted tabular-nums">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-faint">the read · their range</div>
+              <div className="mt-1 space-y-1.5 text-xs text-muted">
                 {coaching.villains.map((v) => (
-                  <div key={v.seat} className="flex justify-between">
-                    <span>seat {v.seat}</span>
-                    <span>top {v.range_pct}% · {v.combos} combos</span>
+                  <div key={v.seat}>
+                    <div className="leading-snug">{v.description}</div>
+                    {v.bluff_pct > 0 && (
+                      <div className="text-[10px] tabular-nums text-faint">
+                        ~{v.bluff_pct}% of this betting range is air (the bluff-catch threshold)
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -83,8 +83,9 @@ export interface SessionState {
 export interface VillainModel {
   seat: number
   archetype: string
-  range_pct: number
   combos: number
+  description: string // action-conditioned read, e.g. "TAG, barreled turn → ~top 9%"
+  bluff_pct: number // air share of this villain's range (the bluff-catch threshold)
 }
 
 export interface Coaching {

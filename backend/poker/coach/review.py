@@ -16,7 +16,7 @@ from ..bots.preflop_strength import hand_class, percentile
 from ..math.classify import Draw, MadeTier, classify
 from ..math.equity import equity
 from ..math.odds import required_equity
-from .coach import _villain_range
+from .villain_model import static_range as _villain_range
 
 # §2 baseline opening frequencies (TAG) for preflop deviation checks.
 _BASELINE_RFI = {"UTG": 0.15, "MP": 0.19, "CO": 0.27, "BTN": 0.45, "SB": 0.38, "BB": 0.0}

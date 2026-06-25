@@ -9,6 +9,8 @@ Guards two things:
   river / all-in (action closed) the pure raw-equity-vs-price rule is used.
 """
 
+import pytest
+
 from poker.coach.coach import _realization_factor, _suggest
 
 
@@ -121,26 +123,39 @@ def test_action_closed_uses_raw_equity_not_realized():
     assert verdict == "Call."
 
 
-def test_realization_factor_bounds():
-    # Action closed -> realize everything.
-    assert _realization_factor(
-        is_strong=False, is_pair=False, is_draw=False,
-        in_position=False, num_opponents=2, action_closed=True,
-    ) == 1.0
-    # OOP, multiway, bare air -> heavily discounted.
-    r_air = _realization_factor(
-        is_strong=False, is_pair=False, is_draw=False,
-        in_position=False, num_opponents=2, action_closed=False,
-    )
-    assert r_air < 0.70
-    # Strong hand, in position, heads-up -> full realization.
-    assert _realization_factor(
-        is_strong=True, is_pair=False, is_draw=False,
-        in_position=True, num_opponents=1, action_closed=False,
-    ) == 1.0
-    # A draw realizes better than bare air in the same spot.
-    r_draw = _realization_factor(
-        is_strong=False, is_pair=False, is_draw=True,
-        in_position=False, num_opponents=2, action_closed=False,
-    )
+def test_realization_factor_directions():
+    """Each factor must push the right way (constraint: keep R honest, check
+    direction). HT = a bare-air hand type held fixed while one factor varies."""
+    f = _realization_factor
+    HT = dict(is_strong=False, is_pair=False, is_draw=False, action_closed=False)
+
+    # Action closed -> realize everything, regardless of position/multiway/street.
+    assert f(in_position=False, num_opponents=3, players_behind=2, street="preflop",
+             is_strong=False, is_pair=False, is_draw=False, action_closed=True) == 1.0
+
+    # In position realizes MORE than out of position.
+    assert f(in_position=True, num_opponents=1, street="flop", **HT) > \
+           f(in_position=False, num_opponents=1, street="flop", **HT)
+    # Multiway realizes LESS than heads-up.
+    assert f(in_position=True, num_opponents=3, street="flop", **HT) < \
+           f(in_position=True, num_opponents=1, street="flop", **HT)
+    # Players still to act behind LOWER realization.
+    assert f(in_position=True, num_opponents=1, players_behind=2, street="flop", **HT) < \
+           f(in_position=True, num_opponents=1, street="flop", **HT)
+
+    # Later streets shrink the discount toward 1 — the conditioned range now
+    # carries the "they're strong" signal, so R must not double-count it.
+    flop = f(in_position=False, num_opponents=2, street="flop", **HT)
+    turn = f(in_position=False, num_opponents=2, street="turn", **HT)
+    river = f(in_position=False, num_opponents=2, street="river", **HT)
+    assert flop < turn < river
+    assert river == pytest.approx(1.0)  # river weight 0 -> full realization
+    assert 0.5 <= flop <= 1.0
+
+
+def test_draw_realizes_better_than_air():
+    f = _realization_factor
+    common = dict(in_position=False, num_opponents=2, street="flop", action_closed=False)
+    r_air = f(is_strong=False, is_pair=False, is_draw=False, **common)
+    r_draw = f(is_strong=False, is_pair=False, is_draw=True, **common)
     assert r_draw > r_air
