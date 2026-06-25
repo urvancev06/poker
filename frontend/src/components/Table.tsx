@@ -30,9 +30,9 @@ export function Table({
 
   return (
     <div className="relative mx-auto aspect-[16/10] h-full max-h-[620px] w-auto max-w-full">
-      {/* felt */}
-      <div className="felt absolute inset-0 rounded-[48%] border-[6px] border-[#2a2014]/80 ring-1 ring-black/40">
-        <div className="absolute inset-6 rounded-[48%] ring-1 ring-white/5" />
+      {/* felt — flat dark, defined by a hairline, not fills/shadows */}
+      <div className="felt absolute inset-0 rounded-[48%] border border-line">
+        <div className="absolute inset-5 rounded-[48%] border border-hair" />
       </div>
 
       {/* board + pot, centred */}

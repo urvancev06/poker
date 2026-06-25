@@ -12,7 +12,9 @@
   "dependencies": {
     "@fontsource/fraunces": "^5.2.9",
     "@fontsource/hanken-grotesk": "^5.2.8",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/playfair-display": "^5.2.8",
+    "@fontsource/sora": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
     "@fontsource/space-mono": "^5.2.9",
     "@tailwindcss/vite": "^4.3.1",

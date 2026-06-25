@@ -9,7 +9,6 @@ import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
 import { ActionLog, actionText } from './components/ActionLog'
-import { StylePreview, applyTypeStyle, loadTypeStyle, type TypeStyle } from './components/StylePreview'
 import { PreferencesView } from './components/PreferencesView'
 import type { VisibilityMode } from './components/Seat'
 
@@ -21,7 +20,7 @@ const MODES: Array<[VisibilityMode, string, string]> = [
   ['hud', 'HUD', 'stats after a sample'],
   ['live', 'Live', 'read it yourself'],
 ]
-type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'type' | 'prefs'
+type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'prefs'
 
 export default function App() {
   const [session, setSession] = useState<SessionState | null>(null)
@@ -35,11 +34,6 @@ export default function App() {
   const [study, setStudy] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [typeStyle, setTypeStyle] = useState<TypeStyle>(loadTypeStyle())
-
-  useEffect(() => {
-    applyTypeStyle(typeStyle)
-  }, [typeStyle])
 
   const refreshReads = useCallback((s: SessionState) => {
     api.reads(s.session_id).then(setReads).catch(() => {})
@@ -197,13 +191,6 @@ export default function App() {
               ⚙
             </button>
             <button
-              onClick={() => setView('type')}
-              title="Type & feel — compare heading styles"
-              className="rounded-lg border border-line px-3 py-1.5 font-display text-sm leading-none text-muted hover:text-ink"
-            >
-              Aa
-            </button>
-            <button
               onClick={newSession}
               className="rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted hover:text-ink"
             >
@@ -266,12 +253,6 @@ export default function App() {
                     Preferences · deck &amp; felt
                   </button>
                   <button
-                    onClick={() => { setView('type'); setMenuOpen(false) }}
-                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-ink hover:bg-bg2"
-                  >
-                    Type &amp; feel
-                  </button>
-                  <button
                     onClick={() => { void newSession(); setMenuOpen(false) }}
                     className="block w-full rounded-md px-2 py-2 text-left text-sm text-accent hover:bg-bg2"
                   >
@@ -296,7 +277,6 @@ export default function App() {
           {view === 'stats' && <StatsView />}
           {view === 'history' && <HistoryView sessionId={session?.session_id} />}
           {view === 'lab' && <LabView />}
-          {view === 'type' && <StylePreview active={typeStyle} onApply={setTypeStyle} />}
           {view === 'prefs' && <PreferencesView />}
         </div>
       )}

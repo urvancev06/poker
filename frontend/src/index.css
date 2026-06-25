@@ -1,24 +1,34 @@
 @import "tailwindcss";
 
-/* Felt & Brass design tokens (DESIGN.md §1–2). One accent: brass. */
+/* Mono Minimal — Editorial (references/DESIGN.md). Dark, flat, type-driven.
+   One accent: terminal green. Surfaces are drawn with hairlines, not fills/shadows. */
 @theme {
-  --color-bg: #16140e;
-  --color-bg2: #1d1a12;
-  --color-felt-core: #1f3d30;
-  --color-felt-edge: #0f2018;
-  --color-ink: #ece4d2;
-  --color-muted: #9a9078;
-  --color-line: #2b2618;
-  --color-accent: #c9a44e;
-  --color-accent-ink: #1c1608;
-  --color-card: #f4efe1;
-  --color-card-ink: #1c1813;
-  --color-card-red: #9e2b25;
-  --color-win: #7d9b6a;
-  --color-loss: #a8534a;
+  --color-bg: #0b0b0c;
+  --color-bg2: #121214; /* raised surface (modals/popovers) */
+  --color-felt-core: #100f12; /* the table "felt" — a flat, faintly-raised dark */
+  --color-felt-edge: #0c0c0e;
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #ffffff; /* primary text / numerals / headings */
+  --color-muted: #a1a1aa; /* secondary text */
+  --color-faint: #52525b; /* tertiary / caption labels / axis */
+  --color-line: #1a1a1c; /* borders */
+  --color-hair: #161618; /* faint internal dividers */
+
+  --color-accent: #2bd673; /* terminal green */
+  --color-accent-soft: rgba(43, 214, 115, 0.12);
+  --color-accent-ink: #06140c; /* text on an accent fill */
+
+  --color-card: #f4f4f5; /* playing-card face (kept light for legibility) */
+  --color-card-ink: #18181b;
+  --color-card-red: #e0574c;
+
+  --color-win: #2bd673;
+  --color-loss: #e0574c;
+  --color-warning: #f0b429;
+
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 @layer base {
@@ -35,18 +45,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Brass keyboard focus ring on every control (DESIGN.md §5). The outline
-     follows each control's own border-radius — don't override it (that made a
-     sharp-cornered outline poke out past rounded buttons). */
+  /* Accent focus ring on every control. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
 
-  /* On-theme scrollbars — slim, dark, brass on hover (no default chunky gray). */
+  /* Slim, dark scrollbars — accent on hover. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(154, 144, 120, 0.32) transparent;
+    scrollbar-color: #2a2a2e transparent;
   }
   ::-webkit-scrollbar {
     width: 9px;
@@ -56,29 +64,28 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(154, 144, 120, 0.32);
+    background: #2a2a2e;
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(201, 164, 78, 0.55); /* brass */
+    background: rgba(43, 214, 115, 0.55);
     background-clip: padding-box;
   }
 }
 
-/* The felt: a desaturated radial green, soft inset depth, no glow. */
-@utility felt {
-  background: radial-gradient(
-    ellipse at 50% 42%,
-    var(--color-felt-core),
-    var(--color-felt-edge) 78%
-  );
-  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.55);
+/* Every number / tabular figure renders in mono (DESIGN.md type rule). */
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
 }
 
-/* Subtle entrance for the result banner, bet chips, etc. (disabled by the
-   reduced-motion block below, which zeroes all animation durations). */
+/* The table "felt": a flat, faintly-raised dark surface — no green, no glow. */
+@utility felt {
+  background: var(--color-felt-core);
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

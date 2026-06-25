@@ -174,29 +174,6 @@ export const DECKS: DeckDef[] = [
   },
 ]
 
-// --- felt presets -------------------------------------------------------- //
-export interface FeltDef {
-  id: string
-  name: string
-  core: string
-  edge: string
-}
-
-export const FELTS: FeltDef[] = [
-  { id: 'emerald', name: 'Emerald', core: '#1f3d30', edge: '#0f2018' },
-  { id: 'sapphire', name: 'Sapphire', core: '#1e3550', edge: '#0d1826' },
-  { id: 'burgundy', name: 'Burgundy', core: '#45242b', edge: '#1d0f13' },
-  { id: 'graphite', name: 'Graphite', core: '#2b2f33', edge: '#14171a' },
-  { id: 'forest', name: 'Forest', core: '#245c3b', edge: '#0f3020' },
-]
-
-export function applyFelt(feltId: string) {
-  const f = FELTS.find((x) => x.id === feltId) ?? FELTS[0]
-  const root = document.documentElement
-  root.style.setProperty('--color-felt-core', f.core)
-  root.style.setProperty('--color-felt-edge', f.edge)
-}
-
 // --- context ------------------------------------------------------------- //
 function load(key: string, fallback: string): string {
   try {
@@ -215,37 +192,26 @@ function save(key: string, value: string) {
 
 interface PrefsValue {
   deckId: string
-  feltId: string
   deck: DeckDef
   setDeckId: (id: string) => void
-  setFeltId: (id: string) => void
 }
 
 const PrefsContext = createContext<PrefsValue>({
   deckId: 'offsuit',
-  feltId: 'emerald',
   deck: DECKS[0],
   setDeckId: () => {},
-  setFeltId: () => {},
 })
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [deckId, setDeckId] = useState(() => load('poker-deck', 'offsuit'))
-  const [feltId, setFeltId] = useState(() => load('poker-felt', 'emerald'))
 
-  useEffect(() => {
-    applyFelt(feltId)
-    save('poker-felt', feltId)
-  }, [feltId])
   useEffect(() => {
     save('poker-deck', deckId)
   }, [deckId])
 
   const deck = DECKS.find((d) => d.id === deckId) ?? DECKS[0]
   return (
-    <PrefsContext.Provider value={{ deckId, feltId, deck, setDeckId, setFeltId }}>
-      {children}
-    </PrefsContext.Provider>
+    <PrefsContext.Provider value={{ deckId, deck, setDeckId }}>{children}</PrefsContext.Provider>
   )
 }
 

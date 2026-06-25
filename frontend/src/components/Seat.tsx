@@ -79,17 +79,13 @@ export function Seat({
   return (
     <div
       className={[
-        'relative flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 transition',
+        'relative flex flex-col items-center gap-1.5 rounded-lg px-3 py-2.5 transition',
         isHero ? 'w-44' : 'w-36',
-        // A defined surface: solid panel, real border, drop shadow + top highlight
-        // so seats read as designed objects, not faint floating rectangles.
-        'bg-bg2 shadow-[inset_0_1px_0_rgba(236,228,210,0.05),0_10px_24px_-10px_rgba(0,0,0,0.85)]',
-        seat.is_actor
-          ? 'ring-2 ring-accent shadow-[0_0_22px_-4px_rgba(201,164,78,0.45)]'
-          : isHero
-            ? 'ring-1 ring-accent/40'
-            : 'ring-1 ring-line',
-        seat.folded ? 'opacity-45' : 'opacity-100',
+        // Flat surface, defined by a hairline (no fills/shadows). Accent only for
+        // the active seat and the hero.
+        'bg-bg2/60 border',
+        seat.is_actor ? 'border-accent' : isHero ? 'border-accent/40' : 'border-line',
+        seat.folded ? 'opacity-40' : 'opacity-100',
       ].join(' ')}
     >
       {isButton && (
