@@ -28,8 +28,7 @@ from collections import defaultdict
 from treys import Card, Evaluator
 
 from poker.bots import Bot, archetypes, build_context
-from poker.coach.coach import _villain_line
-from poker.coach.villain_model import condition_range, static_range
+from poker.coach.villain_model import condition_range, static_range, villain_line
 from poker.engine import Hand
 from poker.math.equity import equity
 
@@ -70,7 +69,7 @@ def run_probe(hands: int, seed: int = 0, eq_trials: int = 400):
                         hero, board = list(ctx.hole), list(ctx.board)
                         dead = set(hero) | set(board)
                         varch = bots[seat_to_player[vseat]].name
-                        role, postflop = _villain_line(snap.history, vseat)
+                        role, postflop = villain_line(snap.history, vseat)
                         old = equity(hero, board, [static_range(varch, dead)], trials=eq_trials, seed=0).equity
                         cr = condition_range(varch, board, role, postflop, dead)
                         new = equity(hero, board, [cr.combos], trials=eq_trials, seed=0).equity

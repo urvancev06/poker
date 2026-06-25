@@ -99,6 +99,36 @@ _CALL_AIR_FRACTION = {
 _STRONG_DRAWS = (Draw.FLUSH_DRAW, Draw.OPEN_ENDED, Draw.GUTSHOT)
 _STREET_LEN = {"flop": 3, "turn": 4, "river": 5}
 _TOTAL_COMBOS = 1326.0
+_ACTION_RANK = {"check": 0, "call": 1, "bet": 2, "raise": 3}
+
+
+def villain_line(history, seat: int) -> tuple[str, dict[str, str]]:
+    """Reconstruct a villain's line from an action history (objects or items with
+    ``.seat``/``.street``/``.action``): their preflop role ("3bet+"/"raise"/
+    "call"/"passive") and their strongest action on each postflop street — the
+    inputs ``condition_range`` is built from. Shared by the live coach and the
+    post-hoc hand review so both grade against the *same* model."""
+    pre_raises = 0
+    raised_depth = 0
+    called_pre = False
+    postflop: dict[str, str] = {}
+    for e in history:
+        is_me = e.seat == seat
+        if e.street == "preflop" and e.action in ("bet", "raise"):
+            pre_raises += 1
+            if is_me:
+                raised_depth = pre_raises
+        if not is_me:
+            continue
+        if e.street == "preflop":
+            if e.action == "call":
+                called_pre = True
+        else:
+            cur = postflop.get(e.street)
+            if cur is None or _ACTION_RANK.get(e.action, 0) > _ACTION_RANK.get(cur, -1):
+                postflop[e.street] = e.action
+    role = "3bet+" if raised_depth >= 2 else "raise" if raised_depth == 1 else "call" if called_pre else "passive"
+    return role, postflop
 
 
 @dataclass

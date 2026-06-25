@@ -32,13 +32,12 @@ from dataclasses import dataclass, field
 from ..math.classify import Draw, MadeTier, classify
 from ..math.equity import equity
 from ..math.odds import analyze_call
-from .villain_model import condition_range
+from .villain_model import condition_range, villain_line
 
 # As later streets carry the "they're strong" signal in the action-conditioned
 # villain range, the realization discount shrinks toward 1 (don't double-count it).
 _STREET_WEIGHT = {"preflop": 1.0, "flop": 0.7, "turn": 0.4, "river": 0.0}
 _STREET_OF = {0: "preflop", 3: "flop", 4: "turn", 5: "river"}
-_ACTION_RANK = {"check": 0, "call": 1, "bet": 2, "raise": 3}
 
 
 @dataclass
@@ -98,33 +97,6 @@ class Coaching:
             "rationale": self.rationale,
             "basis": self.basis,
         }
-
-
-def _villain_line(history, seat: int) -> tuple[str, dict[str, str]]:
-    """Reconstruct a villain's line this hand from the action history: their
-    preflop role ("3bet+"/"raise"/"call"/"passive") and their strongest action on
-    each postflop street — the inputs the conditioned range is built from."""
-    pre_raises = 0
-    raised_depth = 0
-    called_pre = False
-    postflop: dict[str, str] = {}
-    for e in history:
-        is_me = e.seat == seat
-        if e.street == "preflop" and e.action in ("bet", "raise"):
-            pre_raises += 1
-            if is_me:
-                raised_depth = pre_raises
-        if not is_me:
-            continue
-        if e.street == "preflop":
-            if e.action == "call":
-                called_pre = True
-        else:
-            cur = postflop.get(e.street)
-            if cur is None or _ACTION_RANK.get(e.action, 0) > _ACTION_RANK.get(cur, -1):
-                postflop[e.street] = e.action
-    role = "3bet+" if raised_depth >= 2 else "raise" if raised_depth == 1 else "call" if called_pre else "passive"
-    return role, postflop
 
 
 def _realization_factor(
@@ -287,7 +259,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     ranges = []
     for s in villain_seats:
         arch = session.archetype_at_seat(s)
-        role, postflop = _villain_line(state.history, s)
+        role, postflop = villain_line(state.history, s)
         cr = condition_range(arch, board, role, postflop, dead)
         ranges.append(cr.combos)
         villain_models.append(

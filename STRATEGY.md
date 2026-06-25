@@ -145,3 +145,13 @@ Computed from logged decisions. Healthy 6-max reg targets in brackets — these 
 ## 7. Where the coach defers
 
 Exact preflop frequencies, exact mixed strategies, precise multi-street solver lines, and node-locked exploit solutions → **GTO Wizard**. The coach teaches the *why*, computes *concrete* math, and points there for exact ranges. A fabricated "GTO number" is worse than none.
+
+## 8. Coach model — known limitations & tracked follow-ons
+
+The coach judges *realized equity vs an action-conditioned villain range* (the bots' bluff frequencies are measured, not assumed). Honest, named gaps to close — all slot into the **implied-odds pass** without re-architecting:
+
+- **No implied / reverse-implied odds (next).** The price is judged on direct pot odds only, so set-mining a small pair reads "close," not the clear call it is (e.g. 22 vs a TAG open: ~43% equity / ~40% required → "close"), and dominated draws aren't penalised enough. Fix: an implied-odds term on the *price* (`required = call / (pot + call + X)`), leaving the conditioned range untouched.
+- **Conditioned range over-narrows vs the loosest villains.** The river-spot calibration probe (`validation/coach_calibration.txt`) shows the conditioned range's bias is **−0.053 vs the Maniac** (and ~−0.036 overall) — i.e. it models the loosest barrellers as a touch *too* value-heavy by the river, slightly **under**-rating the hero. That is the safe direction (it was **+0.047 over**-rating with the old static range, so worse against that one type but no longer an over-call bias), and it's bounded — but it should be tuned in the implied-odds pass (keep a few more weak/bluff combos in the loose archetypes' barreling ranges so realized ≈ actual).
+- **Preflop range *shape*** (`bots/preflop_strength.py`): the percentile ranking is raw all-in equity, which under-rates small pairs / suited connectors, so early-position opens have the wrong *shape* even when the aggregate VPIP/PFR band is met. Swap in §2's explicit positional lists.
+
+These are *deliberately* deferred: the conditioned-range + realized-equity change was proven to reduce the dominant over-calling error (battery + calibration probe) before adding the next term on top.
