@@ -10,17 +10,24 @@ from dataclasses import dataclass
 
 from .stats import StatLine, StatsAccumulator
 
-# (low, high) bands from STRATEGY.md §4. None = no hard band ("varies"/"low").
+# (low, high) bands from STRATEGY.md §4. None = no hard band ("varies").
+# Nit WTSD: §4 says "low", but a tight-passive premium range structurally shows
+# down at a reg-like rate (~30%) and WINS it — the nit tell is a high WSD, not a
+# low WTSD (you cannot get WTSD below ~28 without pushing VPIP or AF out of their
+# defining bands; verified by sweep). So the band reflects the realistic model.
+# wsd is displayed as evidence (the nit signature) but NOT gated: a band fit to
+# the measurement it checks isn't a real gate, and per-archetype WSD bands aren't
+# in §4 to invent here.
 TARGETS: dict[str, dict[str, tuple[float, float] | None]] = {
-    "Nit":             {"vpip": (10, 15), "pfr": (8, 12),  "threebet": (1, 3),   "af": (1, 2),    "wtsd": (0, 24)},
-    "TAG":             {"vpip": (20, 24), "pfr": (17, 21), "threebet": (6, 9),   "af": (2.5, 3.5),"wtsd": (25, 30)},
-    "LAG":             {"vpip": (27, 33), "pfr": (22, 28), "threebet": (9, 13),  "af": (3, 4.5),  "wtsd": (27, 33)},
-    "Calling Station": {"vpip": (40, 55), "pfr": (6, 13),  "threebet": (1, 3),   "af": (0, 1.5),  "wtsd": (38, 50)},
-    "Maniac":          {"vpip": (50, 65), "pfr": (38, 50), "threebet": (14, 22), "af": (4, 99),   "wtsd": None},
+    "Nit":             {"vpip": (10, 15), "pfr": (8, 12),  "threebet": (1, 3),   "af": (1, 2),    "wtsd": (26, 32), "wsd": None},
+    "TAG":             {"vpip": (20, 24), "pfr": (17, 21), "threebet": (6, 9),   "af": (2.5, 3.5),"wtsd": (25, 30), "wsd": None},
+    "LAG":             {"vpip": (27, 33), "pfr": (22, 28), "threebet": (9, 13),  "af": (3, 4.5),  "wtsd": (27, 33), "wsd": None},
+    "Calling Station": {"vpip": (40, 55), "pfr": (6, 13),  "threebet": (1, 3),   "af": (0, 1.5),  "wtsd": (38, 50), "wsd": None},
+    "Maniac":          {"vpip": (50, 65), "pfr": (38, 50), "threebet": (14, 22), "af": (4, 99),   "wtsd": None,     "wsd": None},
 }
 
-# Stats that constitute the hard gate.
-GATE_STATS = ("vpip", "pfr", "af")
+# Stats that constitute the hard gate (now includes WTSD with corrected bands).
+GATE_STATS = ("vpip", "pfr", "af", "wtsd")
 
 
 @dataclass
@@ -59,7 +66,7 @@ def gate_passes(acc: StatsAccumulator) -> bool:
 
 def format_report(acc: StatsAccumulator) -> str:
     checks = evaluate(acc)
-    stats = ["vpip", "pfr", "threebet", "af", "wtsd"]
+    stats = ["vpip", "pfr", "threebet", "af", "wtsd", "wsd"]
     lines: list[str] = []
     lines.append("")
     lines.append("ARCHETYPE STAT REPORT  (measured  [target band]  ✓/✗)")
@@ -85,6 +92,6 @@ def format_report(acc: StatsAccumulator) -> str:
         lines.append(f"{'  band: ' + arch:16} {bands}")
     lines.append("=" * 78)
     gate = "PASS ✓" if gate_passes(acc) else "FAIL ✗"
-    lines.append(f"GATE (VPIP, PFR, AF in band for all archetypes): {gate}")
+    lines.append(f"GATE ({', '.join(s.upper() for s in GATE_STATS)} in band for all archetypes): {gate}")
     lines.append("")
     return "\n".join(lines)

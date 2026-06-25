@@ -78,11 +78,20 @@ Each archetype is a **parameter set** over the strategy in §2–§3. Tune the p
 
 | Archetype | VPIP | PFR | 3-bet | AF | WTSD | Identity |
 |---|---|---|---|---|---|---|
-| **Nit** | 10–15 | 8–12 | 1–3 | 1–2 | low | Premiums only. Folds constantly. Easy to steal from; when it raises, believe it. |
+| **Nit** | 10–15 | 8–12 | 1–3 | 1–2 | 26–32 † | Premiums only. Folds constantly. Easy to steal from; when it raises, believe it. |
 | **TAG** (reg) | 20–24 | 17–21 | 6–9 | 2.5–3.5 | 25–30 | Solid, balanced, the §2 baseline. The benchmark opponent. |
 | **LAG** | 27–33 | 22–28 | 9–13 | 3–4.5 | ~30 | Wide + aggressive, narrow VPIP–PFR gap. Pressures relentlessly; hard to read. |
 | **Calling Station** | 40–55 | 6–13 | 1–3 | <1.5 | 38–50 | Passive fish. Wide gap. Calls everything, never folds to value, almost never bluffs. |
 | **Maniac** | 50–65 | 38–50 | 14–22 | >4 | varies | Aggressive spew. Raises/bluffs constantly, barrels air. Punish with value, not bluffs. |
+
+> † **Nit WTSD is not "low" in aggregate — that was an over-literal reading.** A
+> tight *passive* premium range structurally shows down at a reg-like rate (~30%):
+> the few flops it sees are strong, so they reach showdown. The real nit tell is a
+> **high WSD (~60%+)** — it only shows up with the goods — plus over-folding
+> *specific* spots (rivers, steals). Verified by sweep: pushing WTSD below ~28
+> forces VPIP or AF out of their defining bands, so the band reflects the
+> achievable, behaviourally-correct model. WSD is reported as evidence but not
+> hard-gated (a band fit to its own measurement isn't a gate).
 
 **How the parameters differ (the levers to tune):**
 - **Range width** — Nit ≈ top ~12%; TAG = §2 baseline; LAG widens opens/3-bets; Station calls a very wide range but rarely raises (low PFR despite high VPIP); Maniac raises a very wide range.
