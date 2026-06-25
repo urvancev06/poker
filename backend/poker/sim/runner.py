@@ -26,6 +26,7 @@ def run(
     starting_stack: int = 200,
     progress_every: int | None = None,
     overrides: dict[str, dict[str, float]] | None = None,
+    observer=None,
 ) -> StatsAccumulator:
     """Simulate ``hands`` hands among ``lineup``.
 
@@ -55,7 +56,8 @@ def run(
     for h in range(hands):
         button = h % n
         summaries = play_hand(
-            bots, button, decision_rng, blinds=blinds, starting_stack=starting_stack
+            bots, button, decision_rng, blinds=blinds, starting_stack=starting_stack,
+            observer=observer,
         )
         acc.add_hand(summaries)
         if progress_every and (h + 1) % progress_every == 0:

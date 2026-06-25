@@ -53,6 +53,7 @@ def play_hand(
     blinds: tuple[int, int] = (1, 2),
     starting_stack: int = 200,
     seed: int | None = None,
+    observer=None,
 ) -> list[PlayerHandSummary]:
     n = len(bots)
     bb = blinds[1]
@@ -73,6 +74,10 @@ def play_hand(
         player = seat_to_player[seat]
         ctx = build_context(hand, bb)
         action = bots[player].act(ctx, rng)
+        # Optional measurement hook (e.g. bet-range composition). Off by default so
+        # the validation gate runs at full speed and byte-identically.
+        if observer is not None:
+            observer(bots[player].name, ctx, action)
         s = summ[player]
         a = action.type
 
