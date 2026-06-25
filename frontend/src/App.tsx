@@ -130,7 +130,7 @@ export default function App() {
             <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
             <span className="font-display text-xl -tracking-[0.02em] text-ink">Poker</span>
           </div>
-          <nav className="flex max-w-full gap-1 overflow-x-auto text-xs lowercase tracking-wide">
+          <nav className="hidden max-w-full gap-1 overflow-x-auto text-xs lowercase tracking-wide lg:flex">
             {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
               <button
                 key={v}
@@ -211,6 +211,20 @@ export default function App() {
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                 <div className="fixed right-3 top-16 z-50 w-56 rounded-xl border border-line bg-bg p-2 shadow-2xl">
+                  {/* view navigation (the desktop tab strip is hidden on phones) */}
+                  <div className="mb-1 px-2 pt-1 text-[10px] uppercase tracking-wider text-muted">View</div>
+                  {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => { setView(v); setMenuOpen(false) }}
+                      className={`block w-full rounded-md px-2 py-2 text-left text-sm capitalize hover:bg-bg2 ${
+                        view === v ? 'text-accent' : 'text-ink'
+                      }`}
+                    >
+                      {v === 'stats' ? 'My stats' : v}
+                    </button>
+                  ))}
+                  <div className="my-1 border-t border-line" />
                   {view === 'table' && (
                     <>
                       <button
