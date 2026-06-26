@@ -62,29 +62,29 @@ _THREEBET_PCT = {
 BET_COMPOSITION: dict[str, dict[str, dict[str, float]]] = {
     # Measured: scripts/measure_bet_ranges.py, 60k hands, seed 0 (phase3_gate.txt).
     "Nit": {
-        "flop": {"value": 0.870, "draw": 0.038, "air": 0.092},
-        "turn": {"value": 0.966, "draw": 0.025, "air": 0.008},
-        "river": {"value": 0.986, "draw": 0.000, "air": 0.014},
+        "flop": {"value": 0.854, "draw": 0.037, "air": 0.109},
+        "turn": {"value": 0.961, "draw": 0.023, "air": 0.016},
+        "river": {"value": 0.993, "draw": 0.000, "air": 0.007},
     },
     "TAG": {
-        "flop": {"value": 0.704, "draw": 0.085, "air": 0.211},
-        "turn": {"value": 0.900, "draw": 0.067, "air": 0.032},
-        "river": {"value": 0.964, "draw": 0.000, "air": 0.036},
+        "flop": {"value": 0.705, "draw": 0.087, "air": 0.209},
+        "turn": {"value": 0.891, "draw": 0.068, "air": 0.041},
+        "river": {"value": 0.965, "draw": 0.000, "air": 0.035},
     },
     "LAG": {
-        "flop": {"value": 0.696, "draw": 0.086, "air": 0.218},
-        "turn": {"value": 0.889, "draw": 0.071, "air": 0.040},
+        "flop": {"value": 0.682, "draw": 0.089, "air": 0.229},
+        "turn": {"value": 0.903, "draw": 0.063, "air": 0.033},
         "river": {"value": 0.964, "draw": 0.000, "air": 0.036},
     },
     "Calling Station": {
-        "flop": {"value": 0.935, "draw": 0.032, "air": 0.033},
-        "turn": {"value": 0.961, "draw": 0.035, "air": 0.005},
-        "river": {"value": 0.994, "draw": 0.000, "air": 0.006},
+        "flop": {"value": 0.930, "draw": 0.037, "air": 0.032},
+        "turn": {"value": 0.961, "draw": 0.033, "air": 0.006},
+        "river": {"value": 0.995, "draw": 0.000, "air": 0.005},
     },
     "Maniac": {
-        "flop": {"value": 0.655, "draw": 0.103, "air": 0.242},
-        "turn": {"value": 0.828, "draw": 0.105, "air": 0.067},
-        "river": {"value": 0.928, "draw": 0.000, "air": 0.072},
+        "flop": {"value": 0.660, "draw": 0.104, "air": 0.236},
+        "turn": {"value": 0.828, "draw": 0.110, "air": 0.062},
+        "river": {"value": 0.936, "draw": 0.000, "air": 0.064},
     },
 }
 # Neutral fallback if an (archetype, street) is missing.

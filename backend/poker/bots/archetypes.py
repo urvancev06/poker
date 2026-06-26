@@ -38,7 +38,11 @@ def nit() -> StrategyParams:
         stab_freq=0.02,
         raise_value_min=MadeTier.TWO_PAIR,
         raise_value_freq=0.35,
-        calldown_freq=0.30,
+        # Graded calldown: top pair / overpairs defend via strong_pair_defend; weak/
+        # medium pairs fold at calldown_freq. Tightened to ~0 to hold WTSD in band
+        # now that strong pairs defend (a weak-tight nit folds bottom/2nd pair anyway).
+        calldown_freq=0.0,
+        strong_pair_defend=0.82,
         float_freq=0.02,
         bet_frac=0.6,
     )
@@ -62,7 +66,8 @@ def tag() -> StrategyParams:
         stab_freq=0.08,
         raise_value_min=MadeTier.TWO_PAIR,
         raise_value_freq=0.65,
-        calldown_freq=0.36,
+        calldown_freq=0.10,        # weak/medium pairs; top pair defends via strong_pair_defend
+        strong_pair_defend=0.82,
         float_freq=0.05,
         bet_frac=0.6,
     )
@@ -86,7 +91,8 @@ def lag() -> StrategyParams:
         stab_freq=0.10,
         raise_value_min=MadeTier.TWO_PAIR,
         raise_value_freq=0.6,
-        calldown_freq=0.42,
+        calldown_freq=0.18,        # weak/medium pairs; top pair defends via strong_pair_defend
+        strong_pair_defend=0.82,
         float_freq=0.10,
         bet_frac=0.65,
     )

@@ -18,7 +18,7 @@ from poker.math import MadeTier, classify
 from poker.sim.runner import run
 
 
-def measure(hands: int, seed: int = 0):
+def measure(hands: int, seed: int = 0, overrides: dict | None = None):
     c: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     def obs(name, ctx, action):
@@ -38,7 +38,7 @@ def measure(hands: int, seed: int = 0):
             d["two_faced"] += 1
             d["two_fold"] += folded
 
-    run(hands, seed=seed, observer=obs)
+    run(hands, seed=seed, observer=obs, overrides=overrides or {})
     return c
 
 

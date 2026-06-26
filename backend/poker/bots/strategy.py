@@ -16,7 +16,7 @@ import random
 from dataclasses import dataclass, field
 
 from ..engine import Action, ActionType, LegalActions
-from ..math import Draw, MadeTier, classify
+from ..math import Draw, MadeTier, PairStrength, classify, pair_strength
 from .context import DecisionContext
 from .preflop_strength import hand_class, percentile
 
@@ -52,7 +52,8 @@ class StrategyParams:
     stab_freq: float = 0.1                 # bet when checked to and not the PFR (air)
     raise_value_min: MadeTier = MadeTier.TWO_PAIR
     raise_value_freq: float = 0.7
-    calldown_freq: float = 0.5             # call a bet with a marginal made hand
+    calldown_freq: float = 0.5             # call a bet with a marginal/medium made hand
+    strong_pair_defend: float = 0.82       # continue rate for top pair / overpairs (>= calldown)
     float_freq: float = 0.05               # call a bet with air (loose/sticky types)
     bet_frac: float = 0.6                  # bet/raise size as fraction of the pot
 
@@ -197,8 +198,14 @@ def _decide_postflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random
         return Action(_C)  # strong made hand always continues
     if strong_draw and est >= req and legal.can_call:
         return Action(_C)  # drawing with the right price
-    if tier >= MadeTier.PAIR and rng.random() < p.calldown_freq and legal.can_call:
-        return Action(_C)  # marginal made-hand calldown
+    if tier >= MadeTier.PAIR and legal.can_call:
+        # Made-hand calldown, graded by pair strength: top pair / overpairs defend
+        # far more than bottom/under pairs. max() so a loose archetype whose base
+        # calldown already exceeds the floor (a station) is never made *foldier*.
+        is_strong_pair = pair_strength(ctx.hole, ctx.board) is PairStrength.STRONG
+        defend = max(p.calldown_freq, p.strong_pair_defend) if is_strong_pair else p.calldown_freq
+        if rng.random() < defend:
+            return Action(_C)
     if rng.random() < p.float_freq and legal.can_call:
         return Action(_C)  # sticky float / bluff-catch (stations, maniacs)
     if legal.can_fold:

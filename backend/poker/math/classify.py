@@ -39,6 +39,18 @@ class Draw(str, Enum):
     OVERCARDS = "overcards"
 
 
+class PairStrength(IntEnum):
+    """Strength of a one-pair hand relative to the board, for grading how willing a
+    player should be to continue. STRONG (top pair / overpair) defends far more
+    than WEAK (bottom/under pair). NONE = not the hero's own pair (e.g. a board
+    pair the hero doesn't improve) or too few board cards."""
+
+    NONE = 0
+    WEAK = 1
+    MEDIUM = 2
+    STRONG = 3
+
+
 # treys rank class (1=straight flush .. 9=high card) -> our MadeTier.
 # Quirk: treys returns class 0 for a royal flush (best score) — also a straight flush.
 _TREYS_TO_TIER = {0: MadeTier.STRAIGHT_FLUSH, **{c: MadeTier(10 - c) for c in range(1, 10)}}
@@ -162,3 +174,44 @@ def _label(made: MadeTier, draws: set[Draw]) -> str:
     if made == MadeTier.HIGH_CARD and extra:
         parts = []  # "two overcards + flush draw" reads better without "high card"
     return " + ".join(parts + extra)
+
+
+def pair_strength(hole: tuple[str, str] | list[str], board: list[str] | tuple[str, ...]) -> PairStrength:
+    """Rank a one-pair holding relative to the board (for grading continue/fold).
+
+    STRONG  = an overpair (pocket pair above the top board card) or top pair (a
+              hole card pairs the highest board card).
+    MEDIUM  = second/middle pair, or a pocket pair sitting between board cards.
+    WEAK    = bottom pair, or an underpair below the whole board.
+    NONE    = the pair isn't the hero's own (a board pair the hero doesn't add to)
+              or there's no board yet.
+
+    Kicker is intentionally ignored for STRONG-first: folding *any* top pair or
+    overpair to a single bet is the over-fold we're fixing; the willingness to
+    continue is then dialled by ``strong_pair_defend``, tuned to the benchmark.
+    """
+    hole = list(hole)
+    board = list(board)
+    if len(board) < 3:
+        return PairStrength.NONE
+    hole_ranks = [RANK_INDEX[c[0]] for c in hole]
+    board_ranks = sorted({RANK_INDEX[c[0]] for c in board}, reverse=True)
+    top_board = board_ranks[0]
+
+    if hole_ranks[0] == hole_ranks[1]:  # pocket pair
+        pr = hole_ranks[0]
+        if pr > top_board:
+            return PairStrength.STRONG          # overpair
+        if pr < board_ranks[-1]:
+            return PairStrength.WEAK            # underpair to the whole board
+        return PairStrength.MEDIUM             # pocket between board cards
+
+    matched = [r for r in board_ranks if r in hole_ranks]
+    if not matched:
+        return PairStrength.NONE               # pair is on the board, not ours
+    top_matched = max(matched)
+    if top_matched == top_board:
+        return PairStrength.STRONG             # top pair (kicker ignored, see above)
+    if len(board_ranks) > 1 and top_matched == board_ranks[1]:
+        return PairStrength.MEDIUM             # second pair
+    return PairStrength.WEAK                    # third pair or lower
