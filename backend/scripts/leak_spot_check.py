@@ -72,10 +72,19 @@ def battery():
         "raise", {"loose_open"},
     )
 
-    # 1b. TRUE POSITIVE: the SAME 98o opened as a genuine RFI (folded to, no limper)
-    #     from the BTN SHOULD flag loose_open — proves the limper gate isn't vacuous.
-    spots["TRUE POSITIVE: loose RFI open 98o (no limper)"] = (
-        _hand(villain_seat=2, villain_arch="tag", hero_seat=5, hero_cards="9d8c", board="",
+    # 1c. Standard 87s open from the BTN (~top 56%, inside the reg bot's BTN range)
+    #     — must NOT be flagged now that the baseline is the bots' actual range.
+    spots["standard 87s RFI open (BTN, no limper)"] = (
+        _hand(villain_seat=2, villain_arch="tag", hero_seat=5, hero_cards="8h7h", board="",
+              actions=[_a(2, "preflop", "fold"), _a(3, "preflop", "fold"), _a(4, "preflop", "fold"),
+                       _a(5, "preflop", "raise", 8), _a(0, "preflop", "fold"), _a(1, "preflop", "fold")]),
+        "raise", {"loose_open"},
+    )
+
+    # 1b. TRUE POSITIVE: a genuinely loose RFI — 96o (~top 70%, wider than the reg
+    #     bot's BTN range) opened folded-to from the BTN SHOULD flag loose_open.
+    spots["TRUE POSITIVE: loose RFI open 96o (no limper)"] = (
+        _hand(villain_seat=2, villain_arch="tag", hero_seat=5, hero_cards="9d6c", board="",
               actions=[_a(2, "preflop", "fold"), _a(3, "preflop", "fold"), _a(4, "preflop", "fold"),
                        _a(5, "preflop", "raise", 8), _a(0, "preflop", "fold"), _a(1, "preflop", "fold")]),
         "raise", set(),  # ASSERT loose_open present
@@ -120,7 +129,10 @@ def battery():
 
 
 def main():
-    print(f"iso hand 98o percentile: {percentile(hand_class(('9d','8c')))*100:.0f}%  (BTN baseline cap 45%)")
+    from poker.bots import archetypes
+    cap = archetypes.make("tag").rfi_raise["BTN"]
+    print(f"reg(TAG) BTN open cap ~top {cap*100:.0f}%  |  87s={percentile(hand_class(('8h','7h')))*100:.0f}% (inside, ok)  "
+          f"96o={percentile(hand_class(('9d','6c')))*100:.0f}% (wider, flag)")
     print(f"{'spot':46}{'action':8}{'eq':>6}{'req':>6}  leaks")
     print("-" * 92)
     for name, (data, hero_action, _forbidden) in battery().items():

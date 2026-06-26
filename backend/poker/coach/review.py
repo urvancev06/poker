@@ -13,14 +13,22 @@ from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass, field
 
+from ..bots import archetypes
 from ..bots.preflop_strength import hand_class, percentile
 from ..math.classify import MadeTier, classify
 from ..math.equity import equity
 from ..math.odds import required_equity
 from .villain_model import condition_range, villain_line
 
-# §2 baseline opening frequencies (TAG) for preflop deviation checks.
-_BASELINE_RFI = {"UTG": 0.15, "MP": 0.19, "CO": 0.27, "BTN": 0.45, "SB": 0.38, "BB": 0.0}
+# Judge opens against the reg (TAG) bot's ACTUAL opening range — one source of
+# truth shared by the bots, the detector, and STRATEGY.md, with no third chart to
+# drift. This makes the rule "looser than the bots = a leak" (not "looser than
+# optimal"), which is the right call for a false-positive-averse tool: it stops
+# crying wolf on standard opens the bots make (e.g. 87s-BTN) and only flags opens
+# wider than the reg's range. It sharpens automatically once the preflop range-
+# shape fix lands (STRATEGY.md §8) — until then a few junk offsuit hands the
+# percentile ranking misranks *into* the bot range (Q4o-BTN, K3o-SB) won't flag.
+_BASELINE_RFI = archetypes.make("tag").rfi_raise
 
 # Lightweight history item for villain_line (it reads .seat/.street/.action).
 _HE = namedtuple("_HE", "seat street action")

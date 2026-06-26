@@ -24,7 +24,7 @@ def test_correct_plays_are_never_flagged():
 
 def test_true_positives_still_flag():
     expect = {
-        "TRUE POSITIVE: loose RFI open 98o (no limper)": "loose_open",
+        "TRUE POSITIVE: loose RFI open 96o (no limper)": "loose_open",
         "TRUE POSITIVE: hero calls nit pot river bet": "call_no_odds",
     }
     spots = battery()
