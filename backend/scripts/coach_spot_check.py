@@ -122,12 +122,12 @@ def battery():
     rows.append(("bluff-catch 55 vs NIT, same small bet", c_nit_small, "Fold"))
     rows.append(("bluff-catch 55 vs MANIAC, pot bet (req~33%)", c_man_big, "Fold"))
 
-    # 4. Set-mine (DOCUMENTED known limitation — needs implied odds, gap 2). Hero
-    #    has 22 preflop facing a TAG open; raw equity vs a raising range is low so
-    #    the current model folds. Correct answer (call for set value) needs the
-    #    implied-odds term, the named follow-on.
+    # 4. Set-mine: 22 facing a TAG open, deep. Direct odds make it marginal, but the
+    #    implied-odds term (set value, stack behind) now correctly makes it a Call
+    #    (was "Close" — the gap-2 fix). See scripts/implied_spot_check.py for the
+    #    stack-depth boundary.
     c = spot(["2h", "2d"], [], "TAG", {"preflop": "raise"}, to_call=6, pot=9, ip=True)
-    rows.append(("set-mine: 22 vs TAG open (needs implied odds)", c, None))
+    rows.append(("set-mine: 22 vs TAG open (deep — implied odds)", c, "call"))
 
     return rows
 

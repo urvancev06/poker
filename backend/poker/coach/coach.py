@@ -29,15 +29,48 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..math.classify import Draw, MadeTier, classify
+from ..math.classify import Draw, MadeTier, PairStrength, classify, pair_strength
 from ..math.equity import equity
-from ..math.odds import analyze_call
+from ..math.odds import analyze_call, implied_required_equity, required_equity
 from .villain_model import condition_range, villain_line
 
 # As later streets carry the "they're strong" signal in the action-conditioned
 # villain range, the realization discount shrinks toward 1 (don't double-count it).
 _STREET_WEIGHT = {"preflop": 1.0, "flop": 0.7, "turn": 0.4, "river": 0.0}
 _STREET_OF = {0: "preflop", 3: "flop", 4: "turn", 5: "river"}
+
+# Implied / reverse-implied price adjustment. Conservative BY DESIGN (err small):
+# a missed thin call is cheap; a manufactured speculative call is the single most-
+# abused concept in poker and the exact losing habit this trains out. So X errs to
+# the tight side of the rule-of-15, and reverse-implied (Y) fires only on genuinely
+# dominated hands so it can't become over-folding in a costume.
+_SET_MINE_RATE = 0.03      # set-mine implied pot ≈ this × stack-behind (flip ≈ rule-of-15, erring tight)
+_DRAW_IMPLIED_MULT = 0.5   # strong-draw implied pot ≈ this × current pot
+_REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (dominated WEAK pairs only)
+
+
+def _implied_adjustment(
+    *, street: str, is_pocket_pair: bool, is_draw: bool, made_tier: MadeTier,
+    pair_str: PairStrength, pot: int, behind: int, action_closed: bool,
+) -> tuple[int, str]:
+    """Signed extra chips you expect to play for *beyond* the current pot, for the
+    implied/reverse price adjustment — capped at the stack behind (you can't win
+    what isn't there). Positive = implied odds, negative = reverse implied, 0 when
+    the action closes (river/all-in: the exact raw rule stands, provably untouched)."""
+    if action_closed or behind <= 0:
+        return 0, ""
+    if street == "preflop" and is_pocket_pair:
+        # A pair wins a big pot when it flops a set (~1 in 8.5). Credit scaled by the
+        # stack behind, anchored so it becomes a call around the rule-of-15.
+        return min(behind, round(behind * _SET_MINE_RATE)), f"set value, {behind} behind"
+    if is_draw:
+        return min(behind, round(_DRAW_IMPLIED_MULT * pot)), "draw — paid off when you complete"
+    if made_tier == MadeTier.PAIR and pair_str is PairStrength.WEAK:
+        # A bottom/under pair makes a 2nd-best hand and loses more — needs MORE than
+        # the headline price. Only WEAK pairs (never top pair/overpairs, which are
+        # decent), so this can't talk you off a legitimate made hand.
+        return -min(pot, round(_REVERSE_MULT * pot)), "reverse implied — dominated"
+    return 0, ""
 
 
 @dataclass
@@ -62,7 +95,9 @@ class Coaching:
     lose_pct: float
     to_call: int
     pot: int
-    required_equity_pct: float | None
+    required_equity_pct: float | None      # implied/reverse-adjusted (the decision price)
+    required_direct_pct: float | None      # raw pot-odds price, before implied adjustment
+    implied_note: str                      # why the price moved (set value / draw / reverse), or ""
     pot_odds: str | None
     call_ev: float | None
     in_position: bool
@@ -87,6 +122,8 @@ class Coaching:
             "to_call": self.to_call,
             "pot": self.pot,
             "required_equity_pct": self.required_equity_pct,
+            "required_direct_pct": self.required_direct_pct,
+            "implied_note": self.implied_note,
             "pot_odds": self.pot_odds,
             "call_ev": self.call_ev,
             "in_position": self.in_position,
@@ -152,10 +189,12 @@ def _suggest(
     action_closed: bool,
     villain_desc: str,
     players_behind: int,
+    implied_note: str = "",
 ) -> tuple[str, str]:
     """A candid verdict + rationale derived from the computed numbers. ``is_strong``
     means a real value hand (two pair or better); ``realized`` is raw equity after
-    the realization factor."""
+    the realization factor. ``required`` already reflects the implied/reverse price
+    adjustment; ``implied_note`` explains why it moved."""
     raw_pct = f"{equity_frac * 100:.0f}%"
     real_pct = f"{realized * 100:.0f}%"
 
@@ -205,7 +244,8 @@ def _suggest(
     # Money still behind: judge on *realized* equity, not raw.
     pos = "in position" if in_position else "out of position"
     margin = realized - required
-    detail = f"~{raw_pct} raw → ~{real_pct} realized {pos} vs the ~{req} you need to call."
+    imp = f" (price adjusted — {implied_note})" if implied_note else ""
+    detail = f"~{raw_pct} raw → ~{real_pct} realized {pos} vs the ~{req} you need to call.{imp}"
     if margin >= 0.12:
         return ("Clear call.", f"{detail} Comfortably ahead of the price.{behind_note}")
     if margin >= 0.03:
@@ -236,6 +276,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     is_strong = hc.made.value >= MadeTier.TWO_PAIR  # two pair or better — a value hand
     is_pair = hc.made == MadeTier.PAIR
     is_draw = Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws
+    pair_str = pair_strength(hole, board) if is_pair else PairStrength.NONE
 
     dead = set(hole) | set(board)
 
@@ -308,19 +349,30 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     realized = equity_frac * r
 
     if to_call > 0:
-        # Required equity is exact pot-odds arithmetic (independent of our hand).
-        # Call EV uses *realized* equity so it agrees with the verdict — it's what
-        # you actually expect to make, not the raw-equity overestimate.
-        analysis = analyze_call(call=to_call, pot=state.total_pot, equity=realized)
-        required = analysis.required_equity
+        # Implied / reverse-implied odds adjust the PRICE (not the range or realized
+        # equity, which are working). Capped at the stack behind. When the action
+        # closes (river/all-in) the adjustment is 0 and the exact rule stands.
+        effective_behind = min(hero_stack, max((state.seats[s].stack for s in villain_seats), default=0))
+        implied_adj, implied_note = _implied_adjustment(
+            street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
+            made_tier=hc.made, pair_str=pair_str, pot=state.total_pot,
+            behind=effective_behind, action_closed=action_closed,
+        )
+        required_direct = required_equity(to_call, state.total_pot)
+        required = implied_required_equity(to_call, state.total_pot, implied_adj)  # decision-relevant
+        # Call EV is the immediate pot-odds EV on the CURRENT pot (exact arithmetic);
+        # implied odds show up in `required`/the verdict, explained by implied_note.
+        call_ev = round(analyze_call(call=to_call, pot=state.total_pot, equity=realized).call_ev, 1)
         pot_odds = f"{state.total_pot / to_call:.1f} : 1"
-        call_ev = round(analysis.call_ev, 1) if analysis.call_ev is not None else None
         required_pct: float | None = round(required * 100, 1)
+        required_direct_pct: float | None = round(required_direct * 100, 1)
     else:
         required = None
         pot_odds = None
         call_ev = None
         required_pct = None
+        required_direct_pct = None
+        implied_note = ""
 
     if len(villain_models) == 1:
         villain_desc = f"{villain_models[0].archetype}'s modelled range"
@@ -341,6 +393,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         action_closed=action_closed,
         villain_desc=villain_desc,
         players_behind=players_behind,
+        implied_note=implied_note,
     )
 
     return Coaching(
@@ -358,6 +411,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         to_call=to_call,
         pot=state.total_pot,
         required_equity_pct=required_pct,
+        required_direct_pct=required_direct_pct,
+        implied_note=implied_note,
         pot_odds=pot_odds,
         call_ev=call_ev,
         in_position=in_position,
@@ -370,6 +425,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
             "Hand classification and equity are computed (Monte Carlo, treys).",
             "Pot odds and required equity are exact arithmetic.",
             "Equity realization (raw → realized) is a rough position/hand-type/street estimate, not a solver output.",
+            "Implied / reverse-implied odds adjust the price (a conservative, stack-capped estimate) — not a solver output.",
             "Villain ranges are action-conditioned: the archetype range narrowed by their bets/calls this hand (bluff rates measured from the bots).",
             "For exact GTO frequencies, confirm in GTO Wizard.",
         ],

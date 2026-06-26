@@ -100,7 +100,9 @@ export interface Coaching {
   lose_pct: number
   to_call: number
   pot: number
-  required_equity_pct: number | null
+  required_equity_pct: number | null // implied/reverse-adjusted (the decision price)
+  required_direct_pct: number | null // raw pot-odds price, before implied adjustment
+  implied_note: string // why the price moved (set value / draw / reverse), or ""
   pot_odds: string | null
   call_ev: number | null
   in_position: boolean

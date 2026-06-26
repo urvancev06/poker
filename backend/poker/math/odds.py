@@ -40,6 +40,22 @@ def required_equity(call: int, pot: int) -> float:
     return call / (pot + call)
 
 
+def implied_required_equity(call: int, pot: int, implied: int = 0) -> float:
+    """Required equity adjusted for implied / reverse-implied odds: ``call /
+    (pot + call + implied)``.
+
+    ``implied`` is signed extra chips you expect to play for *beyond* the current
+    pot when you continue: positive = implied odds (you win more when you improve —
+    set-mines, strong draws), negative = reverse implied (you make a 2nd-best hand
+    and lose more — dominated holdings). The effective pot is floored at ``call``
+    so required stays in (0, 1]. The caller MUST cap a positive ``implied`` at the
+    stack behind — you can't win what isn't there."""
+    if call <= 0:
+        return 0.0
+    denom = max(call, pot + call + implied)
+    return call / denom
+
+
 def pot_odds_ratio(call: int, pot: int) -> float:
     """Pot odds as a ``pot : call`` ratio (e.g. 3.0 means you're getting 3-to-1)."""
     if call <= 0:

@@ -130,13 +130,25 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
             <div className="divide-y divide-hair border-y border-hair">
               <Row label="To call" value={String(coaching.to_call)} />
               <Row label="Pot odds" value={coaching.pot_odds ?? '—'} />
-              <Row label="Required" value={`${coaching.required_equity_pct}%`} />
+              <Row
+                label="Required"
+                value={
+                  coaching.implied_note && coaching.required_direct_pct != null
+                    ? `${coaching.required_direct_pct}% → ${coaching.required_equity_pct}%`
+                    : `${coaching.required_equity_pct}%`
+                }
+              />
               <Row
                 label="Call EV"
                 value={coaching.call_ev == null ? '—' : `${coaching.call_ev > 0 ? '+' : ''}${coaching.call_ev}`}
                 tone={coaching.call_ev != null ? (coaching.call_ev >= 0 ? 'win' : 'loss') : undefined}
               />
             </div>
+          )}
+          {coaching.to_call > 0 && coaching.implied_note && (
+            <p className="-mt-3 text-[10px] normal-case leading-snug text-faint">
+              price adjusted — {coaching.implied_note}
+            </p>
           )}
 
           {/* verdict as a band pill + rationale */}
