@@ -8,6 +8,32 @@ The look for the app. Rendered reference: **`references/poker-design-directions.
 
 ## 1. Palette (tokens)
 
+> **As-built (this is what ships).** The app was implemented in the **"Mono Minimal — Editorial"** direction, not the warm Felt & Brass concept below: one **terminal-green** accent, neutral cool-grey surfaces, **Sora** (display/UI) + **IBM Plex Mono** (numbers). The authoritative values live in **`frontend/src/index.css`** (`@theme`); this table mirrors them. The Felt & Brass table further down is kept as the *original concept* — superseded by the implemented direction.
+>
+> Palette tuned for **WCAG AA** legibility (contrast vs `--color-bg` in the table). The bg is lifted off near-black and raised surfaces take a perceptible step above it so layers read without heavy borders. The accent is unchanged.
+>
+> | Token (`index.css`) | Hex | Contrast | Use |
+> |---|---|---|---|
+> | `--color-bg` | `#111114` | — | base background (lifted off near-black) |
+> | `--color-bg2` | `#2a2a34` | **1.33:1** step vs bg | raised surfaces / panels / cards |
+> | `--color-felt-core` | `#1c1d23` | 1.12:1 step | table "felt" (flat, faintly raised) |
+> | `--color-felt-edge` | `#101116` | — | felt edge / face-down card-back detail |
+> | `--color-ink` | `#ffffff` | **18.9:1** | primary text / numerals / headings |
+> | `--color-muted` | `#bdbec8` | **10.2:1** | secondary text / labels |
+> | `--color-faint` | `#94959f` | **6.3:1** | tertiary / caption labels / axes (clears AA body) |
+> | `--color-line` | `#5f6170` | **3.1:1** | borders — visible hairline (meets UI 3:1) |
+> | `--color-hair` | `#2e2f37` | 1.4:1 | faint internal dividers (decorative only) |
+> | `--color-accent` | `#2bd673` | 9.9:1 | terminal green — one accent (wordmark, key numbers, primary button) |
+> | `--color-accent-ink` | `#06140c` | — | text on an accent fill |
+> | `--color-loss` | `#e0574c` | 5.1:1 | negative / loss |
+> | `--color-warning` | `#f0b429` | 10.1:1 | caution |
+>
+> Body/secondary/tertiary text all clear AA (≥4.5:1); borders and the large accent clear ≥3:1. Hierarchy is preserved (ink ≫ muted > faint) — the dim end is lifted, not flattened.
+
+---
+
+### Original concept — "Felt & Brass" (superseded by the as-built palette above)
+
 Use these as CSS variables. One accent only — **brass** — used sparingly.
 
 | Token | Hex | Use |

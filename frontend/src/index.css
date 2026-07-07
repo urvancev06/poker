@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 /* Mono Minimal — Editorial (references/DESIGN.md). Dark, flat, type-driven.
-   One accent: terminal green. Surfaces are drawn with hairlines, not fills/shadows. */
+   One accent: terminal green. Surfaces are drawn with hairlines + a faint fill step.
+   Palette tuned for WCAG AA legibility (ratios vs bg noted); accent is untouched. */
 @theme {
-  --color-bg: #0b0b0c;
-  --color-bg2: #161619; /* raised surface — a clear step above the bg so panels read */
-  --color-felt-core: #161619; /* the table "felt" — a flat, distinctly-raised dark */
-  --color-felt-edge: #101013;
+  --color-bg: #111114; /* base — lifted off near-black */
+  --color-bg2: #2a2a34; /* raised surface — 1.33:1 step above bg so panels read */
+  --color-felt-core: #1c1d23; /* the table "felt" — a flat, faintly-raised dark */
+  --color-felt-edge: #101116;
 
-  --color-ink: #ffffff; /* primary text / numerals / headings */
-  --color-muted: #a1a1aa; /* secondary text */
-  --color-faint: #6b6b76; /* tertiary / caption labels / axis */
-  --color-line: #2c2c33; /* borders — visible hairline */
-  --color-hair: #232328; /* faint internal dividers */
+  --color-ink: #ffffff; /* primary text — 18.9:1 */
+  --color-muted: #bdbec8; /* secondary text — 10.2:1 (was 7.7) */
+  --color-faint: #94959f; /* tertiary / caption labels / axis — 6.3:1 (was 3.7; now clears AA) */
+  --color-line: #5f6170; /* borders — visible hairline, 3.1:1 (meets UI 3:1) */
+  --color-hair: #2e2f37; /* faint internal dividers — kept intentionally soft */
 
   --color-accent: #2bd673; /* terminal green */
   --color-accent-soft: rgba(43, 214, 115, 0.12);

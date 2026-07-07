@@ -4,13 +4,17 @@ import { Seat, type VisibilityMode } from './Seat'
 
 // Screen positions for up to 6 players; hero (player 0) sits bottom-centre and
 // opponents keep stable seats while the dealer button rotates.
+// Seats are centred on their point (-translate 50/50), so each point is inset
+// from the oval edge by roughly half the seat's size — otherwise the extreme
+// seats (top-centre, upper sides) poke past the felt rim and the dealer badge
+// clips. Verified against measured bounding boxes: every seat now sits inside.
 const POSITIONS = [
   { left: '50%', top: '85%' }, // 0 hero (kept clear of the action bar below)
-  { left: '10%', top: '70%' }, // 1
-  { left: '11%', top: '27%' }, // 2
-  { left: '50%', top: '8%' }, // 3
-  { left: '89%', top: '27%' }, // 4
-  { left: '90%', top: '70%' }, // 5
+  { left: '13%', top: '71%' }, // 1
+  { left: '14%', top: '28%' }, // 2
+  { left: '50%', top: '14%' }, // 3 top-centre (was 8% — cards + button badge overflowed)
+  { left: '86%', top: '28%' }, // 4
+  { left: '87%', top: '71%' }, // 5
 ]
 
 export function Table({
