@@ -297,8 +297,6 @@ export default function App() {
 
       {view === 'table' && (
         <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-          {/* left spacer balances the right panel so the table stays centred (desktop only) */}
-          <div className="hidden w-80 shrink-0 lg:block" />
           <main className="flex min-h-0 flex-1 flex-col">
             {session ? (
               <>
@@ -385,8 +383,8 @@ export default function App() {
             )}
           </main>
 
-          {/* desktop side panel — always reserved (balanced by the left spacer) so the
-              table stays centred and the same size whether or not the coach/log shows */}
+          {/* desktop side panel — its column is ALWAYS reserved so opening the coach
+              or log never reflows or resizes the table (it just fills this dock). */}
           <aside className="hidden min-h-0 w-80 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex">
             {(study || coaching || coachLoading) && (
               <CoachPanel coaching={coaching} loading={coachLoading} />

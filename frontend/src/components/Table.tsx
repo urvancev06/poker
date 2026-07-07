@@ -7,20 +7,22 @@ import { Seat, type VisibilityMode } from './Seat'
 // single unit to fit whatever space it's given (see useFitScale). Because the
 // scale is uniform, every seat / card / chip / the pot keep their exact
 // relationship at any window size — the geometry can never compress or collide.
-const DESIGN_W = 560
-const DESIGN_H = 664 // a touch of extra height spreads the seat ring off the
-// fixed-size board/pot for comfortable clearance (verified: min gap ~15px+).
+// Landscape design box (a real poker table is wider than tall). The table is
+// laid out once at this size and scaled to fit, so it uses the full available
+// width instead of being squeezed into a narrow portrait column.
+const DESIGN_W = 920
+const DESIGN_H = 620
 
 // Screen positions for up to 6 players; hero (player 0) sits bottom-centre and
 // opponents keep stable seats while the dealer button rotates. Percentages are
-// of the fixed design box above, tuned so no seat rides outside the oval.
+// of the fixed design box above, tuned so no seat rides outside the wide oval.
 const POSITIONS = [
-  { left: '50%', top: '85%' }, // 0 hero (kept clear of the action bar below)
-  { left: '13%', top: '71%' }, // 1
-  { left: '14%', top: '28%' }, // 2
-  { left: '50%', top: '14%' }, // 3 top-centre
-  { left: '86%', top: '28%' }, // 4
-  { left: '87%', top: '71%' }, // 5
+  { left: '50%', top: '86%' }, // 0 hero (kept clear of the action bar below)
+  { left: '12%', top: '72%' }, // 1
+  { left: '12%', top: '28%' }, // 2
+  { left: '50%', top: '13%' }, // 3 top-centre
+  { left: '88%', top: '28%' }, // 4
+  { left: '88%', top: '72%' }, // 5
 ]
 
 /** Fit a fixed DESIGN_W×DESIGN_H box into the observed parent, uniformly.
@@ -80,7 +82,7 @@ export function Table({
 
         {/* board + pot, centred */}
         <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2">
-          <Board board={state.board} pot={state.pot} cardWidth={58} />
+          <Board board={state.board} pot={state.pot} cardWidth={70} />
         </div>
 
         {/* seats */}
@@ -103,7 +105,7 @@ export function Table({
                 mode={mode}
                 handOver={session.hand_over}
                 read={reads?.[String(player)]}
-                cardWidth={player === 0 ? 54 : 44}
+                cardWidth={player === 0 ? 64 : 52}
               />
             </div>
           )
