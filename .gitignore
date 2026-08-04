@@ -32,3 +32,8 @@ Thumbs.db
 
 # --- personal build notebook (uncommitted) ---
 BUILD_NOTEBOOK.html
+
+# --- audit working documents (personal, uncommitted) ---
+# The reverse-engineering audit + remediation record. Kept local: it quotes
+# personal hand history and is a working document, not project documentation.
+audit/
