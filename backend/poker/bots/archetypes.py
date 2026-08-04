@@ -45,6 +45,11 @@ def nit() -> StrategyParams:
         strong_pair_defend=0.82,
         float_freq=0.02,
         bet_frac=0.6,
+        # A nit is defined by folding when beaten. Every archetype folded two-pair-plus
+        # 0% of the time, which made the nit un-bluffable on exactly the boards where
+        # representing the flush against one is the textbook exploit (audit F-14).
+        # Only fires on four-to-a-flush / four-to-a-straight boards.
+        twopair_fold_freq=0.35,
     )
 
 

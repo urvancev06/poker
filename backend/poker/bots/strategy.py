@@ -56,6 +56,9 @@ class StrategyParams:
     strong_pair_defend: float = 0.82       # continue rate for top pair / overpairs (>= calldown)
     float_freq: float = 0.05               # call a bet with air (loose/sticky types)
     bet_frac: float = 0.6                  # bet/raise size as fraction of the pot
+    # How often to fold two-pair-or-better on a board showing four to a flush or four
+    # to a straight. 0.0 = never (the historical behaviour, and correct for the fish).
+    twopair_fold_freq: float = 0.0
 
 
 # convenience
@@ -153,6 +156,29 @@ def _decide_preflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random)
     return Action(_X) if legal.can_check else Action(_F)
 
 
+def _board_is_scary(board: list[str]) -> bool:
+    """Four to a flush, or four to a straight, on the board itself.
+
+    Deliberately narrow: this is the only place in the codebase that looks at board
+    shape at all, and it exists to let a nit fold two pair when the board screams that
+    two pair is no longer good -- not to introduce general texture awareness (that is
+    a separate, larger piece of work)."""
+    if len(board) < 4:
+        return False
+    suits = [c[1] for c in board]
+    if max(suits.count(s) for s in set(suits)) >= 4:
+        return True
+    vals = sorted({"23456789TJQKA".index(c[0]) + 2 for c in board})
+    if 14 in vals:
+        vals = sorted(set(vals) | {1})
+    run = 1
+    for a, b in zip(vals, vals[1:]):
+        run = run + 1 if b == a + 1 else 1
+        if run >= 4:
+            return True
+    return False
+
+
 def _decide_postflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random) -> Action:
     legal = ctx.legal
     hc = classify(ctx.hole, ctx.board)
@@ -195,7 +221,22 @@ def _decide_postflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random
             return Action(_R, to)
 
     if tier >= MadeTier.TWO_PAIR and legal.can_call:
-        return Action(_C)  # strong made hand always continues
+        # Two pair or better continues -- but not unconditionally. Every archetype used
+        # to call here at 100%, measured 0% fold across all five over 40,000 hands, which
+        # made them all un-bluffable with a strong-looking board. For the fish that is in
+        # character; for the NIT it contradicts its own identity, since folding when
+        # beaten is the whole archetype, and it kills the textbook exploit of
+        # representing the flush against a nit (audit F-14).
+        #
+        # `twopair_fold_freq` defaults to 0.0, so this is a no-op for every archetype
+        # that does not opt in.
+        if p.twopair_fold_freq <= 0.0 or tier >= MadeTier.FULL_HOUSE:
+            return Action(_C)
+        # Only give up on a genuinely threatening board: four to a flush or four to a
+        # straight, where a hand this strong is often already beaten.
+        if _board_is_scary(ctx.board) and rng.random() < p.twopair_fold_freq and legal.can_fold:
+            return Action(_F)
+        return Action(_C)
     if strong_draw and est >= req and legal.can_call:
         return Action(_C)  # drawing with the right price
     if tier >= MadeTier.PAIR and legal.can_call:
