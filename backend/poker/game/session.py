@@ -55,6 +55,7 @@ class GameSession:
         self._seat_to_player: list[int] = []
         self._player_to_seat: dict[int, int] = {}
         self._last_result: dict | None = None
+        self._decision_ms: list[int] = []
         self._hero_hole: list[str] = []  # captured at deal (folding clears it later)
         self._dealt_holes: list[list[str]] = []  # all seats' cards, captured at deal
         self._reads = StatsAccumulator()  # per-player observed stats (keyed by player index)
@@ -113,6 +114,7 @@ class GameSession:
             seed=self._rng.randint(0, 2**31 - 1),
         )
         self._last_result = None
+        self._decision_ms = []
         # Capture every seat's cards now: PokerKit clears them on fold/muck, but we
         # want to reveal non-folded hands at a showdown (and the hero always).
         self._dealt_holes = [self._hand.hole_cards(s) or [] for s in range(self.n)]
@@ -151,9 +153,11 @@ class GameSession:
             self._finalize()
         return True
 
-    def submit_hero_action(self, action: Action) -> None:
+    def submit_hero_action(self, action: Action, decision_ms: int | None = None) -> None:
         if not self.hero_to_act:
             raise RuntimeError("it is not the hero's turn to act")
+        if decision_ms is not None and decision_ms >= 0:
+            self._decision_ms.append(int(decision_ms))
         self._hand.apply(action)  # type: ignore[union-attr]
         if self._hand.is_over:  # type: ignore[union-attr]
             self._finalize()
@@ -203,6 +207,9 @@ class GameSession:
             "results_by_player": {self._seat_to_player[s]: results[s] for s in range(self.n)},
             "actions": actions,
             "lineup": self.archetype_of,
+            # Raw wall-clock per hero decision this hand (ms). Includes thinking time,
+            # tab switches and interruptions -- summarised only as a median.
+            "hero_decision_ms": list(self._decision_ms),
         }
 
         # Per-player summaries: accumulate observed stats (HUD reads) and stash the

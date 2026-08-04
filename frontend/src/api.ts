@@ -156,7 +156,20 @@ export interface HeroStatLine {
   cbet: number
   net_bb_per_100: number
 }
+export interface DecisionTime {
+  median_s: number | null
+  n: number
+}
+
+export interface StatsWindow {
+  last: number | null
+  session_id: string | null
+  hands: number
+}
+
 export interface MyStats {
+  window?: StatsWindow
+  decision_time?: DecisionTime
   overall: HeroStatLine
   trend: HeroStatLine[]
   targets: Record<string, [number, number]>
@@ -288,23 +301,37 @@ export const api = {
   createSession: (body: CreateSessionBody = {}) =>
     req<SessionState>('/session', { method: 'POST', body: JSON.stringify(body) }),
   getState: (id: string) => req<SessionState>(`/session/${id}`),
-  submitAction: (id: string, type: ActionType, toAmount?: number) =>
+  submitAction: (id: string, type: ActionType, toAmount?: number, decisionMs?: number) =>
     req<SessionState>(`/session/${id}/action`, {
       method: 'POST',
-      body: JSON.stringify({ type, to_amount: toAmount ?? null }),
+      body: JSON.stringify({
+        type,
+        to_amount: toAmount ?? null,
+        decision_ms: decisionMs ?? null,
+      }),
     }),
   advance: (id: string) => req<SessionState>(`/session/${id}/advance`, { method: 'POST' }),
   nextHand: (id: string) =>
     req<SessionState>(`/session/${id}/next-hand`, { method: 'POST' }),
   coach: (id: string) => req<Coaching>(`/session/${id}/coach`),
   reads: (id: string) => req<Reads>(`/session/${id}/reads`),
-  myStats: (sessionId?: string) =>
-    req<MyStats>(`/stats/me${sessionId ? `?session_id=${sessionId}` : ''}`),
+  myStats: (sessionId?: string, last?: number) => {
+    const q = new URLSearchParams()
+    if (sessionId) q.set('session_id', sessionId)
+    if (last) q.set('last', String(last))
+    const qs = q.toString()
+    return req<MyStats>(`/stats/me${qs ? `?${qs}` : ''}`)
+  },
   listHands: (sessionId?: string, limit = 50) =>
     req<HandSummary[]>(`/hands?limit=${limit}${sessionId ? `&session_id=${sessionId}` : ''}`),
   handReview: (id: number) => req<HandReview>(`/hands/${id}/review`),
-  leaks: (sessionId?: string) =>
-    req<LeakSummary>(`/stats/leaks${sessionId ? `?session_id=${sessionId}` : ''}`),
+  leaks: (sessionId?: string, limit?: number) => {
+    const q = new URLSearchParams()
+    if (sessionId) q.set('session_id', sessionId)
+    if (limit) q.set('limit', String(limit))
+    const qs = q.toString()
+    return req<LeakSummary>(`/stats/leaks${qs ? `?${qs}` : ''}`)
+  },
   labArchetypes: () => req<LabArchetypesInfo>('/lab/archetypes'),
   labSimulate: (body: LabSimulateBody) =>
     req<LabResult>('/lab/simulate', { method: 'POST', body: JSON.stringify(body) }),

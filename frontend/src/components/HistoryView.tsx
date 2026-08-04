@@ -11,16 +11,26 @@ const LEAK_LABEL: Record<string, string> = {
   missed_value: 'Missed value',
 }
 
+// The study gates count leak flags over 500 hands. A page reload mints a new
+// session, so scoping to the current session made that window unobservable —
+// all-hands is the default and the session view is the opt-in.
+const LEAK_WINDOWS = [200, 500, 1000] as const
+
 export function HistoryView({ sessionId }: { sessionId?: string }) {
   const [hands, setHands] = useState<HandSummary[]>([])
   const [leaks, setLeaks] = useState<LeakSummary | null>(null)
   const [review, setReview] = useState<HandReview | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [thisSession, setThisSession] = useState(false)
+  const [window_, setWindow] = useState<number>(500)
+
+  const scope = thisSession ? sessionId : undefined
 
   useEffect(() => {
-    api.listHands(sessionId, 100).then(setHands).catch((e) => setErr((e as Error).message))
-    api.leaks(sessionId).then(setLeaks).catch(() => {})
-  }, [sessionId])
+    api.listHands(scope, 100).then(setHands).catch((e) => setErr((e as Error).message))
+    setLeaks(null)
+    api.leaks(scope, window_).then(setLeaks).catch(() => {})
+  }, [scope, window_])
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[320px_1fr]">
@@ -28,11 +38,37 @@ export function HistoryView({ sessionId }: { sessionId?: string }) {
         <h2 className="font-display text-2xl text-ink">Hand history</h2>
         {err && <div className="text-loss">{err}</div>}
 
+        <div className="my-4 flex flex-wrap items-center gap-2 text-[11px]">
+          <div className="flex overflow-hidden rounded-lg border border-line">
+            {([false, true] as const).map((v) => (
+              <button
+                key={String(v)}
+                onClick={() => setThisSession(v)}
+                disabled={v && !sessionId}
+                className={`px-2 py-1 ${thisSession === v ? 'bg-accent/20 text-ink' : 'text-muted'} disabled:opacity-40`}
+              >
+                {v ? 'This session' : 'All hands'}
+              </button>
+            ))}
+          </div>
+          <div className="flex overflow-hidden rounded-lg border border-line">
+            {LEAK_WINDOWS.map((w) => (
+              <button
+                key={w}
+                onClick={() => setWindow(w)}
+                className={`px-2 py-1 tabular-nums ${window_ === w ? 'bg-accent/20 text-ink' : 'text-muted'}`}
+              >
+                last {w}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {leaks && leaks.hands_reviewed > 0 && (
           <div className="my-4 rounded-xl border border-line bg-bg2/70 p-4">
             <h3 className="font-display text-base text-ink">Leak report</h3>
             <p className="mb-2 text-[11px] text-muted">
-              {leaks.hands_reviewed} hands · computed, candid
+              {leaks.hands_reviewed} hands{thisSession ? ' · this session' : ' · all sessions'} · computed, candid
             </p>
             {leaks.by_type.length === 0 ? (
               <p className="text-sm text-win">No clear leaks flagged. Clean play.</p>

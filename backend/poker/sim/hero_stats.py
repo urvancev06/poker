@@ -46,6 +46,21 @@ def _aggregate(summary_dicts: list[dict]) -> StatLine:
     return acc.line("me")
 
 
+def decision_seconds(records: list[dict]) -> dict:
+    """Median hero decision time, in seconds, over hands that recorded any.
+
+    Median rather than mean because the distribution has a long right tail (a hand
+    left open while the learner does something else). Reported raw: it is wall clock,
+    not thinking time, and nothing is derived from it beyond this summary."""
+    ms = [v for r in records for v in (r.get("hero_decision_ms") or []) if isinstance(v, (int, float))]
+    if not ms:
+        return {"median_s": None, "n": 0}
+    ms.sort()
+    mid = len(ms) // 2
+    med = ms[mid] if len(ms) % 2 else (ms[mid - 1] + ms[mid]) / 2
+    return {"median_s": round(med / 1000.0, 1), "n": len(ms)}
+
+
 def hero_report(summary_dicts: list[dict], buckets: int = 8) -> dict:
     """Overall hero stats + a coarse trend (chronological order assumed)."""
     overall = line_to_dict(_aggregate(summary_dicts))

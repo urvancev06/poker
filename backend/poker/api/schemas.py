@@ -21,6 +21,11 @@ class CreateSessionRequest(BaseModel):
 class ActionRequest(BaseModel):
     type: str = Field(description="fold | check | call | bet | raise")
     to_amount: int | None = Field(default=None, description="total bet level for bet/raise")
+    # Client-measured wall clock from "hero became the actor" to "action posted".
+    # Deliberately raw: it includes thinking, tab-switching and interruptions, so it
+    # is stored as observed and only ever summarised as a median. Gate 2 names a
+    # 10-second target and nothing in the app measured elapsed time at all.
+    decision_ms: int | None = Field(default=None, ge=0, description="ms the hero took to act")
 
 
 class LabSimulateRequest(BaseModel):

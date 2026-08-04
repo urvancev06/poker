@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type ActionType, type Coaching, type Reads, type SessionState } from './api'
 import { CoachPanel, CoachStrip } from './components/CoachPanel'
 import { Table } from './components/Table'
@@ -96,12 +96,27 @@ export default function App() {
     if (!study) setCoaching(null)
   }, [study, session, askCoach])
 
+  // Decision clock: starts when the hero becomes the actor, read when they act.
+  // Wall clock on purpose — it includes thinking and interruptions, and is only
+  // ever summarised as a median. Gate 2 names a 10-second target.
+  const decisionStart = useRef<number | null>(null)
+  useEffect(() => {
+    if (session?.hero_to_act) {
+      if (decisionStart.current === null) decisionStart.current = performance.now()
+    } else {
+      decisionStart.current = null
+    }
+  }, [session?.hero_to_act, session?.hand_index])
+
   const act = async (type: ActionType, toAmount?: number) => {
     if (!session) return
     setBusy(true)
     setCoaching(null)
     try {
-      const s = await api.submitAction(session.session_id, type, toAmount)
+      const started = decisionStart.current
+      const elapsedMs = started === null ? undefined : Math.round(performance.now() - started)
+      decisionStart.current = null
+      const s = await api.submitAction(session.session_id, type, toAmount, elapsedMs)
       setSession(s)
       refreshReads(s)
     } catch (e) {

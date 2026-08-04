@@ -368,6 +368,41 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
     }
 
 
+# Reviewing a hand costs a Monte Carlo run per hero decision, and the leak report
+# re-reviewed every hand on every request: ~13.4 s for 200 hands, on every History
+# mount. A stored hand is immutable, so the only thing that can change its verdict is
+# a change to this package -- hence the version stamp in the key. Bounded so a long
+# session cannot grow it without limit.
+_REVIEW_CACHE: dict[tuple, dict] = {}
+_CACHE_MAX = 5000
+# Bump when anything that changes a leak verdict changes (thresholds, price model,
+# ranges). Forgetting to bump serves stale verdicts; bumping needlessly only costs
+# one recomputation.
+_REVIEW_VERSION = 2
+
+
+def _cache_key(data: dict, equity_trials: int) -> tuple | None:
+    sid, idx = data.get("session_id"), data.get("hand_index")
+    if sid is None or idx is None:
+        return None
+    return (_REVIEW_VERSION, sid, idx, equity_trials)
+
+
+def review_hand_cached(data: dict, equity_trials: int = 1200) -> dict:
+    """``review_hand`` memoised on (session, hand index, trials, review version)."""
+    key = _cache_key(data, equity_trials)
+    if key is None:
+        return review_hand(data, equity_trials=equity_trials)
+    hit = _REVIEW_CACHE.get(key)
+    if hit is not None:
+        return hit
+    result = review_hand(data, equity_trials=equity_trials)
+    if len(_REVIEW_CACHE) >= _CACHE_MAX:
+        _REVIEW_CACHE.clear()
+    _REVIEW_CACHE[key] = result
+    return result
+
+
 def leak_summary(records_data: list[dict], equity_trials: int = 1200) -> dict:
     """Aggregate leaks across many hands into an honest report."""
     by_type: dict[str, dict] = {}
@@ -377,7 +412,7 @@ def leak_summary(records_data: list[dict], equity_trials: int = 1200) -> dict:
         if not isinstance(data, dict) or "actions" not in data:
             continue
         hands_reviewed += 1
-        review = review_hand(data, equity_trials=equity_trials)
+        review = review_hand_cached(data, equity_trials=equity_trials)
         for leak in review["leaks"]:
             entry = by_type.setdefault(leak["type"], {"type": leak["type"], "count": 0})
             entry["count"] += 1

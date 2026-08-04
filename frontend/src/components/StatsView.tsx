@@ -33,13 +33,24 @@ function inBand(v: number | null, b?: [number, number]): boolean | null {
   return v >= b[0] && v <= b[1]
 }
 
+// Gate 3 is stated over 2,000+ hands. Lifetime-only made that window impossible to
+// isolate — early learning hands drag the average forever.
+const WINDOWS: Array<{ label: string; last?: number }> = [
+  { label: 'Lifetime' },
+  { label: 'Last 500', last: 500 },
+  { label: 'Last 2000', last: 2000 },
+  { label: 'Last 5000', last: 5000 },
+]
+
 export function StatsView() {
   const [stats, setStats] = useState<MyStats | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [win, setWin] = useState(0)
 
   useEffect(() => {
-    api.myStats().then(setStats).catch((e) => setErr((e as Error).message))
-  }, [])
+    setStats(null)
+    api.myStats(undefined, WINDOWS[win].last).then(setStats).catch((e) => setErr((e as Error).message))
+  }, [win])
 
   if (err) return <div className="text-loss">{err}</div>
   if (!stats) return <div className="text-muted">loading your stats…</div>
@@ -54,7 +65,20 @@ export function StatsView() {
   return (
     <div className="mx-auto max-w-4xl pb-10">
       {/* editorial headline */}
-      <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-faint">Your profile</div>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-faint">Your profile</div>
+        <div className="flex overflow-hidden rounded-lg border border-line text-[11px]">
+          {WINDOWS.map((w, i) => (
+            <button
+              key={w.label}
+              onClick={() => setWin(i)}
+              className={`px-2 py-1 ${win === i ? 'bg-accent/20 text-ink' : 'text-muted'}`}
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {o.hands === 0 ? (
         <h2 className="font-display text-3xl font-semibold -tracking-[0.02em] text-ink">
           No hands yet — play a session to build your profile.
@@ -76,6 +100,16 @@ export function StatsView() {
           {coreInBand}/5 core stats in a healthy range (STRATEGY §5)
         </span>
       </div>
+
+      {stats.decision_time && stats.decision_time.n > 0 && (
+        <div className="mt-4 flex items-baseline gap-2 text-sm">
+          <span className="text-muted">Median decision time</span>
+          <span className="tabular-nums text-ink">{stats.decision_time.median_s}s</span>
+          <span className="text-[11px] text-faint">
+            over {stats.decision_time.n} decisions · wall clock, so it counts interruptions too
+          </span>
+        </div>
+      )}
 
       {o.hands < 100 && (
         <div className="mt-5 rounded-lg border border-line bg-bg2/50 px-4 py-2 text-sm text-muted">

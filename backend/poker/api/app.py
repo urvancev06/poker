@@ -26,12 +26,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from poker import __version__
-from poker.coach import build_coaching, leak_summary, review_hand
+from poker.coach import build_coaching, leak_summary, review_hand_cached
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
 from poker.learn import train as train_cfr
-from poker.sim.hero_stats import hero_report
+from poker.sim.hero_stats import decision_seconds, hero_report
 from poker.sim.lab import archetypes_info, run_lab
 
 from .schemas import ActionRequest, CfrRequest, CreateSessionRequest, LabSimulateRequest
@@ -139,7 +139,7 @@ def create_app(db_url: str | None = None) -> FastAPI:
         if atype is None:
             raise HTTPException(status_code=400, detail=f"unknown action type: {req.type}")
         try:
-            gs.submit_hero_action(Action(atype, req.to_amount))
+            gs.submit_hero_action(Action(atype, req.to_amount), decision_ms=req.decision_ms)
         except IllegalAction as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _persist_if_finished(gs, db)
@@ -168,16 +168,32 @@ def create_app(db_url: str | None = None) -> FastAPI:
         return {str(p): r for p, r in gs.reads().items()}
 
     @app.get("/stats/me")
-    def my_stats(session_id: str | None = None, db: Session = Depends(get_db)) -> dict:
-        """The hero's stats over time vs target bands (STRATEGY.md §5)."""
-        records = list_hands(db, session_id=session_id, limit=100_000)
+    def my_stats(
+        session_id: str | None = None,
+        last: int | None = None,
+        db: Session = Depends(get_db),
+    ) -> dict:
+        """The hero's stats over time vs target bands (STRATEGY.md §5).
+
+        ``last`` restricts to the N most recent hands. Without it the report is
+        lifetime, which is what the dashboard used to be unconditionally — so early
+        learning hands dragged the average forever and the 2,000-hand window the
+        study gate names could not be isolated.
+        """
+        limit = last if last and last > 0 else 100_000
+        records = list_hands(db, session_id=session_id, limit=limit)
         # list_hands is newest-first; reverse to chronological for the trend.
         summaries = [
             r.data["hero_summary"]
             for r in reversed(records)
             if isinstance(r.data, dict) and "hero_summary" in r.data
         ]
-        return hero_report(summaries)
+        report = hero_report(summaries)
+        report["window"] = {"last": last, "session_id": session_id, "hands": len(summaries)}
+        report["decision_time"] = decision_seconds(
+            [r.data for r in reversed(records) if isinstance(r.data, dict)]
+        )
+        return report
 
     @app.get("/hands")
     def hands(session_id: str | None = None, limit: int = 50, db: Session = Depends(get_db)) -> list[dict]:
@@ -196,11 +212,18 @@ def create_app(db_url: str | None = None) -> FastAPI:
         record = get_hand(db, hand_id)
         if record is None:
             raise HTTPException(status_code=404, detail="hand not found")
-        return review_hand(record.data)
+        return review_hand_cached(record.data, equity_trials=1800)
 
     @app.get("/stats/leaks")
-    def leaks(session_id: str | None = None, limit: int = 200, db: Session = Depends(get_db)) -> dict:
-        """An honest, computed leak report aggregated over recent hands."""
+    def leaks(session_id: str | None = None, limit: int = 1000, db: Session = Depends(get_db)) -> dict:
+        """An honest, computed leak report aggregated over recent hands.
+
+        Default raised from 200 to 1,000 and no longer scoped to a session by the
+        client: the study gates count flags over 500 hands, and a browser refresh
+        mints a new session, so the old default could not express the window the
+        gates are stated in. Results are cached per hand (see coach.review), so a
+        larger window costs little after the first pass.
+        """
         records = list_hands(db, session_id=session_id, limit=limit)
         return leak_summary([r.data for r in records])
 
