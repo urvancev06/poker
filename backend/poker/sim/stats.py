@@ -67,9 +67,9 @@ class StatsAccumulator:
             c["steal_opp"] += s.steal_opp
             c["folded_to_steal"] += s.folded_to_steal
             c["faced_steal"] += s.faced_steal
-            c["pf_bets"] += s.pf_bets
-            c["pf_raises"] += s.pf_raises
-            c["pf_calls"] += s.pf_calls
+            c["postflop_bets"] += s.postflop_bets
+            c["postflop_raises"] += s.postflop_raises
+            c["postflop_calls"] += s.postflop_calls
             c["saw_flop"] += s.saw_flop
             c["wtsd"] += s.wtsd
             c["won_at_showdown"] += s.won_at_showdown
@@ -82,8 +82,8 @@ class StatsAccumulator:
         bb = self._bb if big_blind is None else big_blind
         c = self._c[archetype]
         hands = c["hands"]
-        af_den = c["pf_calls"]
-        af = (c["pf_bets"] + c["pf_raises"]) / af_den if af_den else float("inf")
+        af_den = c["postflop_calls"]
+        af = (c["postflop_bets"] + c["postflop_raises"]) / af_den if af_den else float("inf")
         net_bb_per_100 = (
             100.0 * (c["net"] / bb) / hands if hands else 0.0
         )

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import type { ActionType, LegalActions } from '../api'
 
 const QUICK: Array<[string, number]> = [
+  // ⅓ is the first c-bet size the Study framework teaches and was the one size with
+  // no button, so it could not be practised at the speed the others could.
+  ['⅓', 1 / 3],
   ['½', 0.5],
   ['¾', 0.75],
   ['pot', 1],

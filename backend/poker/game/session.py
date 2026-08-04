@@ -79,7 +79,10 @@ class GameSession:
         self.archetype_of = ["hero"] + [self._bots[p].name for p in range(1, self.n)]
         self._rng = random.Random(self.seed)
         self._hand: Hand | None = None
-        self._button = self.n - 1  # so hero (player 0) is SB on hand 0
+        # Dead initialiser: start_hand() immediately overwrites this with
+        # `hand_index % n`, which puts the hero on the BUTTON for hand 0, not the SB
+        # as the old comment claimed (audit F-33).
+        self._button = self.n - 1
         self._seat_to_player: list[int] = []
         self._player_to_seat: dict[int, int] = {}
         self._last_result: dict | None = None

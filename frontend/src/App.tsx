@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type ActionType, type Coaching, type Reads, type SessionState } from './api'
+import { usePrefs, type VisibilityMode } from './prefs'
 import { CoachPanel, CoachStrip } from './components/CoachPanel'
 import { Table } from './components/Table'
 import { MobileTable } from './components/MobileTable'
@@ -10,7 +11,6 @@ import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
 import { ActionLog, actionText } from './components/ActionLog'
 import { PreferencesView } from './components/PreferencesView'
-import type { VisibilityMode } from './components/Seat'
 
 // Pause between bot actions when watching a hand unfold (ms).
 const STEP_MS = 650
@@ -29,7 +29,8 @@ export default function App() {
   const [coachLoading, setCoachLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<VisibilityMode>('labeled')
+  // Persisted in prefs so the Labeled -> HUD -> Live progression sticks across reloads.
+  const { visibility: mode, setVisibility: setMode } = usePrefs()
   const [view, setView] = useState<View>('table')
   const [study, setStudy] = useState(false)
   const [showLog, setShowLog] = useState(false)

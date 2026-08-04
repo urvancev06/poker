@@ -40,9 +40,12 @@ class PlayerHandSummary:
     cbet_flop: bool = False
     cbet_opp: bool = False
     # postflop aggression counts (for AF)
-    pf_bets: int = 0
-    pf_raises: int = 0
-    pf_calls: int = 0
+    # These count POSTFLOP actions (they feed AF). They were named pf_*, which reads
+    # as preflop and is the opposite of what they measure (audit F-30). Old persisted
+    # rows still carry the pf_* keys; hero_stats._aggregate maps them on load.
+    postflop_bets: int = 0
+    postflop_raises: int = 0
+    postflop_calls: int = 0
     net: int = 0
 
 
@@ -108,11 +111,11 @@ def play_hand(
                 folded_street.setdefault(player, "preflop")
         else:  # postflop
             if a is ActionType.BET:
-                s.pf_bets += 1
+                s.postflop_bets += 1
             elif a is ActionType.RAISE:
-                s.pf_raises += 1
+                s.postflop_raises += 1
             elif a is ActionType.CALL:
-                s.pf_calls += 1
+                s.postflop_calls += 1
             elif a is ActionType.FOLD:
                 folded_street.setdefault(player, ctx.street)
             # A c-bet *opportunity* is the PFR facing an unbet flop (first to act

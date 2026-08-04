@@ -39,6 +39,7 @@ def line_to_dict(line: StatLine) -> dict:
         "pfr": _r(line.pfr),
         "threebet": _r(line.threebet),
         "ats": _r(line.ats),
+        "fold_to_steal": _r(line.fold_to_steal),
         "af": af,
         "wtsd": _r(line.wtsd),
         "wsd": _r(line.wsd),
@@ -48,10 +49,15 @@ def line_to_dict(line: StatLine) -> dict:
     }
 
 
+# Hands persisted before the pf_* -> postflop_* rename still carry the old keys.
+_LEGACY_KEYS = {"pf_bets": "postflop_bets", "pf_raises": "postflop_raises", "pf_calls": "postflop_calls"}
+
+
 def _aggregate(summary_dicts: list[dict], big_blind: int = 2) -> StatLine:
     acc = StatsAccumulator(big_blind=big_blind)
     for d in summary_dicts:
-        clean = {**d, "archetype": "me"}
+        clean = {_LEGACY_KEYS.get(k, k): v for k, v in d.items()}
+        clean["archetype"] = "me"
         acc.add_hand([PlayerHandSummary(**clean)])
     return acc.line("me")
 

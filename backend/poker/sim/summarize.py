@@ -73,11 +73,11 @@ def summarize_hand(hand: Hand, seat_to_player: list[int], n: int) -> list[Player
                 folded_street.setdefault(player_at[e.seat], "preflop")
         else:  # postflop
             if e.action == "bet":
-                s.pf_bets += 1
+                s.postflop_bets += 1
             elif e.action == "raise":
-                s.pf_raises += 1
+                s.postflop_raises += 1
             elif e.action == "call":
-                s.pf_calls += 1
+                s.postflop_calls += 1
             elif e.action == "fold":
                 folded_street.setdefault(player_at[e.seat], e.street)
             # C-bet opportunity = the PFR faces an unbet flop (first to act or

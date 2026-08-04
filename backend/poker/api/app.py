@@ -8,8 +8,12 @@ Endpoints:
     POST /session/{id}/advance         step one bot action (watch-the-hand pacing)
     POST /session/{id}/next-hand       deal the next hand
     GET  /session/{id}/coach           computed coaching for the hero's current spot
+    GET  /session/{id}/reads           per-bot HUD reads (past the sample threshold)
+    GET  /stats/me                     hero stats vs target bands (?last=N to window it)
+    GET  /stats/leaks                  computed leak report over recent hands
     GET  /hands                        list persisted hands
     GET  /hands/{id}                   one persisted hand (full data for replay)
+    GET  /hands/{id}/review            street-by-street replay + coaching + leaks
     GET  /lab/archetypes               bot-lab metadata (target bands + tunable knobs)
     POST /lab/simulate                 run a capped sim; emergent stats vs targets
     POST /lab/cfr                      train CFR on Kuhn poker (learning module)
@@ -46,6 +50,27 @@ _ACTION_TYPES = {
 }
 
 
+def _warn_if_multi_worker() -> None:
+    """Sessions are per-process state; more than one worker breaks them silently."""
+    import os
+    import warnings
+
+    for var in ("WEB_CONCURRENCY", "UVICORN_WORKERS"):
+        raw = os.environ.get(var)
+        if raw and raw.strip().isdigit() and int(raw) > 1:
+            raise RuntimeError(
+                f"{var}={raw}: this app keeps game sessions in process memory and must "
+                "run with exactly one worker. Start it with --workers 1."
+            )
+    if os.environ.get("POKER_ALLOW_MULTI_WORKER"):
+        warnings.warn(
+            "POKER_ALLOW_MULTI_WORKER is set — sessions will not be shared between "
+            "workers and requests will intermittently 404.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+
 def create_app(db_url: str | None = None) -> FastAPI:
     engine = make_engine(db_url) if db_url else make_engine()
     init_db(engine)
@@ -59,6 +84,12 @@ def create_app(db_url: str | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Sessions live in this process's memory, so a second worker cannot see them:
+    # requests land on whichever worker the OS picks and half of them 404 for a
+    # session that demonstrably exists. That reads as a network fault, not a config
+    # error, so fail loudly at startup instead (audit F-31).
+    _warn_if_multi_worker()
+
     app.state.sessions: dict[str, GameSession] = {}
     app.state.saved: dict[str, set[int]] = {}
 
@@ -104,16 +135,23 @@ def create_app(db_url: str | None = None) -> FastAPI:
     @app.post("/session")
     def create_session(req: CreateSessionRequest, db: Session = Depends(get_db)) -> dict:
         sid = uuid4().hex[:12]
-        gs = GameSession(
-            session_id=sid,
-            villains=req.villains,
-            blinds=(req.small_blind, req.big_blind),
-            buy_in=req.buy_in,
-            seed=req.seed,
-            auto_advance=req.auto_advance,
-        )
+        # Build AND deal before registering. Bad input used to surface as a 500 (the
+        # ValueError escaped uncaught, while /lab/simulate returned 400 for the very
+        # same error), and a failed deal left a registered session that 500'd on every
+        # later read and was never evicted (audit F-25, F-26).
+        try:
+            gs = GameSession(
+                session_id=sid,
+                villains=req.villains,
+                blinds=(req.small_blind, req.big_blind),
+                buy_in=req.buy_in,
+                seed=req.seed,
+                auto_advance=req.auto_advance,
+            )
+            gs.start_hand()
+        except (ValueError, AssertionError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         app.state.sessions[sid] = gs
-        gs.start_hand()
         _persist_if_finished(gs, db)
         return session_to_dict(gs)
 

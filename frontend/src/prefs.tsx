@@ -190,28 +190,50 @@ function save(key: string, value: string) {
   }
 }
 
+// Opponent visibility. Display-only — it never reaches the backend and never touches
+// bot behaviour or coach maths. It lives here so the intended
+// Labeled -> HUD -> Live progression can actually be committed to: it used to be
+// component state that reset to Labeled (the most training wheels) on every reload,
+// and it was absent from Preferences despite PROJECT.md §7 specifying it there.
+export type VisibilityMode = 'labeled' | 'hud' | 'live'
+const VISIBILITY_MODES: VisibilityMode[] = ['labeled', 'hud', 'live']
+
 interface PrefsValue {
   deckId: string
   deck: DeckDef
   setDeckId: (id: string) => void
+  visibility: VisibilityMode
+  setVisibility: (m: VisibilityMode) => void
 }
 
 const PrefsContext = createContext<PrefsValue>({
   deckId: 'offsuit',
   deck: DECKS[0],
   setDeckId: () => {},
+  visibility: 'labeled',
+  setVisibility: () => {},
 })
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [deckId, setDeckId] = useState(() => load('poker-deck', 'offsuit'))
+  const [visibility, setVisibility] = useState<VisibilityMode>(() => {
+    const v = load('poker-visibility', 'labeled') as VisibilityMode
+    return VISIBILITY_MODES.includes(v) ? v : 'labeled'
+  })
 
   useEffect(() => {
     save('poker-deck', deckId)
   }, [deckId])
 
+  useEffect(() => {
+    save('poker-visibility', visibility)
+  }, [visibility])
+
   const deck = DECKS.find((d) => d.id === deckId) ?? DECKS[0]
   return (
-    <PrefsContext.Provider value={{ deckId, deck, setDeckId }}>{children}</PrefsContext.Provider>
+    <PrefsContext.Provider value={{ deckId, deck, setDeckId, visibility, setVisibility }}>
+      {children}
+    </PrefsContext.Provider>
   )
 }
 

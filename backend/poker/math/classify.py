@@ -85,8 +85,12 @@ def _has_straight(vals: set[int]) -> bool:
 
 
 def _straight_outs(vals: set[int]) -> int:
-    """Number of distinct ranks that would complete a straight (0, 4=gutshot, or
-    8=open-ended/double-gutter)."""
+    """Number of distinct RANKS that would complete a straight.
+
+    A rank count, not a card count: an open-ended draw returns 2 and a gutshot
+    returns 1, which is what `classify` compares against. The docstring used to say
+    "0, 4=gutshot, 8=open-ended" — card counts, describing a different function than
+    the one implemented (audit F-12)."""
     out_ranks: set[int] = set()
     for v in range(1, 15):
         if v in vals:

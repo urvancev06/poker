@@ -101,11 +101,21 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
                   </span>
                   <span className="text-sm text-muted">{coaching.hand_label}</span>
                 </div>
+                {coaching.draws.length > 0 && (
+                  // The app computed the hero's draws and never named them, though the
+                  // Study screen's outs table is built on exactly this vocabulary.
+                  <div className="mt-0.5 text-[11px] text-accent/80">
+                    {coaching.draws.join(' + ')}
+                  </div>
+                )}
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="font-mono text-[40px] font-light leading-none text-accent tabular-nums">
                     {headline}
                   </span>
                   <span className="font-mono text-lg font-light text-faint">%</span>
+                </div>
+                <div className="mt-1 text-[11px] text-faint tabular-nums">
+                  win {coaching.win_pct}% · tie {coaching.tie_pct}% · lose {coaching.lose_pct}%
                 </div>
                 <EquityBar
                   equity={headline}

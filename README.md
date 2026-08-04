@@ -77,19 +77,19 @@ npm run build    # type-check + production build
 
 ## Cards & assets
 
-The card faces are **Byron Knoll's Vector-Playing-Cards**
-([notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards)),
-released into the **public domain** (optionally WTFPL). They're bundled locally
-in `frontend/public/cards/` (not hot-linked) as `{RANK}{SUIT}.svg` — rank `2`–`9`,
-`10`, `J`/`Q`/`K`/`A`; suit `C`/`D`/`H`/`S` (e.g. `10D.svg`, `AH.svg`). `back.svg`
-is a custom Felt & Brass card back.
+Cards are drawn as **inline SVG** in `frontend/src/components/Card.tsx`, with the
+face layouts, pips and backs defined in `frontend/src/prefs.tsx` (five selectable
+decks). Nothing is fetched at runtime, so there are no card image assets and no
+per-card network requests.
 
-The raw deck is heavy (court cards 400–665 KB). It was run through **SVGO**
-(`floatPrecision: 1`, multipass — visually lossless at card display size),
-cutting it ~60% to ~3.2 MB total (court cards ~250–460 KB). This knowingly
-exceeds the ~80 KB/card guideline in PROJECT.md §4 — the deliberate "good but
-heavy" Byron Knoll tradeoff. Cards are lazy-loaded so only the ~10 on screen
-load. To re-optimise, run SVGO with `frontend/svgo.cards.config.mjs`.
+*Previously* the app bundled Byron Knoll's Vector-Playing-Cards
+([notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards),
+public domain / WTFPL) in `frontend/public/cards/` as `{RANK}{SUIT}.svg`. That deck
+was replaced by the inline renderer and became unreferenced — 3.2 MB of tracked,
+unused assets — and has now been removed along with its SVGO config. Recover it from
+git history or the upstream repo if the inline deck is ever abandoned.
+
+The only assets still shipped from `public/` are the logo (`brand/`) and the favicon.
 
 ## Status
 

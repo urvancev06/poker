@@ -1,7 +1,9 @@
 import type { BotRead, Seat as SeatData } from '../api'
 import { Card, DealtCard } from './Card'
 
-export type VisibilityMode = 'labeled' | 'hud' | 'live'
+// Single definition lives in prefs.tsx (it is persisted there).
+import type { VisibilityMode } from '../prefs'
+export type { VisibilityMode }
 
 const ARCH_LABEL: Record<string, string> = {
   Nit: 'Nit',
