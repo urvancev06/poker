@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Integer, String
+from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -22,9 +22,13 @@ class Base(DeclarativeBase):
 
 class HandRecord(Base):
     __tablename__ = "hands"
+    # A hand index is unique within a session. Duplicate protection used to be an
+    # in-memory set that died with the process, so a restart could re-persist a hand
+    # (audit F-29). The database is the right place for an invariant this simple.
+    __table_args__ = (UniqueConstraint("session_id", "hand_index", name="uq_hand_per_session"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     session_id: Mapped[str] = mapped_column(String(64), index=True)
     hand_index: Mapped[int] = mapped_column(Integer)

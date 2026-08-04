@@ -188,8 +188,24 @@ def create_app(db_url: str | None = None) -> FastAPI:
             for r in reversed(records)
             if isinstance(r.data, dict) and "hero_summary" in r.data
         ]
-        report = hero_report(summaries)
-        report["window"] = {"last": last, "session_id": session_id, "hands": len(summaries)}
+        # bb/100 is only meaningful at one blind level. Mixing 1/2 and 5/10 hands into
+        # a single figure is nonsense, so use the most recent level and say how many
+        # hands actually match it.
+        blinds = [
+            tuple(r.data.get("blinds", (1, 2)))
+            for r in reversed(records)
+            if isinstance(r.data, dict)
+        ]
+        big_blind = int(blinds[-1][1]) if blinds else 2
+        matching = sum(1 for b in blinds if int(b[1]) == big_blind)
+        report = hero_report(summaries, big_blind=big_blind)
+        report["window"] = {
+            "last": last,
+            "session_id": session_id,
+            "hands": len(summaries),
+            "big_blind": big_blind,
+            "hands_at_this_blind": matching,
+        }
         report["decision_time"] = decision_seconds(
             [r.data for r in reversed(records) if isinstance(r.data, dict)]
         )

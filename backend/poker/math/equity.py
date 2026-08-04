@@ -88,6 +88,7 @@ def equity(
     wins = ties = 0
     share_sum = 0.0
     completed = 0
+    attempts = 0
 
     while completed < trials:
         used = set(hero) | set(board)
@@ -102,9 +103,14 @@ def equity(
             used.add(pick[1])
             holdings.append([_INT[pick[0]], _INT[pick[1]]])
         if not ok:
-            # Degenerate (range fully blocked); count the trial as a wash to avoid
-            # an infinite loop, but this essentially never happens in practice.
-            completed += 1
+            # Degenerate: the opponent's range is fully blocked by the hero's cards
+            # and the board. Drop the trial from the denominator rather than counting
+            # it -- it used to increment `completed` without touching wins/ties, so it
+            # landed in `lose` and biased equity DOWN, contradicting the comment that
+            # called it a wash (audit F-08). `attempts` bounds the loop.
+            attempts += 1
+            if attempts > trials * 4:
+                break
             continue
 
         if need:
@@ -129,10 +135,13 @@ def equity(
             share_sum += 1.0 / sharers
         completed += 1
 
+    # Denominator is the trials that actually produced a showdown, so a blocked
+    # range shrinks the sample instead of silently scoring as a loss.
+    n = completed or 1
     return EquityResult(
-        win=wins / trials,
-        tie=ties / trials,
-        lose=(trials - wins - ties) / trials,
-        equity=share_sum / trials,
-        trials=trials,
+        win=wins / n,
+        tie=ties / n,
+        lose=(n - wins - ties) / n,
+        equity=share_sum / n,
+        trials=completed,
     )

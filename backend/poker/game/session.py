@@ -24,6 +24,34 @@ HERO = 0
 HUD_MIN_HANDS = 30
 
 
+def _pot_from_actions(actions: list[dict], blinds: tuple[int, int], n: int) -> int:
+    """Total pot, reconstructed from the action log.
+
+    The snapshot's ``total_pot`` is always 0 by the time a hand is over: PokerKit's
+    CHIPS_PUSHING automation runs inside ``apply``, so the pot is distributed before
+    we can read it, and every stored hand recorded pot=0 (audit F-22). Rebuilding
+    from the log is the same accounting coach/review.py does when it replays a hand.
+    """
+    sb, bb = blinds
+    committed = [0] * n
+    committed[0], committed[1] = sb, bb  # PokerKit seats 0=SB, 1=BB
+    pot = sb + bb
+    street = "preflop"
+    street_max = bb
+    for a in actions:
+        if a["street"] != street:
+            street, committed, street_max = a["street"], [0] * n, 0
+        seat, act, to = a["seat"], a["action"], a["to_amount"]
+        if act in ("bet", "raise") and to is not None:
+            pot += to - committed[seat]
+            committed[seat] = to
+            street_max = max(street_max, to)
+        elif act == "call":
+            pot += street_max - committed[seat]
+            committed[seat] = street_max
+    return pot
+
+
 @dataclass
 class GameSession:
     session_id: str
@@ -191,6 +219,19 @@ class GameSession:
             }
             for e in snap.history
         ]
+        # Villain cards at showdown. They were revealed live and then discarded, so a
+        # hand review could never show what the opponent actually held -- the most
+        # instructive thing available after a hand (audit F-24). Only non-folded seats,
+        # and only at a showdown: this must not leak cards that were never shown.
+        shown = (
+            {
+                str(s): "".join(self._dealt_holes[s])
+                for s in live
+                if self._dealt_holes[s]
+            }
+            if showdown
+            else {}
+        )
         result = {
             "session_id": self.session_id,
             "hand_index": self.hand_index,
@@ -201,12 +242,13 @@ class GameSession:
             "start_stacks": getattr(self, "_start_stacks", [self.buy_in] * self.n),
             "hero_cards": "".join(self._hero_hole),
             "board": " ".join(snap.board),
-            "pot": snap.total_pot,
+            "pot": _pot_from_actions(actions, self.blinds, self.n),
             "hero_net": results[hero_seat],
             "went_to_showdown": showdown and hero_seat in live,
             "results_by_player": {self._seat_to_player[s]: results[s] for s in range(self.n)},
             "actions": actions,
             "lineup": self.archetype_of,
+            "shown_cards": shown,
             # Raw wall-clock per hero decision this hand (ms). Includes thinking time,
             # tab switches and interruptions -- summarised only as a median.
             "hero_decision_ms": list(self._decision_ms),

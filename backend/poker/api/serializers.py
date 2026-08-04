@@ -64,6 +64,12 @@ def state_to_dict(state: GameState) -> dict:
         "street": state.street,
         "board": state.board,
         "pot": state.total_pot,
+        # Side pots were computed by the engine and dropped here, so a multi-way
+        # all-in showed only a single total (audit F-28).
+        "pots": [
+            {"amount": p.amount, "eligible_seats": list(p.eligible_seats)}
+            for p in state.pots
+        ],
         "actor": state.actor,
         "is_over": state.is_over,
         "seats": [seat_to_dict(s, state.board) for s in state.seats],

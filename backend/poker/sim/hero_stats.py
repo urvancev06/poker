@@ -48,8 +48,8 @@ def line_to_dict(line: StatLine) -> dict:
     }
 
 
-def _aggregate(summary_dicts: list[dict]) -> StatLine:
-    acc = StatsAccumulator()
+def _aggregate(summary_dicts: list[dict], big_blind: int = 2) -> StatLine:
+    acc = StatsAccumulator(big_blind=big_blind)
     for d in summary_dicts:
         clean = {**d, "archetype": "me"}
         acc.add_hand([PlayerHandSummary(**clean)])
@@ -71,14 +71,18 @@ def decision_seconds(records: list[dict]) -> dict:
     return {"median_s": round(med / 1000.0, 1), "n": len(ms)}
 
 
-def hero_report(summary_dicts: list[dict], buckets: int = 8) -> dict:
-    """Overall hero stats + a coarse trend (chronological order assumed)."""
-    overall = line_to_dict(_aggregate(summary_dicts))
+def hero_report(summary_dicts: list[dict], buckets: int = 8, big_blind: int = 2) -> dict:
+    """Overall hero stats + a coarse trend (chronological order assumed).
+
+    ``big_blind`` must be the session's real big blind: bb/100 divides net chips by
+    it, and this used to be hardcoded at the StatsAccumulator default of 2, so a 5/10
+    session over-reported by 5x (audit F-23)."""
+    overall = line_to_dict(_aggregate(summary_dicts, big_blind))
     trend: list[dict] = []
     n = len(summary_dicts)
     if n >= buckets * 5:  # only show a trend once there's enough sample
         size = n // buckets
         for i in range(buckets):
             chunk = summary_dicts[i * size : (i + 1) * size if i < buckets - 1 else n]
-            trend.append(line_to_dict(_aggregate(chunk)))
+            trend.append(line_to_dict(_aggregate(chunk, big_blind)))
     return {"overall": overall, "trend": trend, "targets": HERO_TARGETS}

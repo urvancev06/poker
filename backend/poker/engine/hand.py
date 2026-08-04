@@ -273,6 +273,15 @@ class Hand:
 
     # ---- snapshot ---------------------------------------------------------
 
+    @property
+    def total_pot(self) -> int:
+        """Collected pots plus chips in front, right now.
+
+        Cheap accessor (no snapshot). Needed because reading the pot from a snapshot
+        taken after the hand ends always returns 0 — PokerKit's CHIPS_PUSHING
+        automation has already emptied it (audit F-22)."""
+        return int(self._state.total_pot_amount)
+
     def _pots(self) -> list[PotState]:
         return [
             PotState(amount=p.amount, eligible_seats=list(p.player_indices))
