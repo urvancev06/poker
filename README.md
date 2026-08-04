@@ -101,7 +101,7 @@ The whole **backend brain is built and tested** (73 pytest tests passing):
 - **Phase 2** — `poker.math`: Monte Carlo equity, pot odds/EV, hand classifier,
   range parser.
 - **Phase 3** — `poker.bots` + `poker.sim`: five archetypes, simulation harness,
-  stats, tuning report. **The ≥100k-hand stat gate PASSES** (VPIP/PFR/AF in band
+  stats, tuning report. **The ≥100k-hand stat gate PASSES** (VPIP/PFR/AF/WTSD in band
   for every archetype). Run it: `.venv/bin/python scripts/simulate.py --hands 100000`.
 - **Phase 4** — `poker.api` + `poker.coach` + `poker.db`: FastAPI session/play/
   coaching endpoints and SQLite hand-history persistence.

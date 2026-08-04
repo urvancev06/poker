@@ -32,12 +32,15 @@ GATE_STATS = ("vpip", "pfr", "af", "wtsd")
 
 @dataclass
 class CellCheck:
-    value: float
+    value: float | None
     band: tuple[float, float] | None
     ok: bool
 
 
-def _check(value: float, band: tuple[float, float] | None) -> CellCheck:
+def _check(value: float | None, band: tuple[float, float] | None) -> CellCheck:
+    if value is None:
+        # No sample: cannot be shown to be in band, so it is not a pass.
+        return CellCheck(None, band, False)
     if band is None:
         return CellCheck(value, None, True)
     return CellCheck(value, band, band[0] <= value <= band[1])
@@ -60,8 +63,18 @@ def evaluate(acc: StatsAccumulator) -> dict[str, dict[str, CellCheck]]:
 
 
 def gate_passes(acc: StatsAccumulator) -> bool:
+    """Do the gated stats sit in band for every archetype ACTUALLY IN THE LINEUP?
+
+    This used to loop over all of TARGETS regardless of who played, so any partial
+    lineup — which is most Lab runs — reported a guaranteed red FAIL: the absent
+    archetypes had no hands, their stats read 0.0, and 0.0 is outside every band
+    (audit F-48). The offline gate passes the full five-archetype lineup, so its
+    behaviour is unchanged."""
     checks = evaluate(acc)
-    return all(checks[a][s].ok for a in TARGETS for s in GATE_STATS)
+    present = [a for a in TARGETS if acc.line(a).hands > 0]
+    if not present:
+        return False
+    return all(checks[a][s].ok for a in present for s in GATE_STATS)
 
 
 def format_report(acc: StatsAccumulator) -> str:
@@ -80,7 +93,7 @@ def format_report(acc: StatsAccumulator) -> str:
         for s in stats:
             c = checks[arch][s]
             mark = "✓" if c.ok else "✗"
-            val = "inf" if c.value == float("inf") else f"{c.value:.1f}"
+            val = "—" if c.value is None else "inf" if c.value == float("inf") else f"{c.value:.1f}"
             cells.append(f"{val:>6}{mark} ")
         row = f"{arch:16} " + "".join(f"{c:>12}" for c in cells)
         row += f"{line.hands:>9}{line.net_bb_per_100:>9.1f}"

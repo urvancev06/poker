@@ -25,21 +25,27 @@ from .table import PlayerHandSummary
 class StatLine:
     archetype: str
     hands: int
-    vpip: float
-    pfr: float
-    threebet: float
-    ats: float
-    fold_to_steal: float
+    vpip: float | None
+    pfr: float | None
+    threebet: float | None
+    ats: float | None
+    fold_to_steal: float | None
     af: float
-    wtsd: float
-    wsd: float
-    wwsf: float
-    cbet: float
+    wtsd: float | None
+    wsd: float | None
+    wwsf: float | None
+    cbet: float | None
     net_bb_per_100: float
 
 
-def _pct(num: int, den: int) -> float:
-    return 100.0 * num / den if den else 0.0
+def _pct(num: int, den: int) -> float | None:
+    """None when there is no sample at all.
+
+    This used to return 0.0 for an empty denominator, which is indistinguishable
+    from a genuine 0%: a Nit HUD at 30 hands had an ~11% chance of displaying
+    "WTSD 0.0" having seen zero flops, i.e. reporting a measurement it had never
+    made (audit F-52). Callers must render None as "no sample", never as a number."""
+    return 100.0 * num / den if den else None
 
 
 class StatsAccumulator:

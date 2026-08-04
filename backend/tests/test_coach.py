@@ -159,3 +159,28 @@ def test_draw_realizes_better_than_air():
     r_air = f(is_strong=False, is_pair=False, is_draw=False, **common)
     r_draw = f(is_strong=False, is_pair=False, is_draw=True, **common)
     assert r_draw > r_air
+
+
+def test_every_verdict_string_has_a_tone():
+    """The frontend colours the verdict from `tone`. If _suggest gains or reoords a
+    verdict string without updating VERDICT_TONE, an unmapped verdict would render
+    neutral instead of as a fold — this test is the guard (audit F-39)."""
+    import itertools
+
+    from poker.coach.coach import VERDICT_TONE, _suggest
+
+    seen = set()
+    for can_check, is_strong, is_draw, closed, ip in itertools.product(
+        (True, False), (True, False), (True, False), (True, False), (True, False)
+    ):
+        for eq in (0.05, 0.25, 0.5, 0.65, 0.75, 0.95):
+            for req in (0.1, 0.3, 0.5, 0.8):
+                v, _ = _suggest(
+                    can_check=can_check, tier_name="x", is_strong=is_strong, is_draw=is_draw,
+                    equity_frac=eq, realized=eq, required=req, in_position=ip,
+                    action_closed=closed, villain_desc="a TAG", players_behind=0,
+                )
+                seen.add(v)
+    unmapped = seen - set(VERDICT_TONE)
+    assert not unmapped, f"verdict strings with no tone: {sorted(unmapped)}"
+    assert len(seen) >= 8, f"expected the full verdict ladder, only saw {sorted(seen)}"

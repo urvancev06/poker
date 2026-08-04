@@ -111,6 +111,7 @@ export interface Coaching {
   villains: VillainModel[]
   verdict: string
   rationale: string
+  tone: 'good' | 'neutral' | 'close' | 'fold'
   basis: string[]
 }
 
@@ -139,21 +140,29 @@ export interface BotRead {
   hands: number
   min_hands: number
   ready: boolean
-  stats: { vpip: number; pfr: number; threebet: number; af: number | null; wtsd: number } | null
+  // Each may be null: "no sample yet" for that denominator, not zero.
+  stats: {
+    vpip: number | null
+    pfr: number | null
+    threebet: number | null
+    af: number | null
+    wtsd: number | null
+  } | null
 }
 export type Reads = Record<string, BotRead>
 
 export interface HeroStatLine {
   hands: number
-  vpip: number
-  pfr: number
-  threebet: number
-  ats: number
+  // null means "no sample" (empty denominator), NOT zero. Render it as "—".
+  vpip: number | null
+  pfr: number | null
+  threebet: number | null
+  ats: number | null
   af: number | null
-  wtsd: number
-  wsd: number
-  wwsf: number
-  cbet: number
+  wtsd: number | null
+  wsd: number | null
+  wwsf: number | null
+  cbet: number | null
   net_bb_per_100: number
 }
 export interface DecisionTime {

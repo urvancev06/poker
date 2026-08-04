@@ -2,14 +2,65 @@
 // ranges are a solid 100bb 6-max baseline, NOT solver truth — exact frequencies
 // and mixing always defer to GTO Wizard (mirrors the project's honesty rules).
 
-const RFI: Array<[string, string, string]> = [
-  ['UTG', '~15%', '22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo'],
-  ['MP / HJ', '~19%', '22+, A9s+, A5s–A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+'],
-  ['CO', '~27%', '22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, A9o+, KTo+, QTo+, JTo'],
-  ['BTN', '~45%', '22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 86s+, 75s+, 65s, 54s, A2o+, K9o+, Q9o+, J9o+, T9o, 98o'],
-  ['SB', '~38% (3bb)', '22+, A2s+, K5s+, Q7s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, A2o+, K9o+, QTo+, JTo'],
-  ['BB', 'defense', 'No RFI — defend vs opens: wide vs BTN/CO/SB, tighter vs UTG/MP; mix flats with a polarized 3-bet.'],
+// The percentage labels that used to sit here (~15%, ~19%, ...) are gone on purpose.
+// They overstated their own lists by 1.3-4.4 points, and — worse — they were the copy
+// that got wired into the bots and the leak detector as executable inputs while the
+// hand lists, which are correct, were never used (audit F-01, F-03). The width column
+// is now COMPUTED from the list at render time, so it cannot drift from it again.
+const RFI: Array<[string, string]> = [
+  ['UTG', '22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo'],
+  ['MP / HJ', '22+, A9s+, A5s–A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+'],
+  ['CO', '22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, A9o+, KTo+, QTo+, JTo'],
+  ['BTN', '22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 86s+, 75s+, 65s, 54s, A2o+, K9o+, Q9o+, J9o+, T9o, 98o'],
+  ['SB', '22+, A2s+, K5s+, Q7s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, A2o+, K9o+, QTo+, JTo'],
+  ['BB', 'No RFI — defend vs opens: wide vs BTN/CO/SB, tighter vs UTG/MP; mix flats with a polarized 3-bet.'],
 ]
+
+/** Combos a range token expands to, so the width beside each row is derived from the
+ *  list rather than asserted next to it. Mirrors backend poker/math/ranges.py. */
+function rangeCombos(text: string): number {
+  const R = '23456789TJQKA'
+  const idx = (c: string) => R.indexOf(c.toUpperCase())
+  const expand = (hi: number, lo: number, suited: boolean | null) =>
+    hi === lo ? 6 : suited === null ? 16 : suited ? 4 : 12
+  const endpoint = (core: string): [number, number, boolean | null] => {
+    let c = core.trim().toUpperCase()
+    let suited: boolean | null = null
+    if (c.endsWith('S') || c.endsWith('O')) {
+      suited = c.endsWith('S')
+      c = c.slice(0, -1)
+    }
+    const a = idx(c[0]), b = idx(c[1])
+    return [Math.max(a, b), Math.min(a, b), suited]
+  }
+  let total = 0
+  for (const raw of text.split(',')) {
+    const t = raw.trim().replace(/–|—/g, '-')
+    if (!t || t.includes(' ')) continue
+    try {
+      if (t.includes('-')) {
+        const [a, b] = t.split('-')
+        const [hi1, lo1, s1] = endpoint(a)
+        const [hi2, lo2] = endpoint(b)
+        if (hi1 === lo1 && hi2 === lo2) {
+          for (let i = Math.min(hi1, hi2); i <= Math.max(hi1, hi2); i++) total += 6
+        } else {
+          for (let l = Math.min(lo1, lo2); l <= Math.max(lo1, lo2); l++) total += expand(hi1, l, s1)
+        }
+      } else if (t.endsWith('+')) {
+        const [hi, lo, s] = endpoint(t.slice(0, -1))
+        if (hi === lo) for (let i = lo; i < 13; i++) total += 6
+        else for (let l = lo; l < hi; l++) total += expand(hi, l, s)
+      } else {
+        const [hi, lo, s] = endpoint(t)
+        total += expand(hi, lo, s)
+      }
+    } catch {
+      /* prose row (BB) — no combos */
+    }
+  }
+  return total
+}
 
 const FRAMEWORK: Array<[string, string]> = [
   ['Strong made hand', 'Top pair good kicker+, two pair, sets, straights, flushes — bet for value ½–¾ pot, keep betting, size up with the nuts.'],
@@ -18,41 +69,45 @@ const FRAMEWORK: Array<[string, string]> = [
   ['Facing a bet', 'Raise monsters; call one street with marginal made hands; fold to sustained aggression with weak holdings; with draws, compare equity to the price.'],
 ]
 
+// Exact hypergeometric values, not the rule of 2 and 4: one card = outs/47;
+// two cards = 1 - C(47-outs,2)/C(47,2). The gutshot two-card figure read 17% and is
+// 16.47%, which rounds to 16 (audit F-40); the combo one-card cell was blank, hiding
+// that a 15-out draw is still an underdog on a single card.
 const DRAWS: Array<[string, string, string, string]> = [
   ['Flush draw', '9', '19%', '35%'],
   ['Open-ender', '8', '17%', '31%'],
-  ['Gutshot', '4', '9%', '17%'],
-  ['Combo (FD+OESD)', '~15', '—', 'favorite'],
+  ['Gutshot', '4', '9%', '16%'],
+  ['Combo (FD+OESD)', '~15', '32%', '54%'],
 ]
 
 const ARCHETYPES: Array<{ name: string; stats: string; identity: string; beat: string }> = [
   {
     name: 'Nit',
-    stats: 'VPIP 10–15 · PFR 8–12 · 3-bet 1–3 · AF 1–2',
+    stats: 'VPIP 10–15 · PFR 8–12 · 3-bet 1–3 · AF 1–2 · WTSD 26–32',
     identity: 'Premiums only, folds constantly.',
     beat: 'Steal relentlessly and fold to its aggression — when a nit puts in money, believe it. Don’t pay off the rare big bet.',
   },
   {
     name: 'TAG',
-    stats: 'VPIP 20–24 · PFR 17–21 · 3-bet 6–9 · AF 2.5–3.5',
+    stats: 'VPIP 20–24 · PFR 17–21 · 3-bet 6–9 · AF 2.5–3.5 · WTSD 25–30',
     identity: 'Solid, balanced — the §2 baseline, the benchmark.',
     beat: 'No free lunch. Play solid, avoid marginal spots out of position, and pick your bluffs where your range is credible.',
   },
   {
     name: 'LAG',
-    stats: 'VPIP 27–33 · PFR 22–28 · 3-bet 9–13 · AF 3–4.5',
+    stats: 'VPIP 27–33 · PFR 22–28 · 3-bet 9–13 · AF 3–4.5 · WTSD 27–33',
     identity: 'Wide + aggressive, narrow VPIP–PFR gap; hard to read.',
     beat: 'Tighten up and let it barrel into your strong range; call down lighter than vs a nit, and 3-bet to deny its position.',
   },
   {
     name: 'Calling Station',
-    stats: 'VPIP 40–55 · PFR 6–13 · 3-bet 1–3 · AF <1.5',
+    stats: 'VPIP 40–55 · PFR 6–13 · 3-bet 1–3 · AF <1.5 · WTSD 38–50',
     identity: 'Passive fish — calls everything, never folds to value, almost never bluffs.',
     beat: 'Value bet relentlessly and thin; never bluff (it won’t fold). If it suddenly raises, it has it — fold your bluff-catchers.',
   },
   {
     name: 'Maniac',
-    stats: 'VPIP 50–65 · PFR 38–50 · 3-bet 14–22 · AF >4',
+    stats: 'VPIP 50–65 · PFR 38–50 · 3-bet 14–22 · AF >4 · WTSD —',
     identity: 'Aggressive spew — raises/bluffs constantly, barrels air.',
     beat: 'Punish with value, not bluffs. Let it bet into you, trap with strong hands, and call down wider — don’t try to out-bluff it.',
   },
@@ -63,8 +118,8 @@ const STATS: Array<[string, string, string]> = [
   ['PFR', '18–22', 'Raised preflop. Small gap to VPIP = aggressive/competent.'],
   ['3-bet%', '7–10', 'Re-raised preflop.'],
   ['ATS', '30–40', 'Attempt to steal (open CO/BTN/SB when folded to).'],
-  ['AF', '~3', '(bets + raises) ÷ calls postflop. ≫3 maniac, ≪3 too passive.'],
-  ['WTSD', '25–30', 'Went to showdown.'],
+  ['AF', '2.5–3.5', '(bets + raises) ÷ calls postflop. ≫3 maniac, ≪3 too passive.'],
+  ['WTSD', '25–30', 'Went to showdown — measured per FLOP SEEN, not per hand, so it settles slowly.'],
   ['WSD', '52–58', 'Won at showdown.'],
   ['WWSF', '48–54', 'Won when saw the flop.'],
   ['C-bet%', '55–70', 'Continuation-bet the flop as preflop raiser (board-dependent).'],
@@ -128,14 +183,23 @@ export function StudyView() {
 
       <Card title="Preflop — Raise First In (folded to you)">
         <div className="space-y-2">
-          {RFI.map(([pos, pct, range]) => (
-            <div key={pos} className="grid grid-cols-[64px_64px_1fr] items-baseline gap-2 text-sm">
-              <span className="font-semibold text-ink">{pos}</span>
-              <span className="tabular-nums text-accent">{pct}</span>
-              <span className="text-muted">{range}</span>
-            </div>
-          ))}
+          {RFI.map(([pos, range]) => {
+            const combos = rangeCombos(range)
+            return (
+              <div key={pos} className="grid grid-cols-[64px_74px_1fr] items-baseline gap-2 text-sm">
+                <span className="font-semibold text-ink">{pos}</span>
+                <span className="tabular-nums text-accent">
+                  {combos ? `${((combos / 1326) * 100).toFixed(1)}%` : '—'}
+                </span>
+                <span className="text-muted">{range}</span>
+              </div>
+            )
+          })}
         </div>
+        <p className="mt-3 text-[11px] text-faint">
+          Widths are computed from the lists above, not written beside them. Memorise the
+          lists — the percentage is only a description of them.
+        </p>
         <div className="mt-4 space-y-1 border-t border-line/60 pt-3 text-sm text-muted">
           <p><span className="text-ink">3-bet value:</span> QQ+, AK always; add JJ, AQs vs CO/BTN/SB. <span className="text-ink">Bluff:</span> A5s–A4s, suited blockers.</p>
           <p><span className="text-ink">Flat (in position):</span> 99–22 set-mining, suited broadways/connectors when cheap. OOP → lean 3-bet-or-fold.</p>

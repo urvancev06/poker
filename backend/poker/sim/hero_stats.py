@@ -18,23 +18,33 @@ HERO_TARGETS: dict[str, tuple[float, float]] = {
     "wtsd": (25, 30),
     "wsd": (52, 58),
     "wwsf": (48, 54),
+    # The Study page has always printed a C-bet band, but there was no entry here
+    # and no row in StatsView, so it targeted a number the dashboard could not show
+    # (audit F-44). `cbet` is computed and returned, so the fix is to complete the
+    # wiring rather than delete the guidance.
+    "cbet": (55, 70),
 }
+
+
+def _r(v: float | None) -> float | None:
+    """Round, preserving None ("no sample") rather than coercing it to 0."""
+    return None if v is None else round(v, 1)
 
 
 def line_to_dict(line: StatLine) -> dict:
     af = None if math.isinf(line.af) else round(line.af, 2)
     return {
         "hands": line.hands,
-        "vpip": round(line.vpip, 1),
-        "pfr": round(line.pfr, 1),
-        "threebet": round(line.threebet, 1),
-        "ats": round(line.ats, 1),
+        "vpip": _r(line.vpip),
+        "pfr": _r(line.pfr),
+        "threebet": _r(line.threebet),
+        "ats": _r(line.ats),
         "af": af,
-        "wtsd": round(line.wtsd, 1),
-        "wsd": round(line.wsd, 1),
-        "wwsf": round(line.wwsf, 1),
-        "cbet": round(line.cbet, 1),
-        "net_bb_per_100": round(line.net_bb_per_100, 1),
+        "wtsd": _r(line.wtsd),
+        "wsd": _r(line.wsd),
+        "wwsf": _r(line.wwsf),
+        "cbet": _r(line.cbet),
+        "net_bb_per_100": _r(line.net_bb_per_100),
     }
 
 

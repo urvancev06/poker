@@ -238,11 +238,13 @@ class GameSession:
                 "stats": None
                 if not ready
                 else {
-                    "vpip": round(line.vpip, 1),
-                    "pfr": round(line.pfr, 1),
-                    "threebet": round(line.threebet, 1),
+                    # None means "no sample" (e.g. a nit at 30 hands that has seen
+                    # no flops), which the HUD must render as "—", not as 0.0.
+                    "vpip": None if line.vpip is None else round(line.vpip, 1),
+                    "pfr": None if line.pfr is None else round(line.pfr, 1),
+                    "threebet": None if line.threebet is None else round(line.threebet, 1),
                     "af": None if line.af == float("inf") else round(line.af, 1),
-                    "wtsd": round(line.wtsd, 1),
+                    "wtsd": None if line.wtsd is None else round(line.wtsd, 1),
                 },
             }
         return out

@@ -174,8 +174,19 @@ def _take(combos: list[Combo], n: int) -> list[Combo]:
     return sorted(combos)[:n]
 
 
+# Counts how often the neutral fallback stood in for a measured composition. The
+# coach's "measured from the bots" honesty label is only truthful when this did NOT
+# happen, so the caller needs to know (audit F-07, 08-UNKNOWNS §2.1).
+FALLBACK_USES = 0
+
+
 def _comp(archetype: str, street: str) -> dict[str, float]:
-    return BET_COMPOSITION.get(archetype, {}).get(street, _FALLBACK_COMP)
+    global FALLBACK_USES
+    row = BET_COMPOSITION.get(archetype, {}).get(street)
+    if row is None:
+        FALLBACK_USES += 1
+        return _FALLBACK_COMP
+    return row
 
 
 def _aggression_filter(combos: list[Combo], board: list[str], archetype: str, street: str) -> list[Combo]:

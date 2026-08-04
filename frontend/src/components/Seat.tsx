@@ -24,7 +24,7 @@ export function seatLabel(
   if (mode === 'hud') {
     return read?.ready && read.stats ? (
       <span className="tabular-nums text-muted">
-        {read.stats.vpip}/{read.stats.pfr}
+        {read.stats.vpip ?? '—'}/{read.stats.pfr ?? '—'}
         {read.stats.af != null && <span className="text-muted/70"> · AF {read.stats.af}</span>}
       </span>
     ) : (

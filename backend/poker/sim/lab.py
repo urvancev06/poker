@@ -24,6 +24,19 @@ from .stats import StatLine
 MAX_LAB_HANDS = 25_000
 DEFAULT_LAB_HANDS = 5_000
 
+# NO Lab-sized run can reliably reproduce the gate, and the UI must say so.
+#
+# WTSD's denominator is flops seen, not hands. A Nit sees a flop in ~7.4% of hands, so
+# even at the 25,000 cap it contributes only ~1,850 -- a binomial SE of ~1.1 points
+# against a ceiling it sits ~0.6 points below. Measured: the default 6-seat lineup
+# fails on TAG WTSD at 5,000 (30.10 vs 25-30) and on Nit WTSD at 15,000 (32.24 vs
+# 26-32), on different cells, for the same reason. Raising the default buys runtime,
+# not reliability (audit F-46, F-47).
+#
+# So the Lab reports the gate as INDICATIVE at these sizes; the authoritative gate is
+# scripts/simulate.py at 100k, and even there Nit WTSD sits ~1.2 sigma from its bound.
+GATE_RESOLUTION_HANDS = 100_000
+
 # The scalar knobs the lab may tune. Each entry drives one slider in the UI.
 # (key, label, min, max, step). We deliberately expose only frequencies/sizings
 # that move stats in an intuitive way — not the percentile caps, which need the
@@ -74,6 +87,7 @@ def archetypes_info() -> dict:
         "default_lineup": list(DEFAULT_LINEUP),
         "max_hands": MAX_LAB_HANDS,
         "default_hands": DEFAULT_LAB_HANDS,
+        "gate_resolution_hands": GATE_RESOLUTION_HANDS,
     }
 
 

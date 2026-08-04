@@ -267,8 +267,12 @@ function LabResults({ result }: { result: LabResult }) {
         </table>
       </div>
       <p className="mt-3 text-[11px] text-muted">
-        Green = inside the STRATEGY §4 target band; red = out. The gate is VPIP, PFR and AF in band
-        for every archetype. Small samples wobble — bump hands to tighten.
+        Green = inside the STRATEGY §4 target band; red = out. The gate is VPIP, PFR, AF and
+        WTSD in band for every archetype — Maniac has no WTSD band, so that cell always passes.
+        <strong className="text-ink"> The pass/fail here is indicative, not the gate.</strong>{' '}
+        WTSD is measured over flops seen, not hands, so a Nit contributes only ~1,850 of them
+        even at the 25k cap — enough noise to flip the badge on its own. The real gate is
+        100k hands via scripts/simulate.py, and Nit WTSD sits ~1.2σ from its bound even there.
       </p>
     </div>
   )

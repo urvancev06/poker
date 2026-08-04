@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from ..math.classify import Draw, MadeTier, PairStrength, classify, pair_strength
 from ..math.equity import equity
 from ..math.odds import analyze_call, implied_required_equity, required_equity
-from .villain_model import condition_range, villain_line
+from .villain_model import BET_COMPOSITION, condition_range, villain_line
 
 # As later streets carry the "they're strong" signal in the action-conditioned
 # villain range, the realization discount shrinks toward 1 (don't double-count it).
@@ -61,15 +61,20 @@ def _implied_adjustment(
         return 0, ""
     if street == "preflop" and is_pocket_pair:
         # A pair wins a big pot when it flops a set (~1 in 8.5). Credit scaled by the
-        # stack behind, anchored so it becomes a call around the rule-of-15.
-        return min(behind, round(behind * _SET_MINE_RATE)), f"set value, {behind} behind"
+        # stack behind. Measured flip point is ~11x the call, to "close" rather than to
+        # a clear call — deliberately tighter than the rule-of-15 shorthand.
+        # No stack cap needed: 0.03*behind <= behind for every behind >= 0.
+        return round(behind * _SET_MINE_RATE), f"set value, {behind} behind"
     if is_draw:
+        # This is the one branch where the stack cap is live: it binds whenever the
+        # money behind is less than half the pot.
         return min(behind, round(_DRAW_IMPLIED_MULT * pot)), "draw — paid off when you complete"
     if made_tier == MadeTier.PAIR and pair_str is PairStrength.WEAK:
         # A bottom/under pair makes a 2nd-best hand and loses more — needs MORE than
         # the headline price. Only WEAK pairs (never top pair/overpairs, which are
         # decent), so this can't talk you off a legitimate made hand.
-        return -min(pot, round(_REVERSE_MULT * pot)), "reverse implied — dominated"
+        # No pot cap needed: 0.40*pot <= pot for every pot >= 0.
+        return -round(_REVERSE_MULT * pot), "reverse implied — dominated"
     return 0, ""
 
 
@@ -106,6 +111,7 @@ class Coaching:
     villains: list[VillainModel]
     verdict: str
     rationale: str
+    tone: str = "neutral"          # good | neutral | close | fold (display only)
     basis: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -132,8 +138,73 @@ class Coaching:
             "villains": [v.__dict__ for v in self.villains],
             "verdict": self.verdict,
             "rationale": self.rationale,
+            "tone": self.tone,
             "basis": self.basis,
         }
+
+
+# The complete set of verdict strings `_suggest` can emit, mapped to a display tone.
+#
+# The frontend used to derive tone by string-parsing this prose —
+# `startsWith('fold')` / `startsWith('close')`, defaulting to the positive accent —
+# so rewording a verdict would silently render a fold as a recommendation, with
+# nothing failing anywhere (audit F-39). The mapping lives here, next to the strings
+# it describes, and `tests/test_coach.py` asserts it stays exhaustive.
+VERDICT_TONE: dict[str, str] = {
+    "Bet for value.": "good",
+    "Raise for value.": "good",
+    "Clear call.": "good",
+    "Call.": "good",
+    "Thin value bet, or check.": "neutral",
+    "Semi-bluff or check.": "neutral",
+    "Check.": "neutral",
+    "Close — call or fold.": "close",
+    "Fold.": "fold",
+}
+
+
+def verdict_tone(verdict: str) -> str:
+    """Display tone for a verdict string. Unknown verdicts read as neutral rather
+    than as a recommendation — the old default was the positive accent."""
+    return VERDICT_TONE.get(verdict, "neutral")
+
+
+def _basis(
+    *, priced: bool, implied_applied: bool, realization_applied: bool, measured_ranges: bool
+) -> list[str]:
+    """The honesty labels, bound to what this verdict ACTUALLY computed.
+
+    This used to be a hardcoded list emitted identically on every call, so it claimed
+    an implied-odds adjustment and an equity discount even on verdicts where neither
+    ran — which is most of them (X is 0 on every river, every all-in, and every hand
+    that is not a preflop pair, a draw or a weak pair; R is 1.0 whenever the action
+    closes). A label that cannot be trusted to describe the number beside it defeats
+    the purpose of having labels (audit F-07)."""
+    out = ["Hand classification and equity are computed (Monte Carlo, treys)."]
+    if priced:
+        out.append("Pot odds and required equity are exact arithmetic.")
+    if realization_applied:
+        out.append(
+            "Equity realization (raw → realized) is a rough position/hand-type/street "
+            "estimate, not a solver output."
+        )
+    if implied_applied:
+        out.append(
+            "The implied / reverse-implied price adjustment is a conservative estimate "
+            "— not a solver output."
+        )
+    if measured_ranges:
+        out.append(
+            "Villain ranges are action-conditioned: the archetype range narrowed by "
+            "their bets/calls this hand (bluff rates measured from the bots)."
+        )
+    else:
+        out.append(
+            "Villain ranges use a neutral fallback composition — not measured from "
+            "these opponents."
+        )
+    out.append("For exact GTO frequencies, confirm in GTO Wizard.")
+    return out
 
 
 def _realization_factor(
@@ -421,12 +492,11 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         villains=villain_models,
         verdict=verdict,
         rationale=rationale,
-        basis=[
-            "Hand classification and equity are computed (Monte Carlo, treys).",
-            "Pot odds and required equity are exact arithmetic.",
-            "Equity realization (raw → realized) is a rough position/hand-type/street estimate, not a solver output.",
-            "Implied / reverse-implied odds adjust the price (a conservative, stack-capped estimate) — not a solver output.",
-            "Villain ranges are action-conditioned: the archetype range narrowed by their bets/calls this hand (bluff rates measured from the bots).",
-            "For exact GTO frequencies, confirm in GTO Wizard.",
-        ],
+        tone=verdict_tone(verdict),
+        basis=_basis(
+            priced=to_call > 0,
+            implied_applied=bool(implied_note),
+            realization_applied=abs(r - 1.0) > 1e-9,
+            measured_ranges=all(v.archetype in BET_COMPOSITION for v in villain_models),
+        ),
     )

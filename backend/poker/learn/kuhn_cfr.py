@@ -150,6 +150,22 @@ def _value_p0(strat0, strat1, cards: tuple[int, int], history: str) -> float:
     return total
 
 
+def game_value(avg: dict[str, list[float]]) -> float:
+    """Exact value to P0 of BOTH players following the average strategy.
+
+    Averaged over all 6 deals, computed exactly — no sampling. This replaces a running
+    mean of the self-play utility over every iteration, which included the early
+    near-uniform strategies and therefore converged toward -1/18 only as O(1/n) with a
+    long memory of the bad start: at 200k iterations it read -0.0611 and was FURTHER
+    from the target than at 20k, so a learner watching the lab saw a correct algorithm
+    appear to diverge (audit F-13)."""
+
+    def strat(key: str) -> list[float]:
+        return avg.get(key, [0.5, 0.5])
+
+    return sum(_value_p0(strat, strat, cards, "") for cards in _DEALS) / len(_DEALS)
+
+
 def _best_response_value(avg: dict[str, list[float]], hero: int) -> float:
     """Exact value the best-responding ``hero`` achieves vs fixed average ``avg``.
 
@@ -203,7 +219,7 @@ def train(iterations: int = 20_000, seed: int = 0, checkpoints: int = 20) -> dic
     """Run CFR self-play for ``iterations`` and return convergence + strategy.
 
     Returns a JSON-friendly dict:
-      iterations, game_value (final running avg), exploitability (final),
+      iterations, game_value (exact value of the average strategy), exploitability,
       trend: [{iterations, game_value, exploitability}] checkpoints,
       strategy: [{infoset, card, history, label, pass, bet}] sorted for display.
     """
@@ -225,7 +241,7 @@ def train(iterations: int = 20_000, seed: int = 0, checkpoints: int = 20) -> dic
             trend.append(
                 {
                     "iterations": i,
-                    "game_value": round(util_sum / i, 4),
+                    "game_value": round(game_value(avg), 4),
                     "exploitability": round(exploitability(avg), 4),
                 }
             )
@@ -248,7 +264,7 @@ def train(iterations: int = 20_000, seed: int = 0, checkpoints: int = 20) -> dic
 
     return {
         "iterations": iterations,
-        "game_value": round(util_sum / iterations, 4),
+        "game_value": round(game_value(avg), 4),
         "equilibrium_value": round(float(Fraction(-1, 18)), 4),
         "exploitability": round(exploitability(avg), 4),
         "trend": trend,

@@ -1,19 +1,21 @@
 import type { Coaching } from '../api'
 
-type Tone = 'loss' | 'accent' | 'close'
-const verdictTone = (verdict: string): Tone => {
-  const v = verdict.toLowerCase()
-  if (v.startsWith('fold')) return 'loss'
-  if (v.startsWith('close')) return 'close'
-  return 'accent'
-}
-const toneText = (t: Tone) => (t === 'loss' ? 'text-loss' : t === 'close' ? 'text-muted' : 'text-accent')
+// Tone comes from the backend (`Coaching.tone`), which maps it from the verdict
+// string next to where those strings are defined. This used to be derived here by
+// string-parsing the prose and defaulting to the positive accent, so rewording a
+// verdict silently rendered a fold as a recommendation (audit F-39). Anything
+// unrecognised now reads neutral, never positive.
+type Tone = 'loss' | 'accent' | 'close' | 'neutral'
+const verdictTone = (c: Pick<Coaching, 'tone'>): Tone =>
+  c.tone === 'fold' ? 'loss' : c.tone === 'close' ? 'close' : c.tone === 'good' ? 'accent' : 'neutral'
+const toneText = (t: Tone) =>
+  t === 'loss' ? 'text-loss' : t === 'close' ? 'text-muted' : t === 'accent' ? 'text-accent' : 'text-ink' 
 
 /** A one-line coach summary for the phone layout (the full panel is desktop). */
 export function CoachStrip({ coaching, loading }: { coaching: Coaching | null; loading: boolean }) {
   if (loading) return <div className="text-center text-xs text-muted">computing…</div>
   if (!coaching) return null
-  const tone = verdictTone(coaching.verdict)
+  const tone = verdictTone(coaching)
   // Money behind -> the decision turns on *realized* equity; river/all-in -> raw.
   const eq = coaching.action_closed ? coaching.equity_pct : coaching.realized_equity_pct
   return (
@@ -70,7 +72,7 @@ function Row({ label, value, tone }: { label: string; value: string; tone?: 'win
 }
 
 export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; loading: boolean }) {
-  const tone = coaching ? verdictTone(coaching.verdict) : 'accent'
+  const tone: Tone = coaching ? verdictTone(coaching) : 'neutral'
   return (
     <aside className="w-full rounded-lg border border-line p-5">
       <div className="flex items-baseline justify-between">
