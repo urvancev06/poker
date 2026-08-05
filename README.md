@@ -1,128 +1,194 @@
 # Poker
 
-A private, single-user poker trainer: play 6-max No-Limit Hold'em cash against
-realistic, statistically-validated bot archetypes, with an honest coaching layer
-and tracking of my own leaks over time.
+A single-player 6-max No-Limit Hold'em trainer. You play a cash table against five bot
+archetypes, and a coaching layer shows the arithmetic behind every decision: your equity
+against the opponent's modelled range, the price you are being offered, and whether the
+call is profitable.
 
-This is a personal tool, not a product. It is **not** multiplayer, not real-money,
-not a GTO solver, and not a mobile app. See [`PROJECT.md`](PROJECT.md) for the full
-spec and the project brief for the working principles.
+I built it because most poker study tools either give you a solver output with no
+derivation, or give you a "feel" with no numbers at all. I wanted the middle: something
+that computes a concrete answer and shows its work, so I could check the reasoning rather
+than trust it.
 
-## Stack
+It is a personal training tool - single-user, play-money, local-first. It is not a GTO
+solver and does not claim to be.
 
-- **Backend (the brain)** — Python 3.11+ with [PokerKit](https://github.com/uoftcprg/pokerkit)
-  (game state + hand eval), [treys](https://github.com/ihendley/treys) (fast Monte
-  Carlo equity), [FastAPI](https://fastapi.tiangolo.com/) + uvicorn, and SQLite via
-  SQLAlchemy. Chips are integers (smallest unit) to avoid float rounding.
-- **Frontend (the face)** — React + Vite + TypeScript + Tailwind v4. Built later
-  (Phase 5), after the bots pass their statistical validation gate.
+## The strategy model
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the module map.
+A bot is a **parameter set**, not a script. `poker.bots.strategy` defines one
+parameterised strategy: positional opening ranges, a postflop heuristic over
+`poker.math`, bet sizing, calldown thresholds, and a bluff frequency. An archetype is
+that strategy with different numbers - `poker.bots.archetypes` holds five of them (Nit,
+TAG, LAG, Calling Station, Maniac).
 
-## Repo layout
+The point is that the *observable* statistics are outputs, never inputs. You cannot set a
+bot's VPIP. You give it a strategy, simulate, measure what comes out, and adjust the
+parameters until the measured statistics land in the archetype's target band. The bands
+themselves are in [STRATEGY.md](STRATEGY.md) §4.
+
+`backend/validation/phase3_gate.txt` records the run that validates this: **100,000
+hands, seed 0**, all five archetypes measured against their bands.
 
 ```
-backend/    Python brain — engine, math, bots, simulation, API (the poker package)
-frontend/   React face — the table UI (scaffolded; built in Phase 5)
-brand/       my logo kit + favicon
-references/  design + layout references (HTML mockups)
-*.md         the spec: PROJECT.md, STRATEGY.md, DESIGN.md, ARCHITECTURE.md
+archetype                VPIP         PFR    THREEBET          AF        WTSD
+Nit                    11.7✓        9.1✓        2.2✓        1.8✓       31.2✓
+TAG                    20.3✓       17.4✓        6.9✓        3.2✓       29.3✓
+LAG                    28.4✓       23.7✓       10.2✓        4.0✓       31.6✓
+Calling Station        48.7✓        7.1✓        2.2✓        0.5✓       44.3✓
+Maniac                 53.4✓       39.2✓       21.6✓        4.2✓       36.2
 ```
 
-## Running it locally
+Reproduce it with `.venv/bin/python scripts/simulate.py --hands 100000 --seed 0`
+(about 110 seconds).
 
-### Backend
+**What the gate actually covers, precisely:** VPIP, PFR, AF and WTSD are gated for every
+archetype, which is 20 cells. Nineteen carry a real two-sided band. Two do not behave
+like the rest and should be read with that in mind: the Maniac's WTSD has **no band**,
+because STRATEGY.md §4 records it as "varies" and I would rather leave it unbanded than
+invent a number to gate against; and the Maniac's AF band is one-sided (`>4`), so it is
+bounded below only. Everything else is a genuine two-sided interval.
 
-The backend lives in `backend/` and uses a virtual environment at `backend/.venv`
-(Python 3.14). Dependencies are declared in `backend/pyproject.toml` and the package
-is installed editable, so `import poker` works everywhere.
+## The equity engine
 
-First-time setup:
+`poker.math.equity` runs a Monte Carlo simulation using **treys** for hand evaluation.
+It deals the remaining board, samples opponent holdings from their assigned range, and
+counts how often the hero's hand is best at showdown. Ties split, so the returned win /
+tie / lose fractions sum to one - a property [`test_math.py`](backend/tests/test_math.py)
+asserts directly.
+
+Trial counts are set where they are used: the live coach runs **4,000** trials per
+decision (`build_coaching`), and hand review runs 1,200-1,800, because review re-evaluates
+every street of every stored hand and the extra precision is not worth the latency.
+
+Two things sit on top of the raw equity number:
+
+- **Pot odds and required equity** (`poker.math.odds`) are computed exactly, not
+  simulated. Required equity is `call / (pot + call)`.
+- **Realised equity.** Raw equity overstates a hand that will not get to showdown -
+  out of position, facing more streets, with no way to improve. The coach discounts raw
+  equity by a realisation factor before comparing it to the price, which is why it does
+  not recommend calling with every hand that is nominally ahead.
+
+## The opponent model
+
+Villain ranges are **conditioned on the actions actually taken**. A player who opens,
+c-bets the flop and barrels the turn holds a different range from one who limped and
+checked twice, and `poker.coach.villain_model` narrows the range street by street to
+reflect that.
+
+The part I care most about is the bluff frequency. A river bluff-catch turns entirely on
+what fraction of the villain's betting range is air, so that fraction cannot be guessed.
+It is **measured from the bots themselves**: `BET_COMPOSITION` holds the value / draw /
+air split of each archetype's betting range per street, measured over a 60,000-hand
+simulation and recorded alongside the gate in `backend/validation/phase3_gate.txt`.
+The coach labels its output as "measured from the bots" only when a measured composition
+was actually available for that spot, and falls back to a neutral prior otherwise.
+
+## The CFR solver
+
+`poker.learn.kuhn_cfr` implements vanilla Counterfactual Regret Minimization on Kuhn
+poker - the smallest poker game with a non-trivial equilibrium.
+
+Kuhn is the right test case because its equilibrium is **known in closed form**, so the
+solver can be checked against an exact answer rather than against itself. The game value
+to the first player is exactly **−1/18 ≈ −0.0556**.
+
+Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_and_cfr.py):
+
+- `test_cfr_game_value_converges` - the average strategy's value is within 0.01 of −1/18.
+- `test_cfr_exploitability_small` - exploitability, computed by **exact best response**
+  rather than estimated, falls below 0.03.
+- `test_exploitability_zero_at_known_equilibrium` - feeding in an analytically-derived
+  equilibrium strategy yields ~zero exploitability. This one matters: it tests the
+  *measuring instrument*, so a bug in the exploitability calculation cannot flatter the
+  solver.
+
+## What the tests assert
+
+**107 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+majority check a specific numeric or structural property:
+
+| Area | Tests | Examples of what is asserted |
+|---|---|---|
+| `test_math.py` | 21 | AA vs KK preflop equity, flush-draw equity, made flush dominance, win/tie/lose fractions summing to 1, required-equity worked examples, range parsing and blocker removal, no combo containing a duplicate card |
+| `test_engine.py` | 13 | hand-ranking order, split pots when the board plays, three-way side-pot distribution, legal actions by position and facing bets, short-stack all-in, illegal actions rejected, and **chip conservation across randomised complete hands** |
+| `test_lab_and_cfr.py` | 12 | the three CFR checks above, plus the lab's report structure, hand caps, and that loosening a calldown knob actually raises the measured WTSD |
+| `test_api.py` | 10 | endpoint contracts end to end |
+| `test_coach.py` | 9 | that a value hand ahead raises rather than folds, that a marginal out-of-position call flips to a fold once equity is realised rather than raw, and that every verdict string carries a tone |
+| `test_villain_model.py` | 6 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, and the river bluff slice is low and ordered by archetype |
+| remainder | 36 | bot/sim behaviour, implied-odds spots, leak detection, replay reconstruction, calibration |
+
+Chip conservation is the one I would point at first: it plays randomised hands to
+completion and asserts that chips are neither created nor destroyed, which catches a
+whole class of engine bug that per-case tests miss.
+
+## Architecture
+
+Python brain, React face, talking over REST. See [ARCHITECTURE.md](ARCHITECTURE.md) for
+the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
+[DESIGN.md](DESIGN.md) for the visual spec.
+
+- **Backend** - Python 3.11+, [PokerKit](https://github.com/uoftcprg/pokerkit) (game state
+  and hand evaluation), [treys](https://github.com/ihendley/treys) (fast Monte Carlo),
+  FastAPI + uvicorn, SQLite via SQLAlchemy. Chips are integers throughout.
+- **Frontend** - React + Vite + TypeScript + Tailwind v4. Cards are inline SVG, so there
+  are no image assets and no per-card requests.
+
+## Running it
 
 ```bash
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m pytest                        # 107 tests
+.venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
-
-Run the test suite:
-
-```bash
-cd backend
-.venv/bin/python -m pytest
-```
-
-Run the API (health check at <http://127.0.0.1:8000/health>, auto-docs at `/docs`):
-
-```bash
-cd backend
-.venv/bin/uvicorn poker.api.app:app --reload
-```
-
-Sanity-check the PokerKit integration (builds a 6-max NLHE cash hand):
-
-```bash
-cd backend
-.venv/bin/python scripts/pokerkit_smoke.py
-```
-
-### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev      # dev server, usually http://localhost:5173
-npm run build    # type-check + production build
+npm run dev                                       # http://localhost:5173
 ```
 
-## Cards & assets
+Sessions are held in process memory, so the API must run with **exactly one worker**; it
+refuses to start otherwise. The database path is set with `POKER_DB_URL` and defaults to
+`sqlite:///poker.db`.
 
-Cards are drawn as **inline SVG** in `frontend/src/components/Card.tsx`, with the
-face layouts, pips and backs defined in `frontend/src/prefs.tsx` (five selectable
-decks). Nothing is fetched at runtime, so there are no card image assets and no
-per-card network requests.
+## Limitations
 
-*Previously* the app bundled Byron Knoll's Vector-Playing-Cards
-([notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards),
-public domain / WTFPL) in `frontend/public/cards/` as `{RANK}{SUIT}.svg`. That deck
-was replaced by the inline renderer and became unreferenced — 3.2 MB of tracked,
-unused assets — and has now been removed along with its SVGO config. Recover it from
-git history or the upstream repo if the inline deck is ever abandoned.
+I would rather state these than have them found.
 
-The only assets still shipped from `public/` are the logo (`brand/`) and the favicon.
+- **The bots do not adapt.** Each archetype plays its fixed parameter set regardless of
+  how you play. Making them adapt would invalidate the statistical gate above, which is
+  the project's main correctness guarantee, so it is deliberately not done.
+- **Preflop ranges are percentile-based**, ranked by all-in equity. This under-rates small
+  pairs and suited connectors, whose value comes from set-mining and implied odds rather
+  than raw equity, so early-position ranges open slightly fewer of them than an explicit
+  hand-list would.
+- **The coach's conditioned range is slightly under-confident.** Against a villain's
+  river bet it under-rates the hero by about **0.03 equity** overall (per-archetype
+  roughly −0.03 to −0.05, on 1,205 river spots). That is the safe direction for a
+  bluff-catch - it errs toward folding rather than paying off - but it is a real bias.
+  The recorded run is `backend/validation/coach_calibration.txt`, reproducible with
+  `.venv/bin/python scripts/coach_calibration.py --hands 6000 --seed 0`. The figures
+  move by roughly ±0.001 between runs, so treat them as approximate. For comparison,
+  the unconditioned static range over-rates the hero by +0.049, which is the
+  over-calling bias the conditioning exists to remove.
+- **No exact GTO frequencies.** The coach computes equity, pot odds and EV. Where a
+  question genuinely needs an equilibrium frequency, it says so and defers to a solver
+  rather than inventing a number.
+- **No authentication.** Every endpoint is open, which is fine for a local single-user
+  tool. Any deployment must put access control in front of it - the application provides
+  none of its own.
 
-## Status
+## What I would do next
 
-The whole **backend brain is built and tested** (73 pytest tests passing):
-
-- **Phase 0** — scaffold (monorepo, deps, CI-able test setup).
-- **Phase 1** — `poker.engine`: PokerKit wrapper (legal actions, side pots,
-  showdown, serializable state) + console runner.
-- **Phase 2** — `poker.math`: Monte Carlo equity, pot odds/EV, hand classifier,
-  range parser.
-- **Phase 3** — `poker.bots` + `poker.sim`: five archetypes, simulation harness,
-  stats, tuning report. **The ≥100k-hand stat gate PASSES** (VPIP/PFR/AF/WTSD in band
-  for every archetype). Run it: `.venv/bin/python scripts/simulate.py --hands 100000`.
-- **Phase 4** — `poker.api` + `poker.coach` + `poker.db`: FastAPI session/play/
-  coaching endpoints and SQLite hand-history persistence.
-- **Phase 5** — the React table (Felt & Brass, Byron Knoll cards), wired to the
-  API: play full 6-max sessions vs the archetypes in the browser. Includes the
-  opponent **visibility modes** (Labeled / HUD / Live).
-- **Phase 6** — the learning layer: Study/Play toggle (live coach), my-stats
-  dashboard vs target bands, per-bot HUD reads (revealed past a sample), and a
-  hand-history browser with street-by-street replay + computed, candid leak
-  detection.
-
-- **Phase 7 (in progress)** — the **Lab**: a bot-lab UI that exposes the Phase-3
-  machinery (pick a lineup, tweak strategy knobs, run a capped sim, watch the
-  *emergent* stats land in their target bands), and a **CFR learning module** that
-  trains Counterfactual Regret Minimization on Kuhn poker and converges to its
-  known equilibrium (game value −1/18) — a real, checkable solver, not a
-  fabricated one. See `OVERVIEW.md` for the build + deploy guide.
-
-**V1 (Phases 0–6) is built and tested** (73 backend tests), and Phase 7's Lab
-(bot-lab + CFR) is in. Remaining Phase-7 items, **deferred** (they need a design
-call or my own files): deployment to the deployment domain, opponent-adapting bots
-(would break the validation gate), and real PokerStars/Hand2Note history import.
-Optional Phase-6 extras not yet built: SM-2 spaced-repetition drills and the
-isolated spot-trainer.
+- **Give the Maniac a defensible WTSD band** so all 20 gated cells are two-sided,
+  which means deriving one from measurement rather than asserting it.
+- **Replace the percentile preflop ranking with explicit positional hand lists**, and
+  re-run the gate - this changes the measured bet composition, so the coach's bluff
+  frequencies would need re-measuring at the same time.
+- **Extend CFR beyond Kuhn** to Leduc, where the equilibrium is still checkable but the
+  game is large enough that abstraction starts to matter.
+- **Import real hand histories** so the leak detector runs against hands played
+  elsewhere, not only against this table.

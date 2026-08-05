@@ -19,21 +19,16 @@ dist/
 .env
 .env.*
 
-# --- Claude Code (personal, uncommitted) ---
-.claude/settings.local.json
-
-# --- OS / editor ---
+# --- OS / editor / local tooling ---
 .DS_Store
 Thumbs.db
 *.swp
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.claude/
 
-# --- personal build notebook (uncommitted) ---
+# --- personal working notes (not project documentation) ---
 BUILD_NOTEBOOK.html
-
-# --- audit working documents (personal, uncommitted) ---
-# The reverse-engineering audit + remediation record. Kept local: it quotes
-# personal hand history and is a working document, not project documentation.
 audit/
+AUDIT-DECISIONS.md

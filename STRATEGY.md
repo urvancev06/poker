@@ -1,12 +1,12 @@
 # STRATEGY.md — Poker Knowledge (source of truth)
 
-This is the poker domain knowledge the app is built from. It feeds three things:
+The poker domain knowledge the app is built from. It feeds three things:
 - **The bots** — their preflop ranges and postflop logic are seeded from §2–§3, then tuned to hit the archetype stat targets in §4.
 - **The coach** — the math in §3 and the stat definitions in §5 are what it computes and explains.
 - **My own progress** — the stat targets in §4–§5 are what my dashboard compares my play against.
 
-> **Honesty rules (non-negotiable, mirror the project's):**
-> - The ranges below are a **solid standard baseline**, not solver truth. Real GTO involves mixed frequencies (a hand raised 40% / folded 60%). **Do not present these as exact GTO.** For exact frequencies and mixing, the answer is always "confirm in GTO Wizard."
+> **Honesty rules:**
+> - The ranges below are a **solid standard baseline**, not solver truth. Real GTO mixes frequencies (a hand raised 40% / folded 60%), so nothing here is exact GTO and the app never presents it as such. For exact frequencies and mixing, the answer is "confirm in GTO Wizard."
 > - The coach **computes** concrete math (Monte Carlo equity, pot odds, EV) and shows its work. It never invents solver numbers.
 > - Stat bands for archetypes are **descriptive player-type profiles** (general poker knowledge), not solver outputs.
 
@@ -22,7 +22,7 @@ This is the poker domain knowledge the app is built from. It feeds three things:
 
 ## 2. Preflop ranges (baseline)
 
-A standard, slightly-conservative 100bb baseline — good for low/mid stakes where rake is real. **Seed the bots' "TAG" profile from these; widen/tighten per archetype (§4).** Notation: `A2s+` = all suited aces; `KTo+` = KTo, KJo, KQo; `22+` = all pairs.
+A standard, slightly-conservative 100bb baseline, good for low/mid stakes where rake is real. The bots' TAG profile is seeded from these; the other archetypes widen or tighten them (§4). Notation: `A2s+` = all suited aces; `KTo+` = KTo, KJo, KQo; `22+` = all pairs.
 
 ### Raise First In (RFI) — folded to you
 - **UTG (~15%):** `22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo`
@@ -74,24 +74,24 @@ A standard, slightly-conservative 100bb baseline — good for low/mid stakes whe
 
 ## 4. The five bot archetypes (profiles + stat targets)
 
-Each archetype is a **parameter set** over the strategy in §2–§3. Tune the parameters until simulation (≥100k hands) lands the measured stats in these bands. Stat bands are grounded in current 6-max consensus; treat them as **targets to converge on**, then we refine together.
+Each archetype is a **parameter set** over the strategy in §2–§3. The parameters are tuned until a ≥100k-hand simulation lands the measured stats inside these bands. The bands come from current 6-max consensus; they are targets to converge on, not measurements of any particular player pool.
 
 | Archetype | VPIP | PFR | 3-bet | AF | WTSD | Identity |
 |---|---|---|---|---|---|---|
 | **Nit** | 10–15 | 8–12 | 1–3 | 1–2 | 26–32 † | Premiums only. Folds constantly. Easy to steal from; when it raises, believe it. |
 | **TAG** (reg) | 20–24 | 17–21 | 6–9 | 2.5–3.5 | 25–30 | Solid, balanced, the §2 baseline. The benchmark opponent. |
-| **LAG** | 27–33 | 22–28 | 9–13 | 3–4.5 | ~30 | Wide + aggressive, narrow VPIP–PFR gap. Pressures relentlessly; hard to read. |
+| **LAG** | 27–33 | 22–28 | 9–13 | 3–4.5 | 27–33 | Wide + aggressive, narrow VPIP–PFR gap. Pressures relentlessly; hard to read. |
 | **Calling Station** | 40–55 | 6–13 | 1–3 | <1.5 | 38–50 | Passive fish. Wide gap. Calls everything, never folds to value, almost never bluffs. |
 | **Maniac** | 50–65 | 38–50 | 14–22 | >4 | varies | Aggressive spew. Raises/bluffs constantly, barrels air. Punish with value, not bluffs. |
 
-> † **Nit WTSD is not "low" in aggregate — that was an over-literal reading.** A
-> tight *passive* premium range structurally shows down at a reg-like rate (~30%):
-> the few flops it sees are strong, so they reach showdown. The real nit tell is a
-> **high WSD (~60%+)** — it only shows up with the goods — plus over-folding
-> *specific* spots (rivers, steals). Verified by sweep: pushing WTSD below ~28
-> forces VPIP or AF out of their defining bands, so the band reflects the
-> achievable, behaviourally-correct model. WSD is reported as evidence but not
-> hard-gated (a band fit to its own measurement isn't a gate).
+> † Counter-intuitively, nit WTSD is not low in aggregate. A tight *passive*
+> premium range structurally shows down at a reg-like rate (~30%): the few flops it
+> sees are strong, so they reach showdown. The nit tells are a **high WSD (~60%+)**,
+> since it only turns up with the goods, and over-folding in *specific* spots
+> (rivers, steals). A parameter sweep confirms the band is the achievable one: pushing WTSD
+> below ~28 forces VPIP or AF out of their defining bands. WSD is reported as
+> evidence but not hard-gated, since a band fitted to its own measurement is not a
+> test.
 
 **How the parameters differ (the levers to tune):**
 - **Range width** — Nit ≈ top ~12%; TAG = §2 baseline; LAG widens opens/3-bets; Station calls a very wide range but rarely raises (low PFR despite high VPIP); Maniac raises a very wide range.
@@ -100,17 +100,17 @@ Each archetype is a **parameter set** over the strategy in §2–§3. Tune the p
 - **Calldown / fold-to-bet** — Station folds far too little (pays off value); Nit folds too much; TAG ≈ correct; Maniac calls light *and* over-bluffs.
 - **Steal / fold-to-steal** — Nit folds blinds constantly; Station defends too wide passively; LAG/Maniac steal often.
 
-> The **point of the fish archetypes (Station, Maniac, and loose-passive play) is that they play badly on purpose** — realistic, beatable opponents are the whole reason to practice. Don't "fix" them into good players.
+> The fish archetypes (Station, Maniac, loose-passive play) play badly on purpose. Realistic, beatable opponents are the whole reason to practise against them, so their leaks are the feature and not a defect to tune away.
 
 ### Reads are earned, not given (opponent visibility modes)
 
-Reading the opponent — *acquiring* the read from observed play — is itself a trained skill, not a given. The bots play **identically** in every mode; only what *I* can see about them changes. A per-table display setting (gates **display only** — never bot behaviour, never the coach's math):
+Reading the opponent, meaning *acquiring* the read from observed play, is itself a trained skill. The bots play **identically** in every mode; only what *I* can see about them changes. The per-table setting gates display only: never bot behaviour, never the coach's math.
 
 - **Live** — no labels, no opponent stats. I build the read purely from observed actions, like a live table. The realistic target.
 - **HUD** — opponent stats (VPIP/PFR/AF/3-bet…) show in the seat HUD, but **only after a minimum observed sample vs that specific bot** (~30 hands for a rough read, fuller by ~100). No archetype label — I read the numbers myself, like a real tracker.
 - **Labeled** — the archetype name (Nit/TAG/LAG/Station/Maniac) shown upfront. Training wheels: drill the exploit fast while learning the counters.
 
-Default **Labeled** for a new player; intended progression **Labeled → HUD → Live**. Labeled mode teaches the *exploit*; HUD/Live mode trains the *read*. (Implementation: display-gating in Phase 5; the mode toggle + per-bot observed-hand tracking that drives the HUD reveal in Phase 6 — no new phase.)
+Default **Labeled** for a new player; intended progression **Labeled → HUD → Live**. Labeled mode teaches the *exploit*; HUD and Live train the *read*. The mode is persisted, so the progression can actually be committed to rather than resetting to training wheels each session.
 
 ---
 
@@ -120,16 +120,16 @@ Computed from logged decisions. Healthy 6-max reg targets in brackets — these 
 
 - **VPIP** — % of hands you voluntarily put money in preflop. *[22–26]*
 - **PFR** — % of hands you raise preflop. *[18–22]*. The VPIP–PFR gap shows passivity; a small gap = aggressive/competent, a wide gap = passive/fish.
-- **3-bet%** — of the spots where you FACED an open, how often you re-raised. Denominator is 3-bet *opportunities* (~0.42/hand measured), **not hands** — `sim/stats.py` `threebet / threebet_opp`. *[7–10]*
+- **3-bet%** — of the spots where you FACED an open, how often you re-raised. Denominator is 3-bet *opportunities* (~0.42/hand measured), **not hands** — `backend/poker/sim/stats.py`, `threebet / threebet_opp`. *[7–10]*
 - **ATS (attempt to steal)** — % you open CO/BTN/SB when folded to. *[30–40]*
 - **AF (aggression factor)** — `(bets + raises) ÷ calls` postflop. ~3 is normal; ≫3 = maniac, ≪ = too passive.
-- **WTSD** — of the flops you SAW, how often you reached showdown. Denominator is `saw_flop`, **not hands** — `sim/stats.py` `wtsd / saw_flop`. This is why it settles slowly: a tight player sees few flops. *[25–30]*
+- **WTSD** — of the flops you SAW, how often you reached showdown. Denominator is `saw_flop`, **not hands** — `wtsd / saw_flop`. This is why it settles slowly: a tight player sees few flops. *[25–30]*
 - **WSD** — % won at showdown. *[52–58]*
 - **WWSF** — won when saw flop. *[~48–54]*
 - **C-bet%** — % you continuation-bet the flop as preflop raiser. *[~55–70 depending on board]*
 - **Fold to c-bet** — solid players ~55–60%; fish far lower.
 
-**Sample-size reality (the coach must respect this):** VPIP/PFR need ~100+ hands to stabilize, 3-bet/fold-to-3-bet ~500, 4-bet/turn stats ~1,000+. Don't draw conclusions (about a bot or about me) from tiny samples.
+**Sample-size reality:** VPIP/PFR need ~100+ hands to stabilize, 3-bet and fold-to-3-bet ~500, 4-bet and turn stats ~1,000+. The coach holds to these floors rather than reading a leak into twenty hands, and so should I.
 
 ---
 
@@ -146,13 +146,13 @@ Computed from logged decisions. Healthy 6-max reg targets in brackets — these 
 
 Exact preflop frequencies, exact mixed strategies, precise multi-street solver lines, and node-locked exploit solutions → **GTO Wizard**. The coach teaches the *why*, computes *concrete* math, and points there for exact ranges. A fabricated "GTO number" is worse than none.
 
-## 8. Model — known limitations & tracked follow-ons (coach + bots)
+---
 
-The coach judges *realized equity vs an action-conditioned villain range* (the bots' bluff frequencies are measured, not assumed). Honest, named gaps to close:
+## 8. Known modelling limitations
 
-- **Postflop made-hand defense is now strength-polarized and gate-green (DONE).** `bots/strategy.py` grades the calldown by `pair_strength`: top pair / overpairs defend via `strong_pair_defend` (~0.82), weak/medium pairs fold at `calldown_freq`. This killed the over-fold the 8k volume stress caught — strong-pair fold (folding top pair / AA) dropped **48–64% → ~14%** for the regs — while the 100k gate stays in band (defending more made hands lifts WTSD, so the regs' weak/medium calldown was tightened to compensate; the WTSD coupling is a real, respected constraint). *Aggregate* one-pair-fold / fold-to-c-bet stay ~55% / ~68%: that's correct weak-pair and air folds, not a leak (the strength split proved the aggregate was a misleading proxy). Finer weak/medium-pair and draw defense **by board texture** (e.g. peel second pair on dry boards, fold it on wet) is an **unvalidated future refinement, not a current hole** — and any such change must keep the gate green, since looser defense raises WTSD.
-- **Implied / reverse-implied odds (DONE).** The price now carries an implied/reverse term — `required = call / (pot + call + X)` — adjusting the *price* only (conditioned range and realized equity untouched). `X` is positive for set-mines (scaled by the stack behind, **capped at it**, anchored to the rule-of-15) and strong draws, negative for dominated weak pairs (reverse implied), and **0 when the action closes** (river/all-in, so the bluff-catch math is provably unchanged). Conservative by design — err small, since a manufactured speculative call is the classic losing pattern. 22 vs a TAG open deep now reads **Call** (was "Close"); a dominated bottom pair folds; a decent second pair is **not** over-folded. Tuned/proved in `scripts/implied_spot_check.py` + `tests/test_implied_spots.py` (set-mine boundary near 15×; reverse both directions).
-- **Conditioned range over-narrows vs the loosest villains.** The river-spot calibration probe (`validation/coach_calibration.txt`) shows the conditioned range's bias is **−0.071 vs the Maniac** (and −0.033 overall) — i.e. it models the loosest barrellers as a touch *too* value-heavy by the river, slightly **under**-rating the hero. That is the safe direction (it was **+0.047 over**-rating with the old static range, so worse against that one type but no longer an over-call bias), and it's bounded — but it should be tuned in the implied-odds pass (keep a few more weak/bluff combos in the loose archetypes' barreling ranges so realized ≈ actual). *Measured with* `backend/.venv/bin/python scripts/coach_calibration.py --hands 6000 --seed 0` *(52s, n=1182 river spots). The figure previously recorded here was −0.053, which does not reproduce.*
-- **Preflop range *shape*** (`bots/preflop_strength.py`): the percentile ranking is raw all-in equity, which under-rates small pairs / suited connectors, so early-position opens have the wrong *shape* even when the aggregate VPIP/PFR band is met. Swap in §2's explicit positional lists. **Specified as step 2 of the deferred bot-realism phase — see `audit/10-BOT-REALISM-PHASE.md`, which bundles it with the top-pair-defence fix because both invalidate the coach's `BET_COMPOSITION` calibration and doing them separately pays that cost twice.** The *leak detector* already judges the hero against §2's lists (`bots/preflop_ranges.py`); it is the bots that still use percentages.
+The coach judges *realized equity vs an action-conditioned villain range*: the bots' bluff frequencies are measured from their own strategy rather than assumed. The gaps below are the ones I know about. Paths are relative to `backend/`.
 
-These are *deliberately* deferred: the conditioned-range + realized-equity change was proven to reduce the dominant over-calling error (battery + calibration probe) before adding the next term on top.
+- **Postflop defense is strength-polarized, and WTSD is the binding constraint.** `poker/bots/strategy.py` grades the calldown by `pair_strength`: top pair and overpairs defend at `strong_pair_defend` (0.82), weak and medium pairs fold at the archetype's `calldown_freq`. Aggregate one-pair-fold (~55%) and fold-to-c-bet (~68%) read high, but that is weak-pair and air folding rather than an over-fold; the aggregate is a poor proxy once the strength split is visible. Defense **by board texture** (peel second pair on a dry board, fold it on a wet one) is not modelled. Anything that loosens defense also lifts WTSD, which already sits in the upper half of every reg band, so the two cannot be tuned independently.
+- **Implied and reverse-implied odds adjust the price only.** `required = call / (pot + call + X)`, with the conditioned range and the realized-equity estimate untouched. `X` is positive for set-mines (scaled by the stack behind, capped at it, anchored to the rule of 15) and for strong draws, negative for dominated weak pairs, and **0 whenever the action closes** (river or all-in), so bluff-catch math is provably unchanged by this term. `X` is deliberately small: a manufactured speculative call is the classic losing pattern. The boundaries are pinned in `scripts/implied_spot_check.py` and `tests/test_implied_spots.py`, including the set-mine threshold near 15× and reverse-implied in both directions.
+- **The conditioned range over-narrows slightly.** In the river-spot probe (`validation/coach_calibration.txt`, reproduced by `scripts/coach_calibration.py --hands 6000 --seed 0`) the conditioned range's bias is **−0.034 overall** over 1,205 spots, ranging from −0.027 (TAG) to −0.050 (Nit, on only 60 spots). It models villains as slightly too value-heavy by the river and so **under**-rates the hero. That is the safe direction, since the static range it replaced over-rated the hero by +0.049 and an over-rating is an over-calling bias, but it is still a real error. Closing it means keeping more weak and bluff combos in the archetypes' barreling ranges. The probe is not bit-for-bit deterministic; the figures move by about ±0.001 between runs.
+- **The bots' preflop ranges are percentile-based, so their *shape* is wrong.** `poker/bots/preflop_strength.py` ranks hands by raw all-in equity, which under-rates small pairs and suited connectors. An archetype can therefore sit inside its VPIP/PFR band while opening the wrong hands from early position: too many weak offsuit broadways, too few speculative suited ones. The *leak detector* does not share the flaw, since it judges my play against §2's explicit positional lists (`poker/bots/preflop_ranges.py`); it is only the bots that run on percentiles. Replacing the percentiles with those lists would also invalidate the coach's measured `BET_COMPOSITION` table, which is calibrated against the ranges the bots currently play.

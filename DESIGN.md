@@ -1,101 +1,114 @@
-# DESIGN.md — Visual Spec: "Felt & Brass"
+# DESIGN.md — Visual Spec
 
-The look for the app. Rendered reference: **`references/poker-design-directions.html`, direction 01** — match it. This file is the written source of truth; if the two ever disagree, this file wins for *rules*, the HTML wins for *feel*.
+The shipped direction is **Mono Minimal / Editorial**: dark, flat, type-driven, one accent. This
+file is the written source of truth for the rules. The values below mirror
+`frontend/src/index.css`, which is what actually runs; if the two ever drift, the CSS is the
+authority on values and this file is the authority on intent.
 
-**The idea:** a quiet, expensive private game — warm, low-lit, restrained. The opposite of a neon casino or a generated dashboard. It must not "look like a scam," and it must not look AI-generated.
+**The intent:** a quiet private game, not a casino floor. Cool neutral dark surfaces, one green
+accent spent sparingly, and typography carrying the hierarchy instead of colour. Restraint is the
+whole aesthetic - hairlines instead of heavy borders, flat fills instead of lighting effects, and
+no element decorated beyond what it needs to be read.
 
 ---
 
 ## 1. Palette (tokens)
 
-> **As-built (this is what ships).** The app was implemented in the **"Mono Minimal — Editorial"** direction, not the warm Felt & Brass concept below: one **terminal-green** accent, neutral cool-grey surfaces, **Sora** (display/UI) + **IBM Plex Mono** (numbers). The authoritative values live in **`frontend/src/index.css`** (`@theme`); this table mirrors them. The Felt & Brass table further down is kept as the *original concept* — superseded by the implemented direction.
->
-> Palette tuned for **WCAG AA** legibility (contrast vs `--color-bg` in the table). The bg is lifted off near-black and raised surfaces take a perceptible step above it so layers read without heavy borders. The accent is unchanged.
->
-> | Token (`index.css`) | Hex | Contrast | Use |
-> |---|---|---|---|
-> | `--color-bg` | `#111114` | — | base background (lifted off near-black) |
-> | `--color-bg2` | `#2a2a34` | **1.33:1** step vs bg | raised surfaces / panels / cards |
-> | `--color-felt-core` | `#1c1d23` | 1.12:1 step | table "felt" (flat, faintly raised) |
-> | `--color-felt-edge` | `#101116` | — | felt edge / face-down card-back detail |
-> | `--color-ink` | `#ffffff` | **18.9:1** | primary text / numerals / headings |
-> | `--color-muted` | `#bdbec8` | **10.2:1** | secondary text / labels |
-> | `--color-faint` | `#94959f` | **6.3:1** | tertiary / caption labels / axes (clears AA body) |
-> | `--color-line` | `#5f6170` | **3.1:1** | borders — visible hairline (meets UI 3:1) |
-> | `--color-hair` | `#2e2f37` | 1.4:1 | faint internal dividers (decorative only) |
-> | `--color-accent` | `#2bd673` | 9.9:1 | terminal green — one accent (wordmark, key numbers, primary button) |
-> | `--color-accent-ink` | `#06140c` | — | text on an accent fill |
-> | `--color-loss` | `#e0574c` | 5.1:1 | negative / loss |
-> | `--color-warning` | `#f0b429` | 10.1:1 | caution |
->
-> Body/secondary/tertiary text all clear AA (≥4.5:1); borders and the large accent clear ≥3:1. Hierarchy is preserved (ink ≫ muted > faint) — the dim end is lifted, not flattened.
+Declared in `frontend/src/index.css` under `@theme`, so Tailwind exposes each one as a utility
+(`text-ink`, `bg-bg2`, `border-line`). Contrast is measured against `--color-bg`; the rows marked
+*step* are surface lifts rather than text colours, so their low ratios are deliberate.
 
----
+| Token | Hex | Contrast | Use |
+|---|---|---|---|
+| `--color-bg` | `#111114` | — | base background, lifted off near-black |
+| `--color-bg2` | `#2a2a34` | 1.33:1 step | raised surfaces, panels, menus |
+| `--color-felt-core` | `#1c1d23` | 1.12:1 step | the table "felt" |
+| `--color-felt-edge` | `#101116` | — | felt edge, card-back fill |
+| `--color-ink` | `#ffffff` | 18.9:1 | primary text, numerals, headings |
+| `--color-muted` | `#bdbec8` | 10.2:1 | secondary text and labels |
+| `--color-faint` | `#94959f` | 6.3:1 | tertiary text, captions, chart axes |
+| `--color-line` | `#5f6170` | 3.1:1 | borders - a hairline you can actually see |
+| `--color-hair` | `#2e2f37` | 1.4:1 step | faint internal dividers, decorative only |
+| `--color-accent` | `#2bd673` | 9.9:1 | terminal green, the single accent |
+| `--color-accent-soft` | `rgba(43,214,115,0.12)` | — | soft accent fill for a highlighted state |
+| `--color-accent-ink` | `#06140c` | — | text on an accent fill |
+| `--color-card` | `#f4f4f5` | — | playing-card face, kept light for legibility |
+| `--color-card-ink` | `#18181b` | — | black suits and indices |
+| `--color-card-red` | `#e0574c` | — | red suits |
+| `--color-win` | `#2bd673` | 9.9:1 | positive result |
+| `--color-loss` | `#e0574c` | 5.1:1 | negative result |
+| `--color-warning` | `#f0b429` | 10.1:1 | caution |
 
-### Original concept — "Felt & Brass" (superseded by the as-built palette above)
+Body, secondary and tertiary text all clear AA (≥4.5:1); borders and the accent clear the 3:1 UI
+floor. The dim end is lifted rather than flattened, so the ink ≫ muted > faint hierarchy survives.
 
-Use these as CSS variables. One accent only — **brass** — used sparingly.
-
-| Token | Hex | Use |
-|---|---|---|
-| `--bg` | `#16140e` | warm near-black background |
-| `--bg-2` | `#1d1a12` | panels / raised surfaces |
-| `--felt-core` → `--felt-edge` | `#1f3d30` → `#0f2018` | table felt, radial — **desaturated, never bright green** |
-| `--ink` | `#ece4d2` | primary text (warm bone) |
-| `--muted` | `#9a9078` | secondary text, labels |
-| `--line` | `#2b2618` | borders, dividers (low contrast) |
-| `--accent` | `#c9a44e` | **brass** — wordmark, key numbers, primary button only |
-| `--accent-ink` | `#1c1608` | text on the brass button |
-| `--card-bg` | `#f4efe1` | ivory card stock |
-| `--card-ink` | `#1c1813` | card black suits / indices |
-| `--card-red` | `#9e2b25` | card red suits (deep oxblood, **not** bright red) |
-| `--win` | `#7d9b6a` | muted sage for positive/equity (use rarely; brass is primary) |
-| `--loss` | `#a8534a` | muted clay for negative |
-
-There is **no blue, no purple, no bright green/red.** Semantic meaning comes from brass + the two muted win/loss tones + typography, not a rainbow.
+No blue and no purple in the chrome. Meaning comes from the accent, the two win/loss tones and
+typography, never from a spread of hues. The optional four-colour deck is the one exception, and
+there the blue and green are suit identity rather than UI colour.
 
 ---
 
 ## 2. Typography
 
-- **Display / wordmark / headings:** **Fraunces** (characterful serif, used with restraint). Weights 400/600.
-- **UI / body:** **Hanken Grotesk**. Weights 400/500/700/800.
-- **Numbers** (stacks, pot, equity, odds, stats): Hanken Grotesk with **tabular figures** (`font-variant-numeric: tabular-nums`) so columns align.
-- *Do not* use DM Sans or JetBrains Mono (the rejected default pairing).
+- **Display, wordmark, headings:** **Sora** (`--font-display`), weights 400/500/600/700.
+- **UI and body:** Sora (`--font-ui`). Same family, so weight and size do the separating.
+- **Numbers:** **IBM Plex Mono** (`--font-mono`), weights 300–700. The `.tabular-nums` class
+  switches an element to mono with `font-feature-settings: "tnum"`, so stacks, pots, equities and
+  stat columns line up. Every figure the reader might compare down a column goes through it.
+- Both families are self-hosted via `@fontsource` imports in `frontend/src/main.tsx`. No font CDN;
+  the faces ship with the bundle.
 
-Type scale (approx): wordmark 21px/600 Fraunces · panel headings 16–19px Fraunces · body 13–14px Hanken · labels 10–11px Hanken uppercase, letter-spaced · big numbers 18–22px tabular.
+Scale, approximately: view titles 24–30px · panel headings 16–18px · body 13–14px · labels 10–11px
+uppercase, letter-spaced ~0.15em · headline numbers 20–24px mono.
 
 ---
 
 ## 3. Components
 
-- **Felt table:** radial gradient `--felt-core` → `--felt-edge`, a thin rail, a soft inset shadow for depth, a barely-there centre watermark. No glow.
-- **Cards:** **real downloaded SVG deck** (see PROJECT.md §4) on ivory stock, soft drop shadow, gently rounded corners. Face-down = a tasteful brass-on-dark back. Do **not** hand-draw cards in CSS.
-- **Seats:** a quiet card with avatar, name, stack (tabular), and a small **archetype label as plain text** (e.g. "TAG · c-bet"), not a coloured badge. HUD line (VPIP/PFR) in small muted tabular figures.
-- **Coaching panel:** ivory-on-dark restraint. Hand title in Fraunces; equity as a slim bar filled in brass with a small marker at the required-equity point; pot-odds vs equity as two small readouts; one-line suggested read with a thin brass left-border.
-- **Action bar:** Fold = quiet outline; Call = subtle filled; **Raise = the brass button** (the one strong colour moment). Bet slider with a brass thumb; quick-size chips (½ / ¾ / pot / all-in).
+- **Felt table:** a flat fill (`--color-felt-core`) in a rounded oval, outlined by one `--color-line`
+  hairline with a fainter `--color-hair` ring inset from it. No gradient, no glow, no shadow. The
+  depth is the step from `--color-bg` to the felt, nothing more.
+- **Cards:** drawn as **inline SVG**, not sprites and not CSS boxes. Deck definitions and geometry
+  live in `frontend/src/prefs.tsx`; `frontend/src/components/Card.tsx` renders them. All decks share
+  a `100 × 140` viewBox, so they are interchangeable at any width and only styling differs. A soft
+  drop shadow lifts a card off the felt. The active deck is a user preference, kept in localStorage.
+- **Seats:** a quiet panel with name, stack in mono tabular figures, and one line of secondary text.
+  The archetype label is plain text and never a coloured badge; what it shows at all is gated by the
+  visibility mode (STRATEGY.md §4).
+- **Coach panel:** verdict first, in one line. Equity is a 2px track with no radius, filled with the
+  accent, carrying a tick at the required-equity point so price and equity are read in one glance.
+  Pot odds sit beside it as small mono readouts.
+- **Action bar:** Fold is an outline button, Call is a subtle fill, Bet/Raise is the one accent fill -
+  the single strong colour moment on the screen. Slider plus quick sizes (½, ¾, pot, all-in).
 
 ---
 
 ## 4. Motion
 
-Restrained. A gentle deal/slide for cards, a soft fade for bot actions, a quiet highlight on the seat to act. **No glows, no pulsing neon, no bouncy effects** — over-animation reads as AI-generated. Respect `prefers-reduced-motion`.
+Short and literal: cards flip from back to face over ~450ms, panels rise in over ~0.28s, bot actions
+fade. Motion only ever describes something that happened. Nothing loops, pulses, bounces or
+overshoots, and nothing glows. `prefers-reduced-motion: reduce` collapses every animation and
+transition to ~0 in `index.css`, so no information is carried by movement alone.
 
 ---
 
-## 5. Accessibility & quality floor
+## 5. Accessibility and quality floor
 
-- Readable contrast (the warm palette must still pass for body text).
-- Visible keyboard focus on every control (a brass focus ring).
-- Responsive down to mobile (the table scales; the coach panel stacks under it).
-- The header is **my logo + the wordmark "Poker"** — nothing else (`brand/urvancev-logo-white.svg`, favicon from `brand/favicon.svg`/`.ico`).
+- Contrast as in §1: body text clears AA, borders and the accent clear 3:1.
+- `:focus-visible` gets a 2px accent outline at 2px offset, set globally in `index.css`. Nothing
+  removes it.
+- Responsive down to mobile: the table scales and the coach panel stacks beneath it.
+- The header is the logo plus the wordmark "Poker" and nothing else
+  (`frontend/public/brand/urvancev-logo-white.svg`, favicon `frontend/public/favicon.svg`/`.ico`).
 
 ---
 
 ## 6. Do / Don't
 
-**Do:** warm, low-lit, restrained; one brass accent; real card art; lots of quiet neutral; tabular numbers; let the cards and felt carry it.
+**Do:** cool dark neutrals; one accent; hairlines over heavy borders; mono tabular numbers;
+plain-text labels; let type, weight and spacing carry the hierarchy.
 
-**Don't:** near-black + neon accents; multi-colour archetype badges; glows or glassy gradient-cards everywhere; DM Sans / JetBrains Mono; bright casino green; CSS-generated cards; anything that reads as a crypto/gambling dashboard.
+**Don't:** neon accents or glows; multi-colour archetype badges; glassy gradient panels; CSS-drawn
+or bitmap cards; bright casino-green felt; anything that reads as a crypto or gambling dashboard.
 
-> The single rule: **spend the boldness on the brass and the cards; keep everything else quiet.**
+> The single rule: spend the boldness on the accent and the cards, and keep everything else quiet.
