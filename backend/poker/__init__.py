@@ -1,12 +1,15 @@
 """Poker — the backend brain.
 
-Module map (built out phase by phase; see ../ARCHITECTURE.md):
-    poker.api     FastAPI app (Phase 0 stub, Phase 4 full)
-    poker.engine  PokerKit wrapper — game state, legal actions, pots (Phase 1)
-    poker.math    equity / pot odds / EV / hand classifier / ranges (Phase 2)
-    poker.bots    archetype strategies (Phase 3)
-    poker.sim     simulation harness + stats (Phase 3)
-    poker.db      SQLAlchemy models + persistence (Phase 4)
+Module map (see ARCHITECTURE.md):
+    poker.api     FastAPI app
+    poker.engine  PokerKit wrapper — game state, legal actions, pots
+    poker.math    equity / pot odds / EV / hand classifier / ranges
+    poker.bots    archetype strategies
+    poker.sim     simulation harness + stats
+    poker.coach   computed advice + hand review
+    poker.game    interactive session, hero vs bots
+    poker.db      SQLAlchemy models + persistence
+    poker.learn   from-scratch CFR on toy games
 """
 
 __version__ = "0.1.0"

@@ -1,20 +1,15 @@
 """Computed preflop hand-strength ranking of the 169 starting hands.
 
-Generated once by ranking every starting hand by heads-up all-in equity versus a
-random hand (using ``poker.math.equity``, seed 12345, 2500 trials each) — so it
-is *computed*, not fabricated. Used to drive each archetype's preflop ranges as a
-tunable "open the top X% by position" dial.
+Ranked once by heads-up all-in equity against a random hand (``poker.math.equity``,
+seed 12345, 2500 trials each), so the order is computed rather than asserted. It drives
+each archetype's preflop range as an "open the top X% by position" dial. Regenerate with
+scripts/gen_preflop_ranking.py.
 
-KNOWN LIMITATION (flagged for review): raw all-in equity under-rates small pairs
-and suited connectors, whose real value is set-mining / implied odds, not raw
-equity (e.g. 22 ranks ~80th here). So a percentile-based range opens fewer small
-pairs/SCs from early position than STRATEGY.md §2's explicit lists. The stat gate
-(VPIP/PFR/etc.) is unaffected; swap in §2's explicit lists later for finer realism.
-NOTE: the LEAK DETECTOR no longer uses this ranking -- it judges the hero against §2's
-explicit lists via bots/preflop_ranges.py. Only the BOTS still open by percentile.
-Switching them is step 2 of audit/10-BOT-REALISM-PHASE.md, deferred because it voids
-the coach's BET_COMPOSITION calibration along with every threshold derived from it.
-Regenerate with scripts/gen_preflop_ranking.py.
+All-in equity is a deliberate, partial model of preflop value: it under-rates small
+pairs and suited connectors, whose worth is set-mining and implied odds rather than raw
+equity (22 ranks ~80th here). A percentile range therefore opens fewer of them from
+early position than STRATEGY.md §2's explicit hand lists. Only the bots open by
+percentile; the hero's opens are judged against the §2 lists (bots/preflop_ranges.py).
 """
 
 from __future__ import annotations
@@ -86,7 +81,3 @@ def top_fraction(x: float) -> set[str]:
         if _CUM_FRACTION[name] >= x:
             break
     return out
-
-
-def in_top(hole: tuple[str, str] | list[str], x: float) -> bool:
-    return percentile(hand_class(hole)) <= x

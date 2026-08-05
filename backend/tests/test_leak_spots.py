@@ -1,6 +1,6 @@
-"""Leak-detector correct-plays battery (the merge gate). Asymmetric on purpose:
-every standard play must come back with ZERO leaks; the two true-positives must
-still flag. See scripts/leak_spot_check.py for the readable table.
+"""Leak-detector battery. Asymmetric on purpose: every standard play must come back
+with ZERO leaks, while the two true positives must still flag.
+scripts/leak_spot_check.py prints the readable table.
 """
 
 from poker.coach import review_hand

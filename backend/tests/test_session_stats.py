@@ -1,8 +1,7 @@
-"""Phase 6 tests: the learning-layer stats machinery.
-
-- the post-hoc summarizer reproduces archetype behaviour (ordering),
-- a session accumulates per-bot observed reads (revealed past the sample),
-- the hero report aggregates per-hand summaries.
+"""Live-session stats machinery: the post-hoc summarizer reproduces archetype behaviour
+(ordering), a session accumulates per-bot reads and only reveals them past the sample
+threshold, the hero report aggregates per-hand summaries, and the hero keeps sight of
+their own cards through a showdown.
 """
 
 import random
@@ -87,8 +86,8 @@ def test_hero_report_aggregates():
 
 
 def test_hero_always_sees_own_cards_through_showdown():
-    """Regression: at a showdown the hero lost, PokerKit mucks the hand and clears
-    its hole cards — but the hero must always see their own two cards."""
+    """PokerKit mucks a losing showdown hand and clears its hole cards; the hero's own
+    two cards must stay visible anyway."""
     gs = GameSession(session_id="t", villains=["station"] * 5, seed=1)
     showdowns = 0
     for _ in range(60):
@@ -103,7 +102,7 @@ def test_hero_always_sees_own_cards_through_showdown():
                 gs.submit_hero_action(Action(ActionType.FOLD))
         st = gs.state()
         hero = st.seats[gs.hero_seat]
-        # hero never folded above, so cards must be visible even after a loss
+        # the hero never folds above, so the cards must be visible even after a loss
         assert hero.hole_cards is not None and len(hero.hole_cards) == 2
         if st.results is not None and len(st.board) == 5:
             showdowns += 1

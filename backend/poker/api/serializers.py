@@ -23,8 +23,8 @@ def legal_to_dict(legal: LegalActions | None) -> dict | None:
 
 
 def seat_to_dict(seat, board: list[str]) -> dict:
-    # When a seat's cards are visible (hero always; villains at showdown), label
-    # the made hand so the UI can show "what do I/they have" — updates per street.
+    # Label the made hand whenever a seat's cards are visible (hero always,
+    # villains at showdown). Recomputed per street as the board fills in.
     hand_label = None
     if seat.hole_cards and len(seat.hole_cards) == 2:
         hand_label = classify(seat.hole_cards, board).label
@@ -64,8 +64,8 @@ def state_to_dict(state: GameState) -> dict:
         "street": state.street,
         "board": state.board,
         "pot": state.total_pot,
-        # Side pots were computed by the engine and dropped here, so a multi-way
-        # all-in showed only a single total (audit F-28).
+        # Every pot the engine computed, not just the total: a multi-way all-in
+        # produces side pots with different eligible seats.
         "pots": [
             {"amount": p.amount, "eligible_seats": list(p.eligible_seats)}
             for p in state.pots

@@ -1,10 +1,8 @@
-"""Counterfactual Regret Minimization (CFR) on Kuhn poker — a teaching module.
+"""Counterfactual Regret Minimization (CFR) on Kuhn poker.
 
 Why Kuhn? It is the smallest poker game with a non-trivial equilibrium, and that
-equilibrium is *known in closed form*, so we can prove our solver is correct
-rather than asserting it. That's the whole point of this module for someone
-heading into quant: see how self-play regret minimization *learns* a GTO
-strategy from nothing, and check it against the analytic answer.
+equilibrium is known in closed form, so the solver can be checked against the
+analytic answer instead of merely being asserted correct.
 
 The game (3-card deck J<Q<K, each player antes 1):
   - Player 0 acts: check ('p') or bet 1 ('b').
@@ -14,8 +12,8 @@ The game (3-card deck J<Q<K, each player antes 1):
 
 Vanilla CFR (Neller & Lanctot, 2013): at every information set we keep regret for
 each action, play proportionally to positive regret, and accumulate an *average*
-strategy that provably converges to a Nash equilibrium. The average strategy —
-not the current one — is the equilibrium.
+strategy that provably converges to a Nash equilibrium. It is the average
+strategy, not the current one, that is the equilibrium.
 
 Known facts we test against:
   - Game value to player 0 = -1/18 ≈ -0.0556 (P0 is at a disadvantage acting first).
@@ -23,9 +21,9 @@ Known facts we test against:
     (P0 never opens the Q; P1 always calls a bet with K, always folds J, …).
   - Exploitability (how much a best response beats the strategy) → 0.
 
-We hand-build the tiny game tree here rather than going through PokerKit: this is
-a self-contained learning artifact, and an explicit 12-infoset tree is clearer to
-read than driving a general engine. PokerKit is for the real NLHE game.
+The tiny game tree is hand-built here rather than driven through PokerKit: an
+explicit 12-infoset tree is easier to read than a general engine, and this module
+stands alone. PokerKit is for the real NLHE game.
 """
 
 from __future__ import annotations
@@ -153,12 +151,10 @@ def _value_p0(strat0, strat1, cards: tuple[int, int], history: str) -> float:
 def game_value(avg: dict[str, list[float]]) -> float:
     """Exact value to P0 of BOTH players following the average strategy.
 
-    Averaged over all 6 deals, computed exactly — no sampling. This replaces a running
-    mean of the self-play utility over every iteration, which included the early
-    near-uniform strategies and therefore converged toward -1/18 only as O(1/n) with a
-    long memory of the bad start: at 200k iterations it read -0.0611 and was FURTHER
-    from the target than at 20k, so a learner watching the lab saw a correct algorithm
-    appear to diverge (audit F-13)."""
+    Averaged over all 6 deals and computed exactly, with no sampling. A running mean
+    of the self-play utility is not a substitute: it averages in the early
+    near-uniform strategies, so it approaches -1/18 only as O(1/n) and can read
+    further from the target at 200k iterations than at 20k."""
 
     def strat(key: str) -> list[float]:
         return avg.get(key, [0.5, 0.5])
@@ -228,14 +224,13 @@ def train(iterations: int = 20_000, seed: int = 0, checkpoints: int = 20) -> dic
     nodes: dict[str, _Node] = {}
     deck = [0, 1, 2]
 
-    util_sum = 0.0
     trend: list[dict] = []
     step = max(1, iterations // max(1, checkpoints))
 
     for i in range(1, iterations + 1):
         rng.shuffle(deck)
         cards = (deck[0], deck[1])
-        util_sum += _cfr(nodes, cards, "", 1.0, 1.0)
+        _cfr(nodes, cards, "", 1.0, 1.0)
         if i % step == 0 or i == iterations:
             avg = {k: n.average_strategy() for k, n in nodes.items()}
             trend.append(

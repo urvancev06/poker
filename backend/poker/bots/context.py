@@ -1,8 +1,8 @@
 """Build a ``DecisionContext`` for the player to act, from a hand snapshot.
 
-This derives the situational facts a bot needs — position, how many raises it
-faces, whether it was the preflop aggressor, how many players remain — so the
-strategy code reads cleanly instead of re-parsing history everywhere.
+This derives the situational facts a bot needs (position, how many raises it faces,
+whether it was the preflop aggressor, how many players remain) so the strategy code
+reads cleanly instead of re-parsing history everywhere.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
-"""Phase 3 tests for the bots + simulation layer.
+"""Bots + simulation layer.
 
-The real proof of the bots is the ≥100k-hand stat gate (scripts/simulate.py).
-These guard the machinery: archetypes build, the strategy always returns a legal
+The real proof of the bots is the ≥100k-hand stat gate (scripts/simulate.py). These
+guard the machinery around it: archetypes build, the strategy always returns a legal
 action, the harness conserves chips across many hands, and stats compute sanely.
 """
 

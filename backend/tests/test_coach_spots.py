@@ -1,7 +1,6 @@
-"""Known-spot battery as enforced tests (the merge gate for the conditioned-range
-change). The river bluff-catch must flip on the measured bluff fraction:
-same hand + price, maniac vs nit -> different verdict; same villain, different
-price -> different verdict. See scripts/coach_spot_check.py for the readable table.
+"""Known-spot battery. The river bluff-catch must flip on the measured bluff fraction:
+same hand and price, maniac vs nit -> different verdict; same villain, different price
+-> different verdict. scripts/coach_spot_check.py prints the readable table.
 """
 
 from scripts.coach_spot_check import BARREL, spot
@@ -24,7 +23,7 @@ def test_air_is_folded_at_a_bad_price():
 
 
 def test_bluffcatch_flips_on_villain_bluff_rate():
-    """Same hand (55), same price — a maniac bluffs enough to call, a nit doesn't."""
+    """Same hand (55), same price: a maniac bluffs enough to call, a nit doesn't."""
     man = spot(["5h", "5d"], RIVER, "Maniac", BARREL, ip=False, **SMALL)
     nit = spot(["5h", "5d"], RIVER, "Nit", BARREL, ip=False, **SMALL)
     assert "call" in man.verdict.lower() and not man.verdict.startswith("Fold")
@@ -34,7 +33,7 @@ def test_bluffcatch_flips_on_villain_bluff_rate():
 
 
 def test_bluffcatch_flips_on_price():
-    """Same villain (maniac) — a small bet is a call, a pot-sized bet is a fold."""
+    """Same villain (maniac): a small bet is a call, a pot-sized bet is a fold."""
     small = spot(["5h", "5d"], RIVER, "Maniac", BARREL, ip=False, **SMALL)
     big = spot(["5h", "5d"], RIVER, "Maniac", BARREL, ip=False, **POTSZ)
     assert "call" in small.verdict.lower()

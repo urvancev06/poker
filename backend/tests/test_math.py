@@ -1,11 +1,7 @@
-"""Phase 2 math tests (PROJECT.md Definition of Done):
+"""Math tests: range parsing into combos (with blocker removal), Monte Carlo equity on
+known spots, exact pot-odds / EV arithmetic, and the hand classifier on crafted boards.
 
-- range parsing into combos (+ blocker removal),
-- Monte Carlo equity on known spots within tolerance,
-- exact pot-odds / EV arithmetic,
-- the hand classifier on crafted boards.
-
-Equity tests are seeded so they're deterministic; bands are wide enough never to
+Equity tests are seeded so they're deterministic; the bands are wide enough never to
 flake at the trial counts used but tight enough to catch real errors.
 """
 
@@ -169,7 +165,7 @@ def test_open_ended_vs_gutshot():
 
 
 def test_wheel_gutshot():
-    # A2 on 34x needs a 5 — a one-card (gutshot) straight draw using the ace low.
+    # A2 on 34x needs a 5: a one-card (gutshot) straight draw using the ace low.
     hc = classify(["Ah", "2d"], ["3c", "4s", "Kd"])
     assert hc.has(Draw.GUTSHOT)
 

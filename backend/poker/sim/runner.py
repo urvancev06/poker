@@ -33,8 +33,7 @@ def run(
     ``overrides`` lets the bot lab tweak strategy knobs without editing the
     archetype defaults: it maps an archetype key (``"tag"``, ``"station"``, …)
     to ``{field: value}`` pairs applied to every instance of that archetype.
-    Only scalar ``StrategyParams`` fields make sense here — the caller (the lab)
-    validates which knobs are tunable; the runner just applies them.
+    The caller validates which knobs are tunable; the runner just applies them.
     """
     lineup = lineup or DEFAULT_LINEUP
     overrides = overrides or {}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import TypeAlias
 
 from treys import Card, Evaluator
 
@@ -20,7 +21,7 @@ _EVAL = Evaluator()
 _INT = {c: Card.new(c) for c in FULL_DECK}
 
 # An opponent is a range (iterable of combos) or None / "random" for any hand.
-Opponent = "set[Combo] | list[Combo] | None | str"
+Opponent: TypeAlias = set[Combo] | list[Combo] | None | str
 
 
 @dataclass(frozen=True)
@@ -103,11 +104,10 @@ def equity(
             used.add(pick[1])
             holdings.append([_INT[pick[0]], _INT[pick[1]]])
         if not ok:
-            # Degenerate: the opponent's range is fully blocked by the hero's cards
-            # and the board. Drop the trial from the denominator rather than counting
-            # it -- it used to increment `completed` without touching wins/ties, so it
-            # landed in `lose` and biased equity DOWN, contradicting the comment that
-            # called it a wash (audit F-08). `attempts` bounds the loop.
+            # The opponent's range is fully blocked by the hero's cards and the board.
+            # Drop the trial from the denominator entirely: counting it would land it
+            # in `lose` and bias equity down. `attempts` bounds the loop so a range
+            # that is always blocked can't spin forever.
             attempts += 1
             if attempts > trials * 4:
                 break
@@ -135,8 +135,8 @@ def equity(
             share_sum += 1.0 / sharers
         completed += 1
 
-    # Denominator is the trials that actually produced a showdown, so a blocked
-    # range shrinks the sample instead of silently scoring as a loss.
+    # Denominator is the trials that reached a showdown; `or 1` returns zeros
+    # rather than dividing by zero when every trial was blocked.
     n = completed or 1
     return EquityResult(
         win=wins / n,

@@ -10,8 +10,6 @@ from .strategy import StrategyParams, decide
 
 
 class Bot:
-    """Implements the Phase-3 interface: ``act(context) -> action``."""
-
     def __init__(self, params: StrategyParams, name: str | None = None) -> None:
         self.params = params
         self.name = name or params.name

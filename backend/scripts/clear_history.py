@@ -7,7 +7,7 @@ memory, so nothing else is persisted — this is a full clean slate.
 Dry-run (just shows the count):
     .venv/bin/python scripts/clear_history.py
 
-Actually delete (where the friend played — usually the server's DB):
+Actually delete (point POKER_DB_URL at the database you want cleared):
     POKER_DB_URL=sqlite:////var/lib/poker/poker.db .venv/bin/python scripts/clear_history.py --yes
 """
 

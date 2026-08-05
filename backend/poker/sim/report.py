@@ -1,7 +1,7 @@
 """Measured-vs-target report (STRATEGY.md §4 bands).
 
-The phase gate (PROJECT.md): over >=100k hands, each archetype's core stats
-(VPIP, PFR, and aggression at minimum) must land in its target band.
+The validation gate: over >=100k simulated hands, every archetype's gated stats
+must land inside its target band.
 """
 
 from __future__ import annotations
@@ -11,13 +11,11 @@ from dataclasses import dataclass
 from .stats import StatLine, StatsAccumulator
 
 # (low, high) bands from STRATEGY.md §4. None = no hard band ("varies").
-# Nit WTSD: §4 says "low", but a tight-passive premium range structurally shows
-# down at a reg-like rate (~30%) and WINS it — the nit tell is a high WSD, not a
-# low WTSD (you cannot get WTSD below ~28 without pushing VPIP or AF out of their
-# defining bands; verified by sweep). So the band reflects the realistic model.
-# wsd is displayed as evidence (the nit signature) but NOT gated: a band fit to
-# the measurement it checks isn't a real gate, and per-archetype WSD bands aren't
-# in §4 to invent here.
+# Nit WTSD departs from §4's "low": a tight-passive premium range structurally
+# shows down at a reg-like rate (~30%) and wins it, so the nit tell is a high WSD,
+# not a low WTSD. WTSD cannot go below ~28 without pushing VPIP or AF out of the
+# bands that define the archetype, so the band here follows the model.
+# wsd is displayed as evidence but not gated: §4 gives no per-archetype WSD bands.
 TARGETS: dict[str, dict[str, tuple[float, float] | None]] = {
     "Nit":             {"vpip": (10, 15), "pfr": (8, 12),  "threebet": (1, 3),   "af": (1, 2),    "wtsd": (26, 32), "wsd": None},
     "TAG":             {"vpip": (20, 24), "pfr": (17, 21), "threebet": (6, 9),   "af": (2.5, 3.5),"wtsd": (25, 30), "wsd": None},
@@ -26,7 +24,7 @@ TARGETS: dict[str, dict[str, tuple[float, float] | None]] = {
     "Maniac":          {"vpip": (50, 65), "pfr": (38, 50), "threebet": (14, 22), "af": (4, 99),   "wtsd": None,     "wsd": None},
 }
 
-# Stats that constitute the hard gate (now includes WTSD with corrected bands).
+# Stats that constitute the hard gate.
 GATE_STATS = ("vpip", "pfr", "af", "wtsd")
 
 
@@ -63,13 +61,11 @@ def evaluate(acc: StatsAccumulator) -> dict[str, dict[str, CellCheck]]:
 
 
 def gate_passes(acc: StatsAccumulator) -> bool:
-    """Do the gated stats sit in band for every archetype ACTUALLY IN THE LINEUP?
+    """Do the gated stats sit in band for every archetype present in the lineup?
 
-    This used to loop over all of TARGETS regardless of who played, so any partial
-    lineup — which is most Lab runs — reported a guaranteed red FAIL: the absent
-    archetypes had no hands, their stats read 0.0, and 0.0 is outside every band
-    (audit F-48). The offline gate passes the full five-archetype lineup, so its
-    behaviour is unchanged."""
+    Only archetypes that played are judged. An absent archetype has no hands, so its
+    stats are no-sample and would fail every band, which would red-FAIL the partial
+    lineups most Lab runs use."""
     checks = evaluate(acc)
     present = [a for a in TARGETS if acc.line(a).hands > 0]
     if not present:

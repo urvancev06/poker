@@ -1,28 +1,25 @@
 """The coach: honest, computed advice for the hero's current spot.
 
 Everything here is *computed* (classifier + Monte Carlo equity + exact pot odds)
-and labelled by basis (computed math vs assumption about villain ranges). It
-never states exact GTO frequencies — where those matter it defers to GTO Wizard
-(STRATEGY.md §7 / PROJECT.md §3,§7).
+and labelled by basis: computed math vs assumption about villain ranges. It never
+states exact GTO frequencies; where those matter it defers to GTO Wizard
+(STRATEGY.md §7).
 
 Villain ranges are *modelled*, not known, and *action-conditioned*: each live bot
-starts from the top-X% of hands for its archetype, then we narrow and strengthen
-it by the bets/calls they've actually made this hand (villain_model.py), with the
-bluff frequencies measured from the bots themselves. Computing equity against the
-static preflop range would inflate hero equity on later streets — the structural
-cause of over-calling. This is the honest "what I'm estimating against", not a
-solver output.
+starts from the top-X% of hands for its archetype, which villain_model.py then
+narrows and strengthens by the bets/calls they've actually made this hand, with
+bluff frequencies measured from the bots themselves. Equity against the static
+preflop range would inflate hero equity on later streets, which is the structural
+cause of over-calling.
 
 Decision model (the important part): we do NOT compare *raw* equity to pot odds.
-Raw (showdown) equity is only what you collect when the hand checks down for free
-— which essentially only happens facing a river bet or an all-in. With money
-still behind, out of position, or multiway, you realize *less* than your raw
-equity (you get bet off hands, play guessing games OOP, etc.). So we compare
-*realized* equity = raw × R to the price, where R is an equity-realization factor
-(position / hand-type / multiway). When the action closes (river or all-in) there
-is no future betting, R = 1, and raw-equity-vs-pot-odds is exactly correct.
-This is the fix for the old "always fold" / "always call" swings: those came from
-treating raw equity as if it were realized.
+Raw (showdown) equity is only what you collect when the hand checks down for
+free, which essentially only happens facing a river bet or an all-in. With money
+still behind, out of position, or multiway you realize *less* than your raw equity
+(you get bet off hands, play guessing games OOP). So we compare *realized* equity
+= raw × R to the price, where R is an equity-realization factor (position /
+hand-type / multiway). When the action closes (river or all-in) there is no future
+betting, R = 1, and raw-equity-vs-pot-odds is exactly correct.
 """
 
 from __future__ import annotations
@@ -39,11 +36,11 @@ from .villain_model import BET_COMPOSITION, condition_range, villain_line
 _STREET_WEIGHT = {"preflop": 1.0, "flop": 0.7, "turn": 0.4, "river": 0.0}
 _STREET_OF = {0: "preflop", 3: "flop", 4: "turn", 5: "river"}
 
-# Implied / reverse-implied price adjustment. Conservative BY DESIGN (err small):
-# a missed thin call is cheap; a manufactured speculative call is the single most-
-# abused concept in poker and the exact losing habit this trains out. So X errs to
-# the tight side of the rule-of-15, and reverse-implied (Y) fires only on genuinely
-# dominated hands so it can't become over-folding in a costume.
+# Implied / reverse-implied price adjustment. Conservative by design: a missed thin
+# call is cheap, whereas a manufactured speculative call is the losing habit this is
+# meant to train out. So the implied credit errs to the tight side of the rule-of-15,
+# and the reverse-implied penalty fires only on genuinely dominated hands, where it
+# can't turn into over-folding.
 _SET_MINE_RATE = 0.03      # set-mine implied pot ≈ this × stack-behind (flip ≈ rule-of-15, erring tight)
 _DRAW_IMPLIED_MULT = 0.5   # strong-draw implied pot ≈ this × current pot
 _REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (dominated WEAK pairs only)
@@ -54,26 +51,24 @@ def _implied_adjustment(
     pair_str: PairStrength, pot: int, behind: int, action_closed: bool,
 ) -> tuple[int, str]:
     """Signed extra chips you expect to play for *beyond* the current pot, for the
-    implied/reverse price adjustment — capped at the stack behind (you can't win
-    what isn't there). Positive = implied odds, negative = reverse implied, 0 when
-    the action closes (river/all-in: the exact raw rule stands, provably untouched)."""
+    implied/reverse price adjustment, capped at the stack behind (you can't win what
+    isn't there). Positive = implied odds, negative = reverse implied, 0 when the
+    action closes (river/all-in), where the raw price rule is already exact."""
     if action_closed or behind <= 0:
         return 0, ""
     if street == "preflop" and is_pocket_pair:
-        # A pair wins a big pot when it flops a set (~1 in 8.5). Credit scaled by the
-        # stack behind. Measured flip point is ~11x the call, to "close" rather than to
-        # a clear call — deliberately tighter than the rule-of-15 shorthand.
-        # No stack cap needed: 0.03*behind <= behind for every behind >= 0.
+        # A pair wins a big pot when it flops a set (~1 in 8.5), so the credit scales
+        # with the stack behind. The flip point lands near 11x the call: to "close"
+        # rather than to a clear call, and tighter than the rule-of-15 shorthand.
         return round(behind * _SET_MINE_RATE), f"set value, {behind} behind"
     if is_draw:
-        # This is the one branch where the stack cap is live: it binds whenever the
-        # money behind is less than half the pot.
+        # The only branch where the stack cap actually binds: whenever the money
+        # behind is less than half the pot.
         return min(behind, round(_DRAW_IMPLIED_MULT * pot)), "draw — paid off when you complete"
     if made_tier == MadeTier.PAIR and pair_str is PairStrength.WEAK:
-        # A bottom/under pair makes a 2nd-best hand and loses more — needs MORE than
-        # the headline price. Only WEAK pairs (never top pair/overpairs, which are
-        # decent), so this can't talk you off a legitimate made hand.
-        # No pot cap needed: 0.40*pot <= pot for every pot >= 0.
+        # A bottom/under pair makes a 2nd-best hand and loses more, so it needs MORE
+        # than the headline price. WEAK pairs only: top pair and overpairs are decent
+        # enough that this must never talk you off them.
         return -round(_REVERSE_MULT * pot), "reverse implied — dominated"
     return 0, ""
 
@@ -144,12 +139,9 @@ class Coaching:
 
 
 # The complete set of verdict strings `_suggest` can emit, mapped to a display tone.
-#
-# The frontend used to derive tone by string-parsing this prose —
-# `startsWith('fold')` / `startsWith('close')`, defaulting to the positive accent —
-# so rewording a verdict would silently render a fold as a recommendation, with
-# nothing failing anywhere (audit F-39). The mapping lives here, next to the strings
-# it describes, and `tests/test_coach.py` asserts it stays exhaustive.
+# The frontend reads the tone from here rather than string-parsing the prose, so
+# rewording a verdict can't silently render a fold as a recommendation.
+# `tests/test_coach.py` asserts the mapping stays exhaustive.
 VERDICT_TONE: dict[str, str] = {
     "Bet for value.": "good",
     "Raise for value.": "good",
@@ -164,8 +156,8 @@ VERDICT_TONE: dict[str, str] = {
 
 
 def verdict_tone(verdict: str) -> str:
-    """Display tone for a verdict string. Unknown verdicts read as neutral rather
-    than as a recommendation — the old default was the positive accent."""
+    """Display tone for a verdict string. An unknown verdict reads as neutral, never
+    as a recommendation."""
     return VERDICT_TONE.get(verdict, "neutral")
 
 
@@ -174,12 +166,10 @@ def _basis(
 ) -> list[str]:
     """The honesty labels, bound to what this verdict ACTUALLY computed.
 
-    This used to be a hardcoded list emitted identically on every call, so it claimed
-    an implied-odds adjustment and an equity discount even on verdicts where neither
-    ran — which is most of them (X is 0 on every river, every all-in, and every hand
-    that is not a preflop pair, a draw or a weak pair; R is 1.0 whenever the action
-    closes). A label that cannot be trusted to describe the number beside it defeats
-    the purpose of having labels (audit F-07)."""
+    A label must never claim an adjustment that didn't run, and most of them usually
+    don't: the implied term is 0 on every river, every all-in, and every hand that is
+    not a preflop pair, a draw or a weak pair, and R is 1.0 whenever the action closes.
+    A label that doesn't describe the number beside it defeats the point of labelling."""
     out = ["Hand classification and equity are computed (Monte Carlo, treys)."]
     if priced:
         out.append("Pot odds and required equity are exact arithmetic.")
@@ -221,11 +211,11 @@ def _realization_factor(
     """How much of raw equity we expect to actually realize (R). 1.0 when the
     action closes (river / all-in: nothing left to lose equity to). Otherwise
     discounted for being OOP, multiway, having players still to act behind, and
-    for hand types that realize poorly (bare high-card air) — while strong made
+    for hand types that realize poorly (bare high-card air), while strong made
     hands and real draws realize close to fully. The discount then shrinks by
     street (``_STREET_WEIGHT``): on later streets the action-conditioned range
     already encodes "they're strong", so a full R discount would double-count it.
-    Deliberately rough, honest rules of thumb — not solver outputs."""
+    Deliberately rough rules of thumb, not solver outputs."""
     if action_closed:
         return 1.0
     r = 1.0
@@ -352,11 +342,11 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     dead = set(hole) | set(board)
 
     # Which opponents do we model equity against? Only those who have actually
-    # committed chips to contest this pot (the aggressor + callers whose street
-    # bet matches the level the hero faces) — not players sitting behind. Counting
-    # yet-to-act blinds as tight live ranges systematically under-rated calls (the
-    # old "always fold" bug); but we DO remember how many are still behind so the
-    # verdict can flag that a call doesn't close the action.
+    # committed chips to contest this pot (the aggressor + callers whose street bet
+    # matches the level the hero faces). Yet-to-act players aren't in the pot yet, and
+    # treating them as live ranges systematically under-rates calls. We do still count
+    # how many are behind, so the verdict can flag that calling doesn't close the
+    # action.
     all_live = session.live_villain_seats()
     villain_seats = all_live
     players_behind = 0
@@ -420,9 +410,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     realized = equity_frac * r
 
     if to_call > 0:
-        # Implied / reverse-implied odds adjust the PRICE (not the range or realized
-        # equity, which are working). Capped at the stack behind. When the action
-        # closes (river/all-in) the adjustment is 0 and the exact rule stands.
+        # Implied / reverse-implied odds adjust the PRICE, not the range or realized
+        # equity. Capped at the stack behind, and 0 once the action closes.
         effective_behind = min(hero_stack, max((state.seats[s].stack for s in villain_seats), default=0))
         implied_adj, implied_note = _implied_adjustment(
             street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
@@ -471,8 +460,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         hand_label=hc.label or hc.made.name.replace("_", " ").lower(),
         made_tier=hc.made.name,
         draws=[d.value for d in hc.draws],
-        # Round the Monte-Carlo / heuristic figures to whole percent — the second
-        # decimal is noise (R is a rule of thumb, equity is sampled).
+        # Whole percent only: the second decimal is noise, since equity is sampled
+        # and R is a rule of thumb.
         equity_pct=round(equity_frac * 100),
         realized_equity_pct=round(realized * 100),
         realization_pct=round(r * 100),

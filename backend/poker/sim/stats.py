@@ -39,19 +39,18 @@ class StatLine:
 
 
 def _pct(num: int, den: int) -> float | None:
-    """None when there is no sample at all.
+    """Percentage, or None when the denominator is empty.
 
-    This used to return 0.0 for an empty denominator, which is indistinguishable
-    from a genuine 0%: a Nit HUD at 30 hands had an ~11% chance of displaying
-    "WTSD 0.0" having seen zero flops, i.e. reporting a measurement it had never
-    made (audit F-52). Callers must render None as "no sample", never as a number."""
+    None ("never measured") and 0.0 (a real 0%) must stay distinct: at small samples
+    an empty denominator is common, and a 0.0 there reports a measurement that was
+    never made. Callers must render None as "no sample", never as a number."""
     return 100.0 * num / den if den else None
 
 
 class StatsAccumulator:
     def __init__(self, big_blind: int = 2) -> None:
-        # bb/100 must divide net chips by the *actual* big blind, not a constant.
-        # Store it so every line() is correct for non-(1,2) games (e.g. the lab).
+        # bb/100 divides net chips by the big blind, so non-(1,2) games (the lab)
+        # need the real value stored here rather than a constant.
         self._bb = big_blind
         self._c: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 

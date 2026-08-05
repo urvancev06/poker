@@ -64,10 +64,8 @@ def pot_odds_ratio(call: int, pot: int) -> float:
 
 
 def call_ev(equity: float, call: int, pot: int) -> float:
-    """EV of calling vs folding (0): ``equity*pot - (1-equity)*call``.
-
-    Win the ``pot`` with probability ``equity``; otherwise lose your ``call``.
-    Positive means calling beats folding."""
+    """EV of calling vs folding (0): ``equity*pot - (1-equity)*call``. Positive
+    means calling beats folding."""
     if not 0.0 <= equity <= 1.0:
         raise ValueError("equity must be in [0, 1]")
     return equity * pot - (1 - equity) * call

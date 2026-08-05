@@ -1,13 +1,11 @@
-"""Bot lab — expose the Phase-3 simulation machinery as a JSON-friendly feature.
+"""Bot lab - the headless simulation machinery exposed as a JSON-friendly feature.
 
-The lab lets you pick a lineup, nudge a few strategy *knobs*, run a headless
-simulation, and read the *emergent* stats against their target bands. It is the
-honest demonstration of Principle 3 (PROJECT.md §3): you never set a bot's VPIP;
-you set a strategy and *measure* what comes out. Tuning a knob here and watching
-the band light up or go red is exactly the Phase-3 tuning loop, made interactive.
+Pick a lineup, nudge a few strategy knobs, run a simulation, and read the emergent
+stats against their target bands. You never set a bot's VPIP; you set a strategy
+and measure what comes out.
 
-Nothing here is new poker logic — it reuses ``runner.run`` and ``report`` so the
-lab and the validation gate compute identically.
+No new poker logic here: it reuses ``runner.run`` and ``report``, so the lab and
+the validation gate compute identically.
 """
 
 from __future__ import annotations
@@ -24,23 +22,18 @@ from .stats import StatLine
 MAX_LAB_HANDS = 25_000
 DEFAULT_LAB_HANDS = 5_000
 
-# NO Lab-sized run can reliably reproduce the gate, and the UI must say so.
+# No Lab-sized run can reliably reproduce the gate, and the UI must say so.
 #
 # WTSD's denominator is flops seen, not hands. A Nit sees a flop in ~7.4% of hands, so
-# even at the 25,000 cap it contributes only ~1,850 -- a binomial SE of ~1.1 points
-# against a ceiling it sits ~0.6 points below. Measured: the default 6-seat lineup
-# fails on TAG WTSD at 5,000 (30.10 vs 25-30) and on Nit WTSD at 15,000 (32.24 vs
-# 26-32), on different cells, for the same reason. Raising the default buys runtime,
-# not reliability (audit F-46, F-47).
-#
-# So the Lab reports the gate as INDICATIVE at these sizes; the authoritative gate is
+# even at the 25,000 cap that is only ~1,850 flops: a binomial SE of ~1.1 points against
+# a ceiling it sits ~0.6 points below. Raising the Lab default buys runtime, not
+# reliability. So the Lab reports its gate as INDICATIVE; the authoritative gate is
 # scripts/simulate.py at 100k, and even there Nit WTSD sits ~1.2 sigma from its bound.
 GATE_RESOLUTION_HANDS = 100_000
 
-# The scalar knobs the lab may tune. Each entry drives one slider in the UI.
-# (key, label, min, max, step). We deliberately expose only frequencies/sizings
-# that move stats in an intuitive way — not the percentile caps, which need the
-# hand-ranking context to read sensibly.
+# The scalar knobs the lab may tune; each entry drives one slider in the UI.
+# (key, label, min, max, step). Only frequencies and sizings are exposed, not the
+# percentile caps, which need the hand-ranking context to read sensibly.
 KNOB_META: list[dict] = [
     {"key": "threebet_value", "label": "3-bet value", "min": 0.0, "max": 0.15, "step": 0.005},
     {"key": "threebet_bluff_freq", "label": "3-bet bluff", "min": 0.0, "max": 0.6, "step": 0.02},
@@ -60,11 +53,6 @@ KNOB_KEYS = frozenset(k["key"] for k in KNOB_META)
 
 # All stats we report; the band (if any) comes from report.TARGETS.
 _STATS = ["vpip", "pfr", "threebet", "ats", "fold_to_steal", "af", "wtsd", "wsd", "wwsf", "cbet"]
-
-
-def _key_to_name() -> dict[str, str]:
-    """Map archetype key ('tag') -> display name ('TAG'), as report.TARGETS keys."""
-    return {key: archetypes.make(key).name for key in archetypes.ARCHETYPES}
 
 
 def archetypes_info() -> dict:

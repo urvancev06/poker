@@ -1,12 +1,12 @@
-"""Implied / reverse-implied odds battery (the merge gate).
+"""Implied / reverse-implied odds battery. Two properties:
 
-Two things the review demanded, both proved here:
-  1. the set-mine flip lands at the right PLACE — a fold when shallow, callable
-     when deep, with the boundary near the rule-of-15 (fold at 8x, callable by
-     ~20x): not at 8x (too loose) or beyond 25x (too tight);
-  2. reverse-implied (Y) fires on a dominated hand (-> fold) but does NOT over-fire
-     on a decent non-premium made hand (which must still call) — both directions.
-See scripts/implied_spot_check.py for the readable boundary sweep.
+  1. the set-mine flip lands at the right PLACE: a fold when shallow, callable when
+     deep, with the boundary near the rule of 15, so neither at 8x (too loose) nor
+     beyond 25x (too tight);
+  2. reverse-implied (Y) fires on a dominated hand (-> fold) but does NOT over-fire on
+     a decent non-premium made hand, which must still call.
+
+scripts/implied_spot_check.py prints the readable boundary sweep.
 """
 
 from scripts.implied_spot_check import flop_spot, setmine
@@ -19,7 +19,7 @@ def _fold(c):
 
 
 def _callable(c):
-    return not c.verdict.startswith("Fold")  # Call / Clear call / Close — i.e. not a fold
+    return not c.verdict.startswith("Fold")  # Call / Clear call / Close
 
 
 def test_setmine_shallow_folds_deep_is_callable():
@@ -28,15 +28,15 @@ def test_setmine_shallow_folds_deep_is_callable():
 
 
 def test_setmine_boundary_is_near_rule_of_15():
-    # The boundary, not just the endpoints: still a fold at 8x (so it isn't at 8x,
-    # too loose), callable by 20x (so it isn't beyond 25x, too tight) -> ~15x.
+    # Brackets the boundary rather than the endpoints: still a fold at 8x, callable
+    # by 20x, so it sits near 15x.
     assert _fold(setmine(8 * CALL))
     assert _callable(setmine(20 * CALL))
 
 
 def test_setmine_stays_conservative_when_deep():
-    # Err small: a set-mine vs a 3-bet is marginal, so even deep it should be a
-    # lean ("Close"), never a slam "Clear call" that rationalizes speculation.
+    # A set-mine facing a 3-bet is marginal: even deep it should lean ("Close"),
+    # never slam "Clear call".
     assert "clear call" not in setmine(30 * CALL).verdict.lower()
 
 

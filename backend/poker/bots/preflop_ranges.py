@@ -1,21 +1,12 @@
 """The explicit positional opening ranges from STRATEGY.md §2, as parsed combo sets.
 
-WHY THIS EXISTS. STRATEGY.md §2 states each position's range two ways: a hand list
-(``22+, ATs+, A5s, ...``) and a percentage label (``~15%``). Only the percentage was ever
-wired into code -- ``archetypes._TAG_RFI`` is those six labels used as inputs -- and the
-labels are wrong: they overstate their own lists by 1.3 to 4.4 points. The leak detector
-then graded the learner's opens against the TAG bot's copy of that label, scaled x1.25,
-using a percentile over a raw-all-in-equity ranking that misorders speculative hands.
+STRATEGY.md states each position's range twice: a hand list (``22+, ATs+, A5s, ...``)
+and a percentage label (``~15%``). The two disagree - the labels overstate their own
+lists by 1.3 to 4.4 points - so the lists, not the labels, decide whether an open was
+in range. Membership is exact, so no tolerance band is needed.
 
-The result did not discriminate: opening exactly the §2 range produced "opened too loose"
-flags, while opening ~1.5-1.7x wider produced none. See audit F-01/F-02/F-03.
-
-This module makes the hand lists -- the thing that is actually correct -- the source of
-truth for judging an open. Membership is exact, so no tolerance band is needed.
-
-NOTE: the bots still size their ranges by percentile (``archetypes.rfi_raise``). That is
-deliberate and separate: those values drive VPIP and PFR, which are gated statistics, so
-switching them is a change to bot behaviour rather than to measurement.
+The bots still size their ranges by percentile (``archetypes.rfi_raise``); those values
+drive VPIP and PFR, so changing them changes bot behaviour rather than measurement.
 """
 
 from __future__ import annotations
@@ -23,8 +14,7 @@ from __future__ import annotations
 from ..math.cards import Combo
 from ..math.ranges import parse_range
 
-# Verbatim from STRATEGY.md:28-32. The en dash in the MP row is normalised below --
-# ``_parse_dash`` splits on ASCII "-", so the doc's U+2013 would raise (audit F-05).
+# Verbatim from STRATEGY.md:28-32, up to the dash normalisation below.
 _RANGE_TEXT: dict[str, str] = {
     "UTG": "22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo",
     "MP": "22+, A9s+, A5s–A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+",
@@ -34,14 +24,14 @@ _RANGE_TEXT: dict[str, str] = {
         "A2o+, K9o+, Q9o+, J9o+, T9o, 98o"
     ),
     "SB": "22+, A2s+, K5s+, Q7s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, A2o+, K9o+, QTo+, JTo",
-    # BB has no RFI -- it checks its option when folded to. An empty range here would
-    # make every BB open look like a leak, so callers must treat "no range" as
-    # "not judgeable", not as "range of zero hands".
+    # BB has no RFI - it checks its option when folded to. Callers must treat a missing
+    # range as "not judgeable"; read as a range of zero hands, every BB open is a leak.
 }
 
 
 def _normalise(text: str) -> str:
-    """STRATEGY.md is prose written for humans; it uses typographic dashes."""
+    """STRATEGY.md is prose written for humans and uses typographic dashes;
+    ``parse_range`` splits ranges on ASCII "-" only."""
     return text.replace("–", "-").replace("—", "-")
 
 

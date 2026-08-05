@@ -1,7 +1,8 @@
-"""Combined tuning harness: run one sim and report BOTH the gate stats and the
-realism stats (one-pair-fold, fold-to-c-bet) per archetype, under a candidate set
-of strategy overrides. Lets us find a point where the regs' made-hand over-fold is
-fixed AND the 100k gate stays in band — or prove the two can't both hold.
+"""Tuning harness: one sim reporting BOTH the gate stats and the made-hand fold
+rates (strong-pair, one-pair, fold-to-c-bet) per archetype, under a candidate set
+of strategy overrides. The two are coupled: defending more made hands raises WTSD,
+so a setting that fixes the regs' strong-pair folding can push the gate out of
+band.
 
     backend/.venv/bin/python scripts/tune_calldown.py
 """
@@ -35,8 +36,8 @@ def evaluate(overrides: dict, hands: int = 40000, seed: int = 0):
             d["pf"] += 1
             d["pp"] += folded
             if pair_strength(ctx.hole, ctx.board) is PairStrength.STRONG:
-                d["sf"] += 1            # strong pair (top pair/overpair) faced
-                d["sp"] += folded       # ...folded (THE leak metric)
+                d["sf"] += 1            # top pair / overpair faced
+                d["sp"] += folded       # ...and folded: the leak metric
 
     acc = run(hands, seed=seed, overrides=overrides, observer=obs)
     return acc, of
@@ -56,7 +57,7 @@ def show(label, overrides, hands=40000):
         L = acc.line(name)
         d = of.get(name, {})
         pf = 100 * d.get("pp", 0) / d["pf"] if d.get("pf") else 0
-        sf = 100 * d.get("sp", 0) / d["sf"] if d.get("sf") else 0   # strong-pair fold% (the leak)
+        sf = 100 * d.get("sp", 0) / d["sf"] if d.get("sf") else 0
         fb = 100 * d.get("ff", 0) / d["fb"] if d.get("fb") else 0
         gate = all(band_ok(name, s, getattr(L, s)) for s in ("vpip", "pfr", "af", "wtsd"))
         all_ok &= gate
@@ -85,10 +86,9 @@ if __name__ == "__main__":
     elif which == "C":
         show("C: Nit cd0.03 / TAG cd0.16 / LAG cd0.20, spd0.82", cand(0.03, 0.16, 0.20), hands=60000)
     elif which == "REPORT":
-        # BEFORE = uniform calldown (disable grading via spd=0, original calldowns)
+        # spd=0 turns off pair grading, so every one pair folds at calldown_freq
         show("BEFORE (uniform calldown, the leak)",
              {k: {"strong_pair_defend": 0.0} for k in ("nit", "tag", "lag")}, hands=60000)
-        # AFTER = strong-pair defense on, calldown lowered to hold WTSD
         show("AFTER (spd0.82, calldown lowered to hold WTSD)", cand(0.03, 0.16, 0.20), hands=60000)
     elif which == "FINAL":
         show("FINAL (baked-in archetypes, no overrides)", {}, hands=60000)

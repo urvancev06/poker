@@ -1,7 +1,7 @@
 """Database engine + session factory (SQLite via SQLAlchemy).
 
-File-based, zero-ops — perfect for one user. The DB path can be overridden with
-the ``POKER_DB_URL`` env var (tests use an in-memory database).
+File-based and zero-ops, which is all a single user needs. The DB path can be
+overridden with the ``POKER_DB_URL`` env var (tests use an in-memory database).
 """
 
 from __future__ import annotations

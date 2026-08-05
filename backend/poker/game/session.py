@@ -27,10 +27,9 @@ HUD_MIN_HANDS = 30
 def _pot_from_actions(actions: list[dict], blinds: tuple[int, int], n: int) -> int:
     """Total pot, reconstructed from the action log.
 
-    The snapshot's ``total_pot`` is always 0 by the time a hand is over: PokerKit's
-    CHIPS_PUSHING automation runs inside ``apply``, so the pot is distributed before
-    we can read it, and every stored hand recorded pot=0 (audit F-22). Rebuilding
-    from the log is the same accounting coach/review.py does when it replays a hand.
+    The snapshot's ``total_pot`` is 0 once a hand is over: PokerKit's CHIPS_PUSHING
+    automation runs inside ``apply``, so the pot is distributed before we can read
+    it. This is the same accounting coach/review.py does when it replays a hand.
     """
     sb, bb = blinds
     committed = [0] * n
@@ -79,9 +78,7 @@ class GameSession:
         self.archetype_of = ["hero"] + [self._bots[p].name for p in range(1, self.n)]
         self._rng = random.Random(self.seed)
         self._hand: Hand | None = None
-        # Dead initialiser: start_hand() immediately overwrites this with
-        # `hand_index % n`, which puts the hero on the BUTTON for hand 0, not the SB
-        # as the old comment claimed (audit F-33).
+        # Placeholder; start_hand() sets the real button to `hand_index % n`.
         self._button = self.n - 1
         self._seat_to_player: list[int] = []
         self._player_to_seat: dict[int, int] = {}
@@ -222,10 +219,9 @@ class GameSession:
             }
             for e in snap.history
         ]
-        # Villain cards at showdown. They were revealed live and then discarded, so a
-        # hand review could never show what the opponent actually held -- the most
-        # instructive thing available after a hand (audit F-24). Only non-folded seats,
-        # and only at a showdown: this must not leak cards that were never shown.
+        # Villain cards, kept so a hand review can show what the opponent held.
+        # Non-folded seats only, and only at a showdown: this must never record
+        # cards that were not actually turned face up.
         shown = (
             {
                 str(s): "".join(self._dealt_holes[s])
@@ -252,8 +248,8 @@ class GameSession:
             "actions": actions,
             "lineup": self.archetype_of,
             "shown_cards": shown,
-            # Raw wall-clock per hero decision this hand (ms). Includes thinking time,
-            # tab switches and interruptions -- summarised only as a median.
+            # Raw wall-clock per hero decision this hand (ms); summarised only as a
+            # median, since it also contains tab switches and interruptions.
             "hero_decision_ms": list(self._decision_ms),
         }
 
@@ -305,15 +301,15 @@ class GameSession:
         h = self._hand
         assert h is not None
         snap = h.snapshot(viewer=self._player_to_seat[HERO], reveal_all=h.is_over)
-        # At a showdown the hero lost, PokerKit mucks the losing hand and clears
-        # its hole cards — so overlay the cards we captured at the deal. The hero
-        # must always see their own cards (and at hand-over even if they folded,
-        # for review). Mid-hand a folded hero stays "folded".
+        # PokerKit mucks a losing hand at showdown and clears its hole cards, so
+        # overlay the cards captured at the deal. The hero always sees their own
+        # cards, including a folded hand once the hand is over (for review), but
+        # not while a hand they folded is still running.
         hero = snap.seats[self._player_to_seat[HERO]]
         if self._hero_hole and not hero.hole_cards and (h.is_over or not hero.folded):
             hero.hole_cards = list(self._hero_hole)
-        # At a finished hand that went to showdown (2+ players standing, incl. an
-        # all-in runout), reveal every non-folded hand — PokerKit mucks the losers.
+        # At a finished hand with 2+ players standing (including an all-in runout),
+        # reveal every non-folded hand; PokerKit mucks the losers.
         if h.is_over:
             live = [s for s in range(self.n) if not snap.seats[s].folded]
             if len(live) >= 2:

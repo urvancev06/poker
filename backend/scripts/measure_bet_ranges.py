@@ -3,9 +3,9 @@ a bot actually bets/raises with on each street is value / draw / air.
 
 This is the empirical source for the coach's action-conditioned villain ranges:
 the bluff slice the coach keeps in a barreling villain's range must match the
-rate that bot truly barrels air, or the coach grades the hero against a fiction
-(see the bluff-catching threshold). On the river draws have resolved, so the air
-fraction there IS the river bluff rate a bluff-catcher beats.
+rate that bot truly barrels air, or the coach grades the hero against a fiction.
+On the river draws have resolved, so the air fraction there IS the river bluff
+rate a bluff-catcher beats.
 
     backend/.venv/bin/python scripts/measure_bet_ranges.py --hands 60000
 """

@@ -1,12 +1,12 @@
 """Coach verdict logic (the candid suggested line).
 
-Guards two things:
-- the original "it told me to fold two pair" fix: a value hand (two pair+) that's
-  clearly ahead must never get a Fold verdict, and a fold must state the numbers;
-- the realized-equity fix for "it calls everything": with money behind, the
-  verdict is judged on *realized* equity (raw discounted for position/multiway),
-  so a marginal hand that beats the raw price can still be a fold — while on the
-  river / all-in (action closed) the pure raw-equity-vs-price rule is used.
+Two invariants:
+- a value hand (two pair+) that is clearly ahead never gets a Fold verdict, and a
+  fold always states the numbers behind it;
+- while money is still behind, the verdict is judged on *realized* equity (raw
+  equity discounted for position and multiway), so a marginal hand that beats the
+  raw price can still be a fold. Once action is closed (river or all-in) raw
+  equity is realized equity and the plain equity-vs-price rule applies.
 """
 
 import pytest
@@ -18,7 +18,7 @@ def test_value_hand_ahead_raises_not_folds():
     verdict, why = _suggest(
         can_check=False,
         tier_name="two pair",
-        is_strong=True,  # two pair+
+        is_strong=True,
         is_draw=False,
         equity_frac=0.93,  # crushing
         realized=0.93,
@@ -86,8 +86,8 @@ def test_borderline_is_close_not_hard_fold():
 
 
 def test_marginal_oop_call_on_raw_becomes_fold_on_realized():
-    """The 'calls everything' fix: raw 40% beats the 33% price, but realized 28%
-    (OOP, multiway) does not — so it's a fold, not a call."""
+    """Raw 40% beats the 33% price, but realized 28% (OOP, multiway) does not, so
+    the verdict is a fold."""
     verdict, _ = _suggest(
         can_check=False,
         tier_name="ace high",
@@ -113,7 +113,7 @@ def test_action_closed_uses_raw_equity_not_realized():
         is_strong=False,
         is_draw=False,
         equity_frac=0.45,
-        realized=0.20,  # would be a fold if this were used — but action is closed
+        realized=0.20,  # would be a fold if this were used, but action is closed
         required=0.33,
         in_position=False,
         action_closed=True,
@@ -124,8 +124,8 @@ def test_action_closed_uses_raw_equity_not_realized():
 
 
 def test_realization_factor_directions():
-    """Each factor must push the right way (constraint: keep R honest, check
-    direction). HT = a bare-air hand type held fixed while one factor varies."""
+    """Each factor must push realization the right way. HT = a bare-air hand type
+    held fixed while one factor varies."""
     f = _realization_factor
     HT = dict(is_strong=False, is_pair=False, is_draw=False, action_closed=False)
 
@@ -143,7 +143,7 @@ def test_realization_factor_directions():
     assert f(in_position=True, num_opponents=1, players_behind=2, street="flop", **HT) < \
            f(in_position=True, num_opponents=1, street="flop", **HT)
 
-    # Later streets shrink the discount toward 1 — the conditioned range now
+    # Later streets shrink the discount toward 1: the conditioned range already
     # carries the "they're strong" signal, so R must not double-count it.
     flop = f(in_position=False, num_opponents=2, street="flop", **HT)
     turn = f(in_position=False, num_opponents=2, street="turn", **HT)
@@ -162,9 +162,9 @@ def test_draw_realizes_better_than_air():
 
 
 def test_every_verdict_string_has_a_tone():
-    """The frontend colours the verdict from `tone`. If _suggest gains or reoords a
-    verdict string without updating VERDICT_TONE, an unmapped verdict would render
-    neutral instead of as a fold — this test is the guard (audit F-39)."""
+    """The frontend colours the verdict from `tone`. A verdict string added to or
+    renamed in _suggest without a matching VERDICT_TONE entry renders neutral
+    instead of as a fold, so every reachable verdict must be mapped."""
     import itertools
 
     from poker.coach.coach import VERDICT_TONE, _suggest

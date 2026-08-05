@@ -1,11 +1,11 @@
 """Replay a persisted hand street-by-street and attach computed coaching + leak
-detection to each hero decision (PROJECT.md Phase 6).
+detection to each hero decision.
 
 Everything is reconstructed from the stored action log (no engine needed): pot
 and price are accounted from the action amounts; equity is computed vs the same
 modelled villain ranges the live coach uses. Leaks are *computed* judgements
-(range deviation vs the §2 baseline, or an EV error vs the price) — never
-results-oriented, and labelled as math-based reads, not solver truth.
+(range deviation vs the STRATEGY.md §2 baseline, or an EV error vs the price):
+never results-oriented, and labelled as math-based reads, not solver truth.
 """
 
 from __future__ import annotations
@@ -21,22 +21,15 @@ from ..math.equity import equity
 from ..math.odds import implied_required_equity, required_equity
 # The price model is shared with the live coach ON PURPOSE: the reviewer must judge a
 # decision by exactly the rule the coach advised it with, or the app contradicts itself
-# (it did — the reviewer used the raw price and raw equity while the coach used the
-# implied-adjusted price and realized equity, so a call the coach called "Call." could
-# be booked as a `call_no_odds` leak). These stay private to the coach package.
+# and books a call the coach called "Call." as a `call_no_odds` leak. These stay
+# private to the coach package.
 from .coach import _implied_adjustment, _realization_factor
 from .villain_model import condition_range, villain_line
 
-# Judge opens by EXACT MEMBERSHIP in STRATEGY.md §2's positional hand lists.
-#
-# This replaces a percentile comparison against the TAG bot's `rfi_raise`, which was
-# the §2 *percentage labels* used as code inputs and scaled x1.25. That baseline did
-# not discriminate: opening exactly the §2 range produced "too loose" flags (44, T9s,
-# 33, 98s...), while opening 1.5-1.7x wider produced none, and `tight_fold` never fired
-# at all. See audit F-01/F-02 and bots/preflop_ranges.py for the full reasoning.
-#
-# With an explicit list, in-range and out-of-range are exact, so the old +0.05 slack and
-# the `cap * 0.5` fold threshold are gone — there is nothing left for them to absorb.
+# Opens are judged by EXACT MEMBERSHIP in STRATEGY.md §2's positional hand lists, so
+# in-range and out-of-range are exact and no slack constant is needed. A percentile
+# proxy doesn't discriminate here: it flags hands that are exactly in range (44, T9s,
+# 33, 98s) while leaving opens 1.5-1.7x too wide unflagged. See bots/preflop_ranges.py.
 
 # Lightweight history item for villain_line (it reads .seat/.street/.action).
 _HE = namedtuple("_HE", "seat street action")
@@ -117,7 +110,6 @@ def _preflop_leaks(hero: list[str], pos: str, action: str, preflop_raises: int, 
 
 
 def _postflop_leaks(
-    street: str,
     action: str,
     to_call: int,
     equity_frac: float | None,
@@ -129,8 +121,8 @@ def _postflop_leaks(
     separately (it needs a check-through lookahead).
 
     ``equity_frac`` is REALIZED equity and ``required`` is the implied/reverse-adjusted
-    price — the same two numbers the live coach compared when it advised this decision.
-    They must stay in step with coach.py or the app contradicts its own advice (F-17)."""
+    price: the same two numbers the live coach compared when it advised this decision.
+    They must stay in step with coach.py or the app contradicts its own advice."""
     leaks: list[Leak] = []
     if equity_frac is None or to_call <= 0 or required is None:
         return leaks
@@ -144,16 +136,12 @@ def _postflop_leaks(
         )
     # Too-tight fold: realized equity clears the price by more than the tolerance.
     #
-    # The river used to be excluded and the margin was 0.18 against 0.05 for the
-    # opposite error — a 3.6x asymmetry that made this rule near-silent, and silent
-    # precisely on the street where bluff-catching decisions concentrate (audit F-19).
-    # The river is in fact the ONE street where the comparison is exactly right: the
-    # action closes, so realization is 1.0 and realized equity IS raw equity.
-    #
-    # The tolerance is now symmetric with `call_no_odds` at 0.05. The remaining
-    # asymmetry is structural rather than a hand-tuned constant: `_realization_factor`
-    # already discounts equity below raw whenever money is behind, which biases this
-    # rule toward silence off the river without needing a second fudge factor.
+    # The tolerance is symmetric with `call_no_odds` at 0.05, and the river is included
+    # deliberately: it is the ONE street where the comparison is exactly right, because
+    # the action closes, so realization is 1.0 and realized equity IS raw equity. It is
+    # also where bluff-catching decisions concentrate. Off the river the rule is
+    # naturally quieter without a second fudge factor, since `_realization_factor`
+    # already discounts equity below raw whenever money is behind.
     if action == "fold" and equity_frac >= required + 0.05:
         leaks.append(
             Leak(
@@ -235,10 +223,9 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 if ranges:
                     eq_frac = equity(hero, board_now, ranges, trials=equity_trials, seed=0).equity
 
-            # Price + realized equity, computed by the SAME rule the live coach used when
-            # it advised this decision (coach.py:328-368). Judging a call by a different
-            # rule than the one it was advised under is how the app came to contradict
-            # itself; see audit F-17.
+            # Price + realized equity, computed by the SAME rule the live coach used
+            # when it advised this decision. Judging a call by a different rule than
+            # the one it was advised under makes the app contradict itself.
             required = required_direct = realized = None
             if to_call > 0:
                 hero_stack = (start_stacks[hero_seat] - total_committed[hero_seat]) if start_stacks else 0
@@ -287,7 +274,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
             if cur_street == "preflop":
                 leaks += _preflop_leaks(hero, a["position"], act, preflop_raises, num_limpers)
             else:
-                leaks += _postflop_leaks(cur_street, act, to_call, realized, required)
+                leaks += _postflop_leaks(act, to_call, realized, required)
 
             decision = Decision(
                 street=cur_street,
@@ -368,11 +355,11 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
     }
 
 
-# Reviewing a hand costs a Monte Carlo run per hero decision, and the leak report
-# re-reviewed every hand on every request: ~13.4 s for 200 hands, on every History
-# mount. A stored hand is immutable, so the only thing that can change its verdict is
-# a change to this package -- hence the version stamp in the key. Bounded so a long
-# session cannot grow it without limit.
+# Reviewing a hand costs a Monte Carlo run per hero decision, and the leak report walks
+# every hand on every request: ~13.4 s for 200 hands without this cache. A stored hand
+# is immutable, so the only thing that can change its verdict is a change to this
+# package, hence the version stamp in the key. Bounded so a long session can't grow it
+# without limit.
 _REVIEW_CACHE: dict[tuple, dict] = {}
 _CACHE_MAX = 5000
 # Bump when anything that changes a leak verdict changes (thresholds, price model,

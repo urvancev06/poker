@@ -3,9 +3,9 @@ knob set. Archetypes (archetypes.py) are just different knob values.
 
 Preflop is percentile-based off the computed hand ranking (preflop_strength.py):
 open the top X% by position, 3-bet / call / 4-bet by strength thresholds, with a
-bluff-3-bet frequency. Postflop follows STRATEGY.md §3 — value-bet strong made
-hands, semi-bluff draws, c-bet/barrel as the aggressor, and call/fold by a
-calldown tendency — with frequencies that tune AF, WTSD, and c-bet%.
+bluff-3-bet frequency. Postflop follows STRATEGY.md §3: value-bet strong made hands,
+semi-bluff draws, c-bet/barrel as the aggressor, call/fold by a calldown tendency,
+with frequencies that tune AF, WTSD, and c-bet%.
 
 Stats (VPIP/PFR/AF/...) are *outputs* of these knobs, never set directly.
 """
@@ -57,11 +57,10 @@ class StrategyParams:
     float_freq: float = 0.05               # call a bet with air (loose/sticky types)
     bet_frac: float = 0.6                  # bet/raise size as fraction of the pot
     # How often to fold two-pair-or-better on a board showing four to a flush or four
-    # to a straight. 0.0 = never (the historical behaviour, and correct for the fish).
+    # to a straight. 0.0 = never, which is in character for the fish.
     twopair_fold_freq: float = 0.0
 
 
-# convenience
 _F, _X, _C = ActionType.FOLD, ActionType.CHECK, ActionType.CALL
 _B, _R = ActionType.BET, ActionType.RAISE
 
@@ -77,7 +76,7 @@ def _aggress(legal: LegalActions, to: int) -> Action:
 
 
 def heuristic_equity(hc, cards_to_come: int, all_in: bool) -> float:
-    """Cheap equity estimate for the bots (the *coach* uses real Monte Carlo).
+    """Cheap equity estimate for the bots (the coach uses real Monte Carlo).
     Made hands map to rough win rates; draws use outs * rule-of-2/4."""
     tier = hc.made
     if tier >= MadeTier.STRAIGHT:
@@ -101,11 +100,10 @@ def heuristic_equity(hc, cards_to_come: int, all_in: bool) -> float:
     if Draw.OVERCARDS in hc.draws and tier == MadeTier.HIGH_CARD:
         outs += 3
     outs = min(outs, 15)
-    # Rule of 2 and 4: each out is worth ~2% per card to come. With both cards
-    # guaranteed (we're all-in on the flop) use ~4%/out; otherwise ~2%/out for the
-    # single next card. ``per`` is already the *total* per-out equity for the cards
-    # we'll actually see — do NOT multiply by cards_to_come again (that double-
-    # counted, e.g. a 9-out flush draw read as 72% instead of ~35%).
+    # Rule of 2 and 4: each out is worth ~2% per card to come. All-in on the flop sees
+    # both cards, so ~4%/out; otherwise ~2%/out for the single next card. ``per`` is
+    # already the total per-out equity for the cards we will actually see, so do not
+    # multiply by cards_to_come again.
     per = 0.04 if (all_in and cards_to_come == 2) else 0.021
     draw_eq = min(0.92, outs * per)
     return max(base, draw_eq)
@@ -159,10 +157,8 @@ def _decide_preflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random)
 def _board_is_scary(board: list[str]) -> bool:
     """Four to a flush, or four to a straight, on the board itself.
 
-    Deliberately narrow: this is the only place in the codebase that looks at board
-    shape at all, and it exists to let a nit fold two pair when the board screams that
-    two pair is no longer good -- not to introduce general texture awareness (that is
-    a separate, larger piece of work)."""
+    Deliberately narrow: the only board-texture read in the codebase, and it exists
+    solely so a nit can fold two pair when the board says two pair is no longer good."""
     if len(board) < 4:
         return False
     suits = [c[1] for c in board]
@@ -221,15 +217,10 @@ def _decide_postflop(p: StrategyParams, ctx: DecisionContext, rng: random.Random
             return Action(_R, to)
 
     if tier >= MadeTier.TWO_PAIR and legal.can_call:
-        # Two pair or better continues -- but not unconditionally. Every archetype used
-        # to call here at 100%, measured 0% fold across all five over 40,000 hands, which
-        # made them all un-bluffable with a strong-looking board. For the fish that is in
-        # character; for the NIT it contradicts its own identity, since folding when
-        # beaten is the whole archetype, and it kills the textbook exploit of
-        # representing the flush against a nit (audit F-14).
-        #
-        # `twopair_fold_freq` defaults to 0.0, so this is a no-op for every archetype
-        # that does not opt in.
+        # Two pair or better continues, but not unconditionally: an archetype that never
+        # folds a strong hand is un-bluffable, which kills the textbook exploit of
+        # representing the flush. `twopair_fold_freq` defaults to 0.0, so this is a
+        # no-op for archetypes that do not opt in.
         if p.twopair_fold_freq <= 0.0 or tier >= MadeTier.FULL_HOUSE:
             return Action(_C)
         # Only give up on a genuinely threatening board: four to a flush or four to a

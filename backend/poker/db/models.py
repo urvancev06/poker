@@ -1,7 +1,7 @@
 """SQLAlchemy models for persisted hand history (SQLAlchemy 2.0 style).
 
 One row per completed hand, with the full structured hand stored as JSON so it
-can be replayed street-by-street later (Phase 6 hand-history browser).
+can be replayed street-by-street later.
 """
 
 from __future__ import annotations
@@ -22,9 +22,8 @@ class Base(DeclarativeBase):
 
 class HandRecord(Base):
     __tablename__ = "hands"
-    # A hand index is unique within a session. Duplicate protection used to be an
-    # in-memory set that died with the process, so a restart could re-persist a hand
-    # (audit F-29). The database is the right place for an invariant this simple.
+    # A hand index is unique within a session. Enforced in the schema rather than
+    # in process memory so a restart cannot re-persist a hand already stored.
     __table_args__ = (UniqueConstraint("session_id", "hand_index", name="uq_hand_per_session"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -1,8 +1,7 @@
 """Play one hand of 6-max NLHE cash in the console by typing actions.
 
-This is the Phase 1 interactive proof that the engine works end to end. There are
-no bots yet (Phase 3) — you drive every seat yourself, typing the action for
-whoever is to act. Showdown and side pots are handled by the engine.
+No bots: you drive every seat yourself, typing the action for whoever is to act.
+Showdown and side pots are handled by the engine.
 
     backend/.venv/bin/python scripts/play_console.py            # random hand
     backend/.venv/bin/python scripts/play_console.py --seed 42  # reproducible

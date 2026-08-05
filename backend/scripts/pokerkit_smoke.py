@@ -1,8 +1,6 @@
-"""Phase 0 smoke test: prove PokerKit imports and a trivial 6-max NLHE *cash*
-state can be created and is ready for action.
-
-This is a scratch runner (PROJECT.md Phase 0 Definition of Done), not the real
-engine wrapper — that's Phase 1. Run it with:
+"""Smoke test: PokerKit imports, and a trivial 6-max NLHE *cash* state can be
+created and is ready for action. A scratch runner, not the engine wrapper
+(that's poker/engine).
 
     backend/.venv/bin/python backend/scripts/pokerkit_smoke.py
 """
@@ -17,7 +15,7 @@ STARTING_STACK = 200
 PLAYER_COUNT = 6
 
 # Automate the mechanical steps so the state walks straight to the first
-# decision (UTG preflop). We drive the *betting* actions ourselves later (Phase 1).
+# decision (UTG preflop). Betting actions are never automated.
 AUTOMATIONS = (
     Automation.ANTE_POSTING,
     Automation.BET_COLLECTION,
@@ -43,7 +41,7 @@ def build_state():
         BIG_BLIND,                   # min_bet
         STARTING_STACK,              # starting stacks (same for all seats)
         PLAYER_COUNT,
-        mode=Mode.CASH_GAME,         # cash game, NOT a tournament (PROJECT.md)
+        mode=Mode.CASH_GAME,
     )
 
 

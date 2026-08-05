@@ -1,5 +1,5 @@
-"""Aggregate the hero's persisted per-hand summaries into stats over time, with
-the healthy 6-max reg target bands from STRATEGY.md §5 (the dashboard targets)."""
+"""Aggregate the hero's persisted per-hand summaries into stats over time, against
+the healthy 6-max reg target bands from STRATEGY.md §5."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import math
 from .stats import StatLine, StatsAccumulator
 from .table import PlayerHandSummary
 
-# STRATEGY.md §5 — my targets for the progress dashboard.
+# Target bands for the progress dashboard (STRATEGY.md §5).
 HERO_TARGETS: dict[str, tuple[float, float]] = {
     "vpip": (22, 26),
     "pfr": (18, 22),
@@ -18,10 +18,8 @@ HERO_TARGETS: dict[str, tuple[float, float]] = {
     "wtsd": (25, 30),
     "wsd": (52, 58),
     "wwsf": (48, 54),
-    # The Study page has always printed a C-bet band, but there was no entry here
-    # and no row in StatsView, so it targeted a number the dashboard could not show
-    # (audit F-44). `cbet` is computed and returned, so the fix is to complete the
-    # wiring rather than delete the guidance.
+    # Every band the Study page prints needs an entry here and a row in StatsView,
+    # or the UI quotes a target it has no measured value to sit beside.
     "cbet": (55, 70),
 }
 
@@ -65,9 +63,9 @@ def _aggregate(summary_dicts: list[dict], big_blind: int = 2) -> StatLine:
 def decision_seconds(records: list[dict]) -> dict:
     """Median hero decision time, in seconds, over hands that recorded any.
 
-    Median rather than mean because the distribution has a long right tail (a hand
-    left open while the learner does something else). Reported raw: it is wall clock,
-    not thinking time, and nothing is derived from it beyond this summary."""
+    Median rather than mean: the distribution has a long right tail from hands left
+    open while the player does something else. This is wall-clock time, not thinking
+    time, so nothing is derived from it."""
     ms = [v for r in records for v in (r.get("hero_decision_ms") or []) if isinstance(v, (int, float))]
     if not ms:
         return {"median_s": None, "n": 0}
@@ -80,9 +78,8 @@ def decision_seconds(records: list[dict]) -> dict:
 def hero_report(summary_dicts: list[dict], buckets: int = 8, big_blind: int = 2) -> dict:
     """Overall hero stats + a coarse trend (chronological order assumed).
 
-    ``big_blind`` must be the session's real big blind: bb/100 divides net chips by
-    it, and this used to be hardcoded at the StatsAccumulator default of 2, so a 5/10
-    session over-reported by 5x (audit F-23)."""
+    ``big_blind`` must be the session's real big blind - bb/100 divides net chips by
+    it, so a hardcoded value silently rescales every result."""
     overall = line_to_dict(_aggregate(summary_dicts, big_blind))
     trend: list[dict] = []
     n = len(summary_dicts)

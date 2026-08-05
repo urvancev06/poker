@@ -1,8 +1,8 @@
 """The five archetypes as ``StrategyParams`` sets (STRATEGY.md §4).
 
 TAG is anchored to §2's opening percentages; the others widen/tighten and shift
-aggression/passivity per §4. These are the *tuning dials* — the simulation
-measures the resulting stats and we adjust until each lands in its target band.
+aggression/passivity per §4. These are the tuning dials: the simulation measures the
+resulting stats and we adjust until each lands in its target band.
 The point of the fish (Station, Maniac) is that they play badly on purpose.
 """
 
@@ -38,17 +38,16 @@ def nit() -> StrategyParams:
         stab_freq=0.02,
         raise_value_min=MadeTier.TWO_PAIR,
         raise_value_freq=0.35,
-        # Graded calldown: top pair / overpairs defend via strong_pair_defend; weak/
-        # medium pairs fold at calldown_freq. Tightened to ~0 to hold WTSD in band
-        # now that strong pairs defend (a weak-tight nit folds bottom/2nd pair anyway).
+        # Graded calldown: top pair / overpairs defend via strong_pair_defend, weak and
+        # medium pairs fold at calldown_freq. Zero here keeps WTSD in band, and a weak-
+        # tight nit folds bottom and second pair anyway.
         calldown_freq=0.0,
         strong_pair_defend=0.82,
         float_freq=0.02,
         bet_frac=0.6,
-        # A nit is defined by folding when beaten. Every archetype folded two-pair-plus
-        # 0% of the time, which made the nit un-bluffable on exactly the boards where
-        # representing the flush against one is the textbook exploit (audit F-14).
-        # Only fires on four-to-a-flush / four-to-a-straight boards.
+        # A nit is defined by folding when beaten, so it gives up two pair or better on
+        # four-to-a-flush / four-to-a-straight boards. Without this it is un-bluffable
+        # exactly where representing the flush against a nit is the textbook exploit.
         twopair_fold_freq=0.35,
     )
 

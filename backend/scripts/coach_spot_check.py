@@ -2,10 +2,10 @@
 answers, run through build_coaching so the verdict is judged end-to-end.
 
 The load-bearing case is the river bluff-catch: the verdict must FLIP on whether
-the villain's *measured* bluff fraction clears the pot-odds bar — same hand +
+the villain's *measured* bluff fraction clears the pot-odds bar. Same hand and
 price, different villain (maniac bluffs, nit doesn't) -> different verdict; same
 villain, different price -> different verdict. If that flip doesn't reproduce,
-the conditioned-range bluff slice is wrong and the change must not merge.
+the conditioned-range bluff slice is wrong.
 
     backend/.venv/bin/python scripts/coach_spot_check.py
 """
@@ -92,11 +92,11 @@ def spot(hero, board, villain_arch, villain_actions, to_call, pot, ip=True, can_
     return build_coaching(fake, trials=trials)
 
 
-# Each spot: (name, kwargs, expected-substring-in-verdict-or-None-for-documented)
 BARREL = {"preflop": "raise", "flop": "bet", "turn": "bet", "river": "bet"}
 
 
 def battery():
+    """Rows of (name, coaching, expected substring in the verdict)."""
     rows = []
 
     # 1. Clear value-call: hero flopped a set on a dry board facing a c-bet. Must
@@ -122,10 +122,9 @@ def battery():
     rows.append(("bluff-catch 55 vs NIT, same small bet", c_nit_small, "Fold"))
     rows.append(("bluff-catch 55 vs MANIAC, pot bet (req~33%)", c_man_big, "Fold"))
 
-    # 4. Set-mine: 22 facing a TAG open, deep. Direct odds make it marginal, but the
-    #    implied-odds term (set value, stack behind) now correctly makes it a Call
-    #    (was "Close" — the gap-2 fix). See scripts/implied_spot_check.py for the
-    #    stack-depth boundary.
+    # 4. Set-mine: 22 facing a TAG open, deep. Direct odds are marginal; the
+    #    implied-odds term (set value, stack behind) makes it a Call.
+    #    scripts/implied_spot_check.py maps the stack-depth boundary.
     c = spot(["2h", "2d"], [], "TAG", {"preflop": "raise"}, to_call=6, pot=9, ip=True)
     rows.append(("set-mine: 22 vs TAG open (deep — implied odds)", c, "call"))
 

@@ -1,9 +1,8 @@
-"""Calibration guard (the 'error reduced, not moved' proof, as a test).
+"""Calibration guard: the action-conditioned villain range must REDUCE the static
+range's river over-calling bias without over-correcting into over-folding.
 
-Runs the river-spot probe at a modest sample and asserts the conditioned range
-both REDUCES the static range's over-calling bias and does NOT over-correct into
-over-folding. See scripts/coach_calibration.py and validation/coach_calibration.txt
-for the full committed record.
+Runs the river-spot probe at a modest sample. scripts/coach_calibration.py and
+validation/coach_calibration.txt hold the full committed record.
 """
 
 from scripts.coach_calibration import _summary, run_probe
@@ -15,7 +14,7 @@ def test_conditioned_range_reduces_river_overcall_bias():
     assert n > 150, f"too few river spots to judge ({n})"
     # The problem exists: the static preflop range over-rates hero equity on the river.
     assert bias_old > 0.02, f"static range should over-rate the call (bias {bias_old:+.3f})"
-    # The fix REDUCES the error magnitude...
+    # Conditioning must SHRINK the error magnitude...
     assert abs(bias_new) < abs(bias_old), f"conditioned should shrink bias ({bias_new:+.3f} vs {bias_old:+.3f})"
-    # ...without merely MOVING it into over-folding.
+    # ...not merely MOVE it into over-folding.
     assert bias_new > -0.08, f"conditioned must not over-correct into over-folding ({bias_new:+.3f})"

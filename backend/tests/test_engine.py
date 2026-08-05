@@ -1,12 +1,8 @@
-"""Phase 1 engine tests (PROJECT.md Definition of Done):
+"""Engine tests: hand ranking on known showdowns, side-pot distribution, legal-action
+generation in tricky spots, and chip conservation over randomised hands.
 
-- hand-ranking sanity on known showdowns,
-- a multi-all-in side pot distributes correctly,
-- legal-action generation is correct in tricky spots,
-- random hands complete and conserve chips.
-
-We use ``manual_deal=True`` to construct deterministic showdowns: deal exact hole
-cards + board, then assert the payouts PokerKit produces.
+``manual_deal=True`` builds deterministic showdowns: deal exact hole cards and board,
+then assert the payouts PokerKit produces.
 """
 
 import random
@@ -112,8 +108,8 @@ def test_three_way_side_pot_distribution():
 
 
 def test_side_pot_structure_in_snapshot():
-    # Before the river is dealt, the snapshot should expose two pots: a main pot
-    # eligible to all three, and a side pot eligible to the two deeper stacks.
+    # Two pots: a main pot eligible to all three, and a side pot eligible only to
+    # the two deeper stacks.
     hand = Hand.new(
         table_size=3, blinds=(1, 2), starting_stacks=(50, 100, 200), manual_deal=True
     )
@@ -172,8 +168,8 @@ def test_legal_actions_postflop_check_available():
 
 
 def test_short_stack_can_only_call_allin():
-    # seat0 deep, seat1 short. The effective stack caps seat0's max bet at the
-    # short stack (40); once seat0 puts seat1 all-in, seat1 may only call — no raise.
+    # The effective stack caps seat0's max bet at the short stack (40); once seat1
+    # is all-in it may only call, never raise.
     hand = Hand.new(
         table_size=2, blinds=(1, 2), starting_stacks=(200, 40), manual_deal=True
     )
@@ -205,8 +201,7 @@ def _random_action(legal, rng):
         options.append(Action(ActionType.CHECK))
     if legal.can_call:
         options.append(Action(ActionType.CALL))
-    # Folding for free is no longer a legal action (a free check dominates it and
-    # it can burn chips) — only fold when actually facing a bet.
+    # The engine offers no free fold, so only fold when actually facing a bet.
     if legal.can_fold and not legal.can_check:
         options.append(Action(ActionType.FOLD))
     if legal.can_aggress:
@@ -233,5 +228,4 @@ def test_snapshot_hides_other_hole_cards():
     snap = hand.snapshot(viewer=2)
     assert snap.seats[2].hole_cards is not None
     assert all(snap.seats[i].hole_cards is None for i in range(6) if i != 2)
-    # reveal_all shows everyone
     assert all(s.hole_cards is not None for s in hand.snapshot(reveal_all=True).seats)

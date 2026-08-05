@@ -22,9 +22,8 @@ class ActionRequest(BaseModel):
     type: str = Field(description="fold | check | call | bet | raise")
     to_amount: int | None = Field(default=None, description="total bet level for bet/raise")
     # Client-measured wall clock from "hero became the actor" to "action posted".
-    # Deliberately raw: it includes thinking, tab-switching and interruptions, so it
-    # is stored as observed and only ever summarised as a median. Gate 2 names a
-    # 10-second target and nothing in the app measured elapsed time at all.
+    # Stored raw: it includes thinking, tab-switching and interruptions, so it is
+    # summarised as a median (target: under 10s) and never as a mean.
     decision_ms: int | None = Field(default=None, ge=0, description="ms the hero took to act")
 
 
@@ -37,7 +36,7 @@ class LabSimulateRequest(BaseModel):
     small_blind: int = 1
     big_blind: int = 2
     starting_stack: int = 200
-    # {archetype_key: {knob: value}} — sanitized server-side against the allowlist.
+    # {archetype_key: {knob: value}}; sanitized server-side against the allowlist.
     overrides: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 

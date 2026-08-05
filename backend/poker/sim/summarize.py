@@ -101,7 +101,6 @@ def summarize_hand(hand: Hand, seat_to_player: list[int], n: int) -> list[Player
 
     for p in range(n):
         s = summ[p]
-        # find this player's seat
         seat = next(seat for seat in range(n) if player_at[seat] == p)
         s.net = results[seat]
         s.won = s.net > 0

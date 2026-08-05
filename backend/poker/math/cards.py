@@ -7,8 +7,6 @@ PokerKit use, and exactly what ``treys.Card.new`` accepts. Rank order runs
 
 from __future__ import annotations
 
-from itertools import combinations
-
 RANKS = "23456789TJQKA"
 SUITS = "shdc"
 RANK_INDEX = {r: i for i, r in enumerate(RANKS)}
@@ -24,10 +22,6 @@ def make_deck() -> list[str]:
 
 FULL_DECK = make_deck()
 _CARD_SET = set(FULL_DECK)
-
-
-def rank_of(card: str) -> str:
-    return card[0]
 
 
 def suit_of(card: str) -> str:
@@ -48,9 +42,3 @@ def canonical_combo(a: str, b: str) -> Combo:
     if (rank_value(a), SUITS.index(suit_of(a))) >= (rank_value(b), SUITS.index(suit_of(b))):
         return (a, b)
     return (b, a)
-
-
-def all_combos(cards: list[str] | None = None) -> list[Combo]:
-    """Every two-card combo from ``cards`` (default: the whole deck)."""
-    pool = cards if cards is not None else FULL_DECK
-    return [canonical_combo(a, b) for a, b in combinations(pool, 2)]

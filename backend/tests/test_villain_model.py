@@ -26,8 +26,8 @@ def test_flop_bet_narrows_the_preflop_range():
 
 
 def test_barreling_strengthens_de_bluffs_the_range():
-    # Combo count need not drop (air cards pair into value as the board grows),
-    # but each barrel must lower the air/bluff fraction — a stronger range.
+    # Combo count need not drop (air cards pair into value as the board grows), but
+    # each barrel must lower the air/bluff fraction, i.e. strengthen the range.
     base = _range("TAG", {})
     cbet = _range("TAG", {"flop": "bet"})
     barrel = _range("TAG", {"flop": "bet", "turn": "bet", "river": "bet"})
@@ -57,10 +57,9 @@ def test_description_is_judgeable():
 
 
 def test_bluff_slice_matches_measured_reality():
-    """The hard one: the encoded bluff slices must still match what the bots bet.
-    Re-measure once (modest sample, different seed) and assert each archetype's
-    flop/river air fractions agree — if they diverge (e.g. a bot's params change),
-    this fails loudly rather than letting the coach grade against a fiction."""
+    """The encoded bluff slices must match what the bots actually bet. Re-measures at a
+    modest sample with a different seed; if a bot's params drift, this fails loudly
+    rather than letting the coach grade against a fiction."""
     counts = measure(18000, seed=1)
     for archetype in BET_COMPOSITION:
         for street, tol in (("flop", 0.06), ("river", 0.05)):

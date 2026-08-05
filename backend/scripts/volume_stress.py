@@ -1,17 +1,16 @@
 """Volume stress test for the advice layer (coach + leak detector).
 
-The known-spot batteries prove specific hand-picked spots; this proves the advice
-holds across decisions nobody chose. We play many hands with the hero seat driven
-by a simple, validated baseline (a TAG bot) and point BOTH the coach and the leak
-detector at every hero decision, then report:
+The known-spot batteries cover hand-picked spots; this covers decisions nobody
+chose. The hero seat is driven by a validated TAG bot and both the coach and the
+leak detector run on every hero decision. Reported:
 
-  * leak-flag rate (per decision + per hand, by type) — a validated TAG makes few
-    real EV-errors, so this should be low single digits; a big fraction = residual
-    false positives to investigate, not a pass;
-  * coach verdict distribution — should not be degenerate (all-fold / all-call);
-  * a SAMPLE of actually-flagged decisions — the rate says how often, the sample
-    says whether they're real leaks or standard plays;
-  * a coarse equity-vs-outcome check on river call decisions that reached showdown.
+  * leak-flag rate, per decision and per hand, by type. A validated TAG makes few
+    real EV errors, so a large fraction means residual false positives to chase,
+    not a pass.
+  * coach verdict distribution, which should not be degenerate (all-fold/all-call).
+  * a sample of flagged decisions: the rate says how often, the sample says whether
+    they are real leaks or standard plays.
+  * a coarse equity-vs-outcome check on river calls that reached showdown.
 
     backend/.venv/bin/python scripts/volume_stress.py --hands 8000
 """
@@ -58,12 +57,11 @@ def run(hands: int, seed: int = 0, coach_trials: int = 1000):
     decisions_with_leak = 0
     hands_with_leak = 0
     samples_by_type: dict[str, list] = defaultdict(list)
-    # coarse calibration: river coach decisions, (realized_eq, won_showdown)
+    # river calls: (equity at the decision, hero net > 0 as a coarse win proxy)
     river_calib: list[tuple[float, int]] = []
 
     for h in range(hands):
         gs.start_hand()
-        # capture the coach verdict at each hero decision this hand
         while gs.hero_to_act:
             try:
                 c = build_coaching(gs, trials=coach_trials)
@@ -94,7 +92,6 @@ def run(hands: int, seed: int = 0, coach_trials: int = 1000):
                             "action": d["action"], "eq": d["equity_pct"], "req": d["required_pct"],
                             "note": lk["note"],
                         })
-            # coarse river calibration: a call on the river that reached showdown
             if d["street"] == "river" and d["action"] == "call" and d["equity_pct"] is not None and res.get("went_to_showdown"):
                 river_calib.append((d["equity_pct"] / 100.0, 1 if (res.get("hero_net", 0) or 0) > 0 else 0))
         if hand_leaked:

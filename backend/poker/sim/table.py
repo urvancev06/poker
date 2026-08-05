@@ -10,7 +10,7 @@ players to seats per hand: seat k holds player ``(button + 1 + k) % n``.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ..bots import Bot, build_context
 from ..engine import ActionType, Hand
@@ -39,10 +39,8 @@ class PlayerHandSummary:
     was_pfr: bool = False
     cbet_flop: bool = False
     cbet_opp: bool = False
-    # postflop aggression counts (for AF)
-    # These count POSTFLOP actions (they feed AF). They were named pf_*, which reads
-    # as preflop and is the opposite of what they measure (audit F-30). Old persisted
-    # rows still carry the pf_* keys; hero_stats._aggregate maps them on load.
+    # Postflop aggression counts (these feed AF). Rows persisted under the older
+    # pf_* names are remapped on load by hero_stats._aggregate.
     postflop_bets: int = 0
     postflop_raises: int = 0
     postflop_calls: int = 0
@@ -77,8 +75,8 @@ def play_hand(
         player = seat_to_player[seat]
         ctx = build_context(hand, bb)
         action = bots[player].act(ctx, rng)
-        # Optional measurement hook (e.g. bet-range composition). Off by default so
-        # the validation gate runs at full speed and byte-identically.
+        # Optional measurement hook (e.g. bet-range composition); it must stay
+        # read-only, since the validation gate runs with it off.
         if observer is not None:
             observer(bots[player].name, ctx, action)
         s = summ[player]

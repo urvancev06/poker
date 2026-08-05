@@ -1,11 +1,11 @@
-"""``Hand`` — a thin, tested wrapper over a PokerKit ``State`` for one hand of
-6-max NLHE cash.
+"""``Hand``: a thin wrapper over a PokerKit ``State`` for one hand of 6-max
+No-Limit Hold'em cash.
 
-Responsibilities (PROJECT.md Phase 1): start a hand, say whose turn it is and
-the legal actions with sizing, apply an action, advance streets, run showdown and
-distribute side pots, and expose a serializable snapshot. PokerKit owns the rules,
-betting, side pots, and hand ranking — this class only adapts it to a clean,
-stable interface the rest of the app (and the frontend) can rely on.
+It starts a hand, says whose turn it is and what the legal actions and sizings
+are, applies an action, advances streets, runs showdown and distributes side
+pots, and exposes a serializable snapshot. PokerKit owns the rules, betting,
+side pots and hand ranking; this class only adapts it to a stable interface the
+rest of the app can rely on.
 
 Seat convention (PokerKit's): seat 0 is the small blind, seat 1 the big blind,
 the last seat the button. To move the button across hands, the *session* layer
@@ -228,11 +228,10 @@ class Hand:
         if t is ActionType.FOLD:
             if not legal.can_fold:
                 raise IllegalAction("folding is not legal here")
-            # Folding when a free check is available is a "non-standard fold":
-            # never correct in cash play, and PokerKit can leave a side pot with
-            # no eligible claimant, which BURNS chips (breaking conservation) and
-            # can even assert mid-push. A free check strictly dominates folding, so
-            # reject it as illegal rather than corrupt the pot.
+            # Folding when a free check is available is never correct in cash play,
+            # and PokerKit can then leave a side pot with no eligible claimant,
+            # which burns chips and breaks conservation. Reject it rather than
+            # corrupt the pot.
             if legal.can_check:
                 raise IllegalAction("cannot fold for free — check instead")
             self._state.fold()
@@ -277,9 +276,9 @@ class Hand:
     def total_pot(self) -> int:
         """Collected pots plus chips in front, right now.
 
-        Cheap accessor (no snapshot). Needed because reading the pot from a snapshot
-        taken after the hand ends always returns 0 — PokerKit's CHIPS_PUSHING
-        automation has already emptied it (audit F-22)."""
+        Read this rather than a snapshot taken after the hand ends: PokerKit's
+        CHIPS_PUSHING automation has already emptied the pot by then, so the
+        snapshot reports 0."""
         return int(self._state.total_pot_amount)
 
     def _pots(self) -> list[PotState]:

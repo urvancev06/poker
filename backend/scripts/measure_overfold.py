@@ -1,9 +1,11 @@
-"""Diagnostic: how much do the bots over-fold made hands postflop?
+"""Diagnostic: how often do the bots fold made hands postflop?
 
-For each archetype, across a sim, measure what fraction of postflop bet-facing
-decisions it folds, split by made-hand strength. A flat calldown_freq folds one
-pair (top pair == bottom pair) at a fixed rate, so the tight regs should show a
-high one-pair fold rate — quantifying the realism hole flagged in STRATEGY.md §8.
+For each archetype, across a sim, the fraction of postflop bet-facing decisions
+it folds, split by made-hand tier. The one-pair row lumps top pair in with bottom
+pair and the regs defend those at very different rates (``strong_pair_defend`` vs
+``calldown_freq``), so a high one-pair figure here is not on its own a leak.
+Folding *strong* pairs is; scripts/tune_calldown.py reports that split
+(STRATEGY.md §8).
 
     backend/.venv/bin/python scripts/measure_overfold.py --hands 40000
 """
@@ -27,7 +29,7 @@ def measure(hands: int, seed: int = 0, overrides: dict | None = None):
         d = c[name]
         folded = action.type is ActionType.FOLD
         tier = classify(ctx.hole, ctx.board).made
-        # fold to any flop bet (texture realism)
+        # fold-to-c-bet: bot is not the preflop raiser
         if ctx.street == "flop" and not ctx.is_pfr:
             d["flopbet_faced"] += 1
             d["flopbet_fold"] += folded

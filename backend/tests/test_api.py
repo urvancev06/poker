@@ -1,8 +1,6 @@
-"""Phase 4 API tests (PROJECT.md Definition of Done):
-
-- play a full hand end-to-end via the API,
-- coaching numbers match the Phase-2 engine,
-- completed hands are persisted.
+"""API tests: a full hand played end-to-end over HTTP, the coach endpoint's numbers,
+hand persistence and replay, the stats/reads/leaks endpoints, step mode, and the
+hole-card visibility rules.
 """
 
 import pytest
@@ -59,12 +57,11 @@ def test_play_full_hand_via_api(client: TestClient):
     nets = sess["last_result"]["results_by_player"]
     assert sum(nets.values()) == 0
 
-    # can deal the next hand
     nxt = client.post(f"/session/{sid}/next-hand").json()
     assert nxt["hand_index"] == 1
 
 
-def test_coaching_matches_phase2_math(client: TestClient):
+def test_coaching_matches_the_math_module(client: TestClient):
     # find a spot where the hero is to act
     sess = _new_session(client, seed=3)
     sid = sess["session_id"]
@@ -77,7 +74,7 @@ def test_coaching_matches_phase2_math(client: TestClient):
 
     coach = client.get(f"/session/{sid}/coach").json()
     assert 0.0 <= coach["equity_pct"] <= 100.0
-    # required equity must equal the exact Phase-2 pot-odds computation
+    # required equity must equal the exact pot-odds computation
     if coach["to_call"] > 0:
         expected = round(required_equity(coach["to_call"], coach["pot"]) * 100, 1)
         assert coach["required_equity_pct"] == expected
@@ -98,7 +95,7 @@ def test_hands_are_persisted(client: TestClient):
     assert len(hands) >= 1
     h = hands[0]
     assert h["session_id"] == sid
-    assert h["hero_cards"]  # recorded
+    assert h["hero_cards"]
 
     detail = client.get(f"/hands/{h['id']}").json()
     assert "data" in detail and detail["data"]["actions"]
@@ -165,15 +162,13 @@ def test_step_mode_advances_one_bot_at_a_time(client: TestClient):
     assert resp.status_code == 200
     state = resp.json()
 
-    # No bot has acted yet: the action log is empty and it's not the hero's turn
-    # (someone before the hero is first to act preflop in a 6-max field).
+    # No bot has acted yet, so the action log is empty.
     assert state["state"]["history"] == []
 
     steps = 0
     while not state["hero_to_act"] and not state["hand_over"]:
         prev_actions = len(state["state"]["history"])
         state = client.post(f"/session/{state['session_id']}/advance").json()
-        # each /advance adds exactly one action to the log
         assert len(state["state"]["history"]) == prev_actions + 1
         steps += 1
         assert steps < 50  # guard against an infinite loop
@@ -188,7 +183,7 @@ def test_history_never_leaks_villain_holes(client: TestClient):
             break
         state = client.post(f"/session/{state['session_id']}/advance").json()
     for entry in state["state"]["history"]:
-        assert "hole_cards" not in entry  # the log must not carry anyone's cards
+        assert "hole_cards" not in entry
 
 
 def test_showdown_reveals_villain_cards_and_labels(client: TestClient):
@@ -209,7 +204,6 @@ def test_showdown_reveals_villain_cards_and_labels(client: TestClient):
 
     seats = state["state"]["seats"]
     hero_seat = state["hero_seat"]
-    # hero always has a label (cards always visible)
     assert seats[hero_seat]["hand_label"]
     live = [s for s in seats if not s["folded"]]
     if len(live) >= 2:  # a genuine showdown

@@ -1,20 +1,18 @@
 """Calibration probe: does the action-conditioned villain range predict reality
-better than the static preflop range — and without over-correcting into
-over-folding?
+better than the static preflop range, without over-correcting into over-folding?
 
-Clean ground truth: on the RIVER the board is complete and (in the sim) every
-hole card is known, so for each spot where a hero faces a single villain's river
-bet we know the ACTUAL outcome (does hero's hand beat the villain's actual hand).
-Aggregated over many spots, a well-calibrated model's mean predicted equity
-should equal the mean actual win rate. We compare two predictions per spot:
+Ground truth comes from the river, where the board is complete and the sim knows
+every hole card: for each spot in which the hero faces a single villain's river
+bet we know whether the hero's hand actually beat the villain's. Over many spots
+a well-calibrated model's mean predicted equity equals the mean actual win rate.
+Two predictions per spot:
 
   * OLD = equity vs the villain's *static* preflop top-X% range
-  * NEW = equity vs the villain's *action-conditioned* range (this change)
+  * NEW = equity vs the villain's *action-conditioned* range
 
-bias = mean(predicted) - mean(actual). The static range is too wide/weak on the
-river, so it should OVER-rate hero equity (bias > 0) -> over-calling. If NEW's
-bias is near 0 the error is genuinely reduced; if NEW's bias went negative the
-error merely MOVED into over-folding (and this probe would catch it).
+bias = mean(predicted) - mean(actual). The static range is too wide on the river,
+so it over-rates hero equity (bias > 0) -> over-calling. A NEW bias near zero
+means the error shrank; a negative one means it only moved into over-folding.
 
     backend/.venv/bin/python scripts/coach_calibration.py --hands 6000
 """

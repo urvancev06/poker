@@ -87,10 +87,8 @@ def _has_straight(vals: set[int]) -> bool:
 def _straight_outs(vals: set[int]) -> int:
     """Number of distinct RANKS that would complete a straight.
 
-    A rank count, not a card count: an open-ended draw returns 2 and a gutshot
-    returns 1, which is what `classify` compares against. The docstring used to say
-    "0, 4=gutshot, 8=open-ended" — card counts, describing a different function than
-    the one implemented (audit F-12)."""
+    A rank count, not a card count: an open-ended draw gives 2, a gutshot 1. These
+    are the thresholds `classify` compares against."""
     out_ranks: set[int] = set()
     for v in range(1, 15):
         if v in vals:
@@ -190,9 +188,9 @@ def pair_strength(hole: tuple[str, str] | list[str], board: list[str] | tuple[st
     NONE    = the pair isn't the hero's own (a board pair the hero doesn't add to)
               or there's no board yet.
 
-    Kicker is intentionally ignored for STRONG-first: folding *any* top pair or
-    overpair to a single bet is the over-fold we're fixing; the willingness to
-    continue is then dialled by ``strong_pair_defend``, tuned to the benchmark.
+    Kicker is deliberately ignored: every top pair and overpair grades STRONG
+    regardless of kicker, and how often a bot actually continues with one is set by
+    ``strong_pair_defend`` in its profile rather than here.
     """
     hole = list(hole)
     board = list(board)

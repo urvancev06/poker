@@ -1,11 +1,11 @@
-"""Phase 7 tests: the bot lab + the CFR learning module.
+"""The bot lab + the Kuhn CFR solver.
 
-The lab is just a JSON wrapper over the Phase-3 machinery, so we test that:
+The lab is a JSON wrapper over the simulation layer, so the tests check that:
   - knob overrides actually move the emergent stats in the right direction,
   - the report structure (bands, gate) is well-formed,
   - the API endpoints respond.
 
-The CFR module has a *known* answer, so we test convergence hard:
+The CFR module has a *known* answer, so convergence is tested hard:
   - game value -> -1/18,
   - exploitability -> ~0,
   - the stable pure components of the equilibrium.
@@ -67,8 +67,8 @@ def test_lab_hands_capped():
 
 
 def test_override_loosens_calldown_raises_wtsd():
-    """Cranking a calling station's calldown should raise its WTSD — a stat is an
-    output of the knob, exactly the Principle-3 lesson the lab demonstrates."""
+    """Cranking a calling station's calldown should raise its WTSD: the stat is an
+    output of the knob, never a setting."""
     lineup = ["station", "tag", "tag", "tag", "tag", "tag"]
     base = run_lab(lineup=lineup, hands=2_000, seed=7)
     loose = run_lab(lineup=lineup, hands=2_000, seed=7, overrides={"station": {"calldown_freq": 0.99}})

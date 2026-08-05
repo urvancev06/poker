@@ -1,4 +1,4 @@
-"""FastAPI application — the API the frontend talks to.
+"""FastAPI application: the API the frontend talks to.
 
 Endpoints:
     GET  /health                       liveness
@@ -64,7 +64,7 @@ def _warn_if_multi_worker() -> None:
             )
     if os.environ.get("POKER_ALLOW_MULTI_WORKER"):
         warnings.warn(
-            "POKER_ALLOW_MULTI_WORKER is set — sessions will not be shared between "
+            "POKER_ALLOW_MULTI_WORKER is set: sessions will not be shared between "
             "workers and requests will intermittently 404.",
             RuntimeWarning,
             stacklevel=2,
@@ -84,10 +84,9 @@ def create_app(db_url: str | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # Sessions live in this process's memory, so a second worker cannot see them:
-    # requests land on whichever worker the OS picks and half of them 404 for a
-    # session that demonstrably exists. That reads as a network fault, not a config
-    # error, so fail loudly at startup instead (audit F-31).
+    # Sessions live in this process's memory. With more than one worker, requests
+    # land on whichever worker the OS picks and 404 for a session that exists,
+    # which reads as a network fault. Fail loudly at startup instead.
     _warn_if_multi_worker()
 
     app.state.sessions: dict[str, GameSession] = {}
@@ -135,10 +134,8 @@ def create_app(db_url: str | None = None) -> FastAPI:
     @app.post("/session")
     def create_session(req: CreateSessionRequest, db: Session = Depends(get_db)) -> dict:
         sid = uuid4().hex[:12]
-        # Build AND deal before registering. Bad input used to surface as a 500 (the
-        # ValueError escaped uncaught, while /lab/simulate returned 400 for the very
-        # same error), and a failed deal left a registered session that 500'd on every
-        # later read and was never evicted (audit F-25, F-26).
+        # Build AND deal before registering: a session that fails to deal must not
+        # end up in the registry, and bad input has to surface as a 400, not a 500.
         try:
             gs = GameSession(
                 session_id=sid,
@@ -213,10 +210,8 @@ def create_app(db_url: str | None = None) -> FastAPI:
     ) -> dict:
         """The hero's stats over time vs target bands (STRATEGY.md §5).
 
-        ``last`` restricts to the N most recent hands. Without it the report is
-        lifetime, which is what the dashboard used to be unconditionally — so early
-        learning hands dragged the average forever and the 2,000-hand window the
-        study gate names could not be isolated.
+        ``last`` restricts to the N most recent hands; without it the report is
+        lifetime, so early learning hands drag the average forever.
         """
         limit = last if last and last > 0 else 100_000
         records = list_hands(db, session_id=session_id, limit=limit)
@@ -270,18 +265,17 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     @app.get("/stats/leaks")
     def leaks(session_id: str | None = None, limit: int = 1000, db: Session = Depends(get_db)) -> dict:
-        """An honest, computed leak report aggregated over recent hands.
+        """A computed leak report aggregated over recent hands.
 
-        Default raised from 200 to 1,000 and no longer scoped to a session by the
-        client: the study gates count flags over 500 hands, and a browser refresh
-        mints a new session, so the old default could not express the window the
-        gates are stated in. Results are cached per hand (see coach.review), so a
-        larger window costs little after the first pass.
+        The default window is wide on purpose: leaks are read over the last 500
+        hands, and a browser refresh mints a new session, so scoping to a single
+        session would undercount. Per-hand results are cached (see coach.review),
+        so the wider window costs little after the first pass.
         """
         records = list_hands(db, session_id=session_id, limit=limit)
         return leak_summary([r.data for r in records])
 
-    # --- bot lab + learning (Phase 7) ---------------------------------- #
+    # --- bot lab + learning -------------------------------------------- #
     @app.get("/lab/archetypes")
     def lab_archetypes() -> dict:
         """Archetype metadata for the lab: target bands + tunable knob defaults."""

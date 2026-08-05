@@ -9,22 +9,19 @@ hero equity, which is the structural driver of over-calling.
 So here we walk a villain's actions this hand and rebuild their range street by
 street:
 
-  * an aggressive action (bet/raise) keeps the hands that *bet* that board — made
+  * an aggressive action (bet/raise) keeps the hands that *bet* that board: made
     hands (pair+), real draws, and a **bluff slice** sized to how often this
-    archetype actually bets air (measured from the sim, BET_COMPOSITION below —
-    NOT eyeballed: the bluff fraction sets the hero's bluff-catch threshold, so it
-    has to match reality or the coach grades against a fiction);
+    archetype actually bets air (measured from the sim, BET_COMPOSITION below).
+    The bluff fraction sets the hero's bluff-catch threshold, so it has to match
+    reality or the coach grades against a fiction;
   * a call keeps a continue range (made hands + draws + a small float for loose
     types);
   * a check carries little information and does not narrow (the aggression does).
 
 The result is a concrete combo list (for the Monte-Carlo equity engine) plus a
 human description for the panel, so the read is judgeable, not a bare number. The
-``bluff_fraction`` it returns IS the air share of a betting range — exactly the
+``bluff_fraction`` it returns IS the air share of a betting range, exactly the
 quantity a river bluff-catch turns on.
-
-Implied/reverse-implied odds (a follow-on) will adjust the *price*, not the
-range, and slot in on top of this without changing it.
 """
 
 from __future__ import annotations
@@ -54,13 +51,12 @@ _THREEBET_PCT = {
 }
 
 # Measured bet-range composition per archetype per street: of the hands the bot
-# actually bets/raises with, the fractions that are value (made pair+) / draw /
-# air. Source: scripts/measure_bet_ranges.py over the locked baseline
-# (backend/validation/phase3_gate.txt). The air fraction is the bluff slice.
-# FILLED FROM THE A2 BASELINE RUN; test_villain_model asserts a fresh measurement
-# still matches these within tolerance, so they can't silently drift into fiction.
+# actually bets/raises with, the fractions that are value (made pair+) / draw / air.
+# The air fraction is the bluff slice. Source: scripts/measure_bet_ranges.py over the
+# locked baseline (backend/validation/phase3_gate.txt), 60k hands, seed 0.
+# test_villain_model re-measures and asserts these still match within tolerance, so
+# they can't silently drift into fiction.
 BET_COMPOSITION: dict[str, dict[str, dict[str, float]]] = {
-    # Measured: scripts/measure_bet_ranges.py, 60k hands, seed 0 (phase3_gate.txt).
     "Nit": {
         "flop": {"value": 0.854, "draw": 0.037, "air": 0.109},
         "turn": {"value": 0.961, "draw": 0.023, "air": 0.016},
@@ -138,7 +134,7 @@ class ConditionedRange:
     bluff_fraction: float     # air share of the final range (the bluff-catch threshold)
 
 
-def _base_combos(archetype: str, pct: float, dead: set[str]) -> list[Combo]:
+def _base_combos(pct: float, dead: set[str]) -> list[Combo]:
     combos: set = set()
     for name in top_fraction(pct):
         combos |= parse_token(name)
@@ -146,9 +142,10 @@ def _base_combos(archetype: str, pct: float, dead: set[str]) -> list[Combo]:
 
 
 def static_range(archetype: str, dead: set[str]) -> list[Combo]:
-    """The unconditioned top-X% preflop range for an archetype. Used by the
-    post-hoc hand review, which doesn't replay each villain's line."""
-    return _base_combos(archetype, ARCHETYPE_RANGE_PCT.get(archetype, _DEFAULT_PCT), dead)
+    """The unconditioned top-X% preflop range for an archetype, before any action
+    conditioning. The baseline scripts/coach_calibration.py measures the conditioned
+    model against."""
+    return _base_combos(ARCHETYPE_RANGE_PCT.get(archetype, _DEFAULT_PCT), dead)
 
 
 def _categorize(combos: list[Combo], board: list[str]) -> tuple[list, list, list]:
@@ -175,8 +172,7 @@ def _take(combos: list[Combo], n: int) -> list[Combo]:
 
 
 # Counts how often the neutral fallback stood in for a measured composition. The
-# coach's "measured from the bots" honesty label is only truthful when this did NOT
-# happen, so the caller needs to know (audit F-07, 08-UNKNOWNS §2.1).
+# coach's "measured from the bots" honesty label is only truthful while this stays 0.
 FALLBACK_USES = 0
 
 
@@ -232,7 +228,7 @@ def condition_range(
     """Build a villain's action-conditioned range + a human description."""
     pct = _THREEBET_PCT.get(archetype, 0.05) if preflop_role == "3bet+" \
         else ARCHETYPE_RANGE_PCT.get(archetype, _DEFAULT_PCT)
-    combos = _base_combos(archetype, pct, dead)
+    combos = _base_combos(pct, dead)
 
     tags: list[str] = []
     if preflop_role == "3bet+":
