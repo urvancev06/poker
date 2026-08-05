@@ -10,6 +10,10 @@ and suited connectors, whose real value is set-mining / implied odds, not raw
 equity (e.g. 22 ranks ~80th here). So a percentile-based range opens fewer small
 pairs/SCs from early position than STRATEGY.md §2's explicit lists. The stat gate
 (VPIP/PFR/etc.) is unaffected; swap in §2's explicit lists later for finer realism.
+NOTE: the LEAK DETECTOR no longer uses this ranking -- it judges the hero against §2's
+explicit lists via bots/preflop_ranges.py. Only the BOTS still open by percentile.
+Switching them is step 2 of audit/10-BOT-REALISM-PHASE.md, deferred because it voids
+the coach's BET_COMPOSITION calibration along with every threshold derived from it.
 Regenerate with scripts/gen_preflop_ranking.py.
 """
 
