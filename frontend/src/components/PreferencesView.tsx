@@ -1,5 +1,6 @@
 import { Card } from './Card'
-import { DECKS, usePrefs } from '../prefs'
+import { DECKS } from '../lib/decks'
+import { usePrefs } from '../lib/prefsContext'
 
 export function PreferencesView() {
   const { deckId, setDeckId, visibility, setVisibility } = usePrefs()

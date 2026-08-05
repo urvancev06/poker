@@ -11,9 +11,8 @@ const LEAK_LABEL: Record<string, string> = {
   missed_value: 'Missed value',
 }
 
-// The study gates count leak flags over 500 hands. A page reload mints a new
-// session, so scoping to the current session made that window unobservable —
-// all-hands is the default and the session view is the opt-in.
+// Leak counts only mean anything over hundreds of hands, and a reload mints a
+// fresh session, so the default scope is all hands and this-session is opt-in.
 const LEAK_WINDOWS = [200, 500, 1000] as const
 
 export function HistoryView({ sessionId }: { sessionId?: string }) {
@@ -26,9 +25,17 @@ export function HistoryView({ sessionId }: { sessionId?: string }) {
 
   const scope = thisSession ? sessionId : undefined
 
+  // Changing the scope or the window drops the leak report on screen, so counts
+  // from the old query are never shown under the new one. Done during render
+  // rather than in the effect below, which would only clear them after a frame.
+  const [shownQuery, setShownQuery] = useState({ scope, window: window_ })
+  if (shownQuery.scope !== scope || shownQuery.window !== window_) {
+    setShownQuery({ scope, window: window_ })
+    setLeaks(null)
+  }
+
   useEffect(() => {
     api.listHands(scope, 100).then(setHands).catch((e) => setErr((e as Error).message))
-    setLeaks(null)
     api.leaks(scope, window_).then(setLeaks).catch(() => {})
   }, [scope, window_])
 

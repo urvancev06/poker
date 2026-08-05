@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ActionType, LegalActions } from '../api'
 
 const QUICK: Array<[string, number]> = [
-  // ⅓ is the first c-bet size the Study framework teaches and was the one size with
-  // no button, so it could not be practised at the speed the others could.
+  // ⅓ is the smallest c-bet size the Study framework teaches.
   ['⅓', 1 / 3],
   ['½', 0.5],
   ['¾', 0.75],
@@ -28,7 +27,14 @@ export function ActionBar({
   const max = legal.max_raise_to ?? 0
   const [amount, setAmount] = useState(min)
 
-  useEffect(() => setAmount(min), [min, max])
+  // New legal bounds mean a new betting decision, so the slider goes back to the
+  // minimum. Adjusted during render (React's "state that depends on props"
+  // pattern) so the stale amount is never shown.
+  const [bounds, setBounds] = useState({ min, max })
+  if (bounds.min !== min || bounds.max !== max) {
+    setBounds({ min, max })
+    setAmount(min)
+  }
 
   const currentLevel = legal.call_amount + heroBet
   const toForFraction = (f: number) =>

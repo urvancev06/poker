@@ -1,10 +1,9 @@
 import type { Coaching } from '../api'
 
-// Tone comes from the backend (`Coaching.tone`), which maps it from the verdict
-// string next to where those strings are defined. This used to be derived here by
-// string-parsing the prose and defaulting to the positive accent, so rewording a
-// verdict silently rendered a fold as a recommendation (audit F-39). Anything
-// unrecognised now reads neutral, never positive.
+// Tone comes from the backend (`Coaching.tone`), set next to where the verdict
+// strings are defined. Never re-derive it here by parsing the prose: a reworded
+// verdict would then render a fold as a recommendation. Anything unrecognised
+// reads neutral, never positive.
 type Tone = 'loss' | 'accent' | 'close' | 'neutral'
 const verdictTone = (c: Pick<Coaching, 'tone'>): Tone =>
   c.tone === 'fold' ? 'loss' : c.tone === 'close' ? 'close' : c.tone === 'good' ? 'accent' : 'neutral'
@@ -87,8 +86,7 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
 
       {!loading && coaching && (
         <div className="mt-4 space-y-5">
-          {/* the live figure — realized equity drives the call when money's behind;
-              on the river / all-in raw equity is fully realized, so show that. */}
+          {/* headline: realized equity while money is behind, raw once action is closed. */}
           {(() => {
             const closed = coaching.action_closed
             const headline = closed ? coaching.equity_pct : coaching.realized_equity_pct
@@ -102,8 +100,6 @@ export function CoachPanel({ coaching, loading }: { coaching: Coaching | null; l
                   <span className="text-sm text-muted">{coaching.hand_label}</span>
                 </div>
                 {coaching.draws.length > 0 && (
-                  // The app computed the hero's draws and never named them, though the
-                  // Study screen's outs table is built on exactly this vocabulary.
                   <div className="mt-0.5 text-[11px] text-accent/80">
                     {coaching.draws.join(' + ')}
                   </div>

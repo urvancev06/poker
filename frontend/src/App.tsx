@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type ActionType, type Coaching, type Reads, type SessionState } from './api'
-import { usePrefs, type VisibilityMode } from './prefs'
+import { usePrefs, type VisibilityMode } from './lib/prefsContext'
 import { CoachPanel, CoachStrip } from './components/CoachPanel'
 import { Table } from './components/Table'
 import { MobileTable } from './components/MobileTable'
@@ -9,7 +9,8 @@ import { StatsView } from './components/StatsView'
 import { HistoryView } from './components/HistoryView'
 import { LabView } from './components/LabView'
 import { StudyView } from './components/StudyView'
-import { ActionLog, actionText } from './components/ActionLog'
+import { ActionLog } from './components/ActionLog'
+import { actionText } from './lib/actionText'
 import { PreferencesView } from './components/PreferencesView'
 
 // Pause between bot actions when watching a hand unfold (ms).
@@ -40,25 +41,37 @@ export default function App() {
     api.reads(s.session_id).then(setReads).catch(() => {})
   }, [])
 
+  // Step mode: bots don't pre-act, so we can watch the whole hand unfold. The
+  // result is applied in callbacks, so the mount effect below stays free of
+  // synchronous state updates.
+  const startSession = useCallback(
+    () =>
+      api
+        .createSession({ auto_advance: false })
+        .then((s) => {
+          setSession(s)
+          refreshReads(s)
+        })
+        .catch((e: Error) => {
+          setError(`Can't reach the backend — is it running on :8000? (${e.message})`)
+        }),
+    [refreshReads],
+  )
+
+  // New game clears what the last session left on screen; the first deal has
+  // nothing to clear, so the mount effect calls startSession directly.
   const newSession = useCallback(async () => {
     setError(null)
     setCoaching(null)
-    try {
-      // Step mode: bots don't pre-act, so we can watch the whole hand unfold.
-      const s = await api.createSession({ auto_advance: false })
-      setSession(s)
-      refreshReads(s)
-    } catch (e) {
-      setError(`Can't reach the backend — is it running on :8000? (${(e as Error).message})`)
-    }
-  }, [refreshReads])
+    await startSession()
+  }, [startSession])
 
   useEffect(() => {
-    void newSession()
-  }, [newSession])
+    void startSession()
+  }, [startSession])
 
-  // Watch-the-hand: while a bot is to act, step one action after a short pause.
-  // The effect re-runs on each new session, naturally pacing the whole street.
+  // While a bot is to act, step one action after a short pause. The effect
+  // re-runs on each new state, which paces out the whole street.
   useEffect(() => {
     if (!session || session.hand_over || session.hero_to_act) return
     let cancelled = false
@@ -90,16 +103,28 @@ export default function App() {
     }
   }, [])
 
+  // Switching the coach off drops whatever it was showing; switching it on lets
+  // the effect below ask about the current spot. Nothing else changes `study`,
+  // so the clear belongs here rather than in that effect.
+  const toggleStudy = () => {
+    if (study) setCoaching(null)
+    setStudy(!study)
+  }
+
   // Study Mode: surface the coach automatically on the hero's turn.
   useEffect(() => {
-    if (!session) return
-    if (study && session.hero_to_act) void askCoach(session.session_id)
-    if (!study) setCoaching(null)
+    if (!study || !session || !session.hero_to_act) return
+    // askCoach raises the loading flag as the request starts, so the panel reads
+    // "computing equity…" on the frame the turn arrives. That flag has to be set
+    // synchronously; the only way around the rule is to repeat this trigger in
+    // every place that sets a session, off a ref copy of `study`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void askCoach(session.session_id)
   }, [study, session, askCoach])
 
   // Decision clock: starts when the hero becomes the actor, read when they act.
-  // Wall clock on purpose — it includes thinking and interruptions, and is only
-  // ever summarised as a median. Gate 2 names a 10-second target.
+  // Wall clock on purpose, so it includes thinking and interruptions; it is only
+  // ever summarised as a median.
   const decisionStart = useRef<number | null>(null)
   useEffect(() => {
     if (session?.hero_to_act) {
@@ -166,7 +191,7 @@ export default function App() {
             {view === 'table' && (
               <>
                 <button
-                  onClick={() => setStudy((s) => !s)}
+                  onClick={toggleStudy}
                   title="Coach shows live advice on your turn; Play hides it until review"
                   className={`rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
                     study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
@@ -201,7 +226,7 @@ export default function App() {
             )}
             <button
               onClick={() => setView('prefs')}
-              title="Preferences — deck & felt"
+              title="Preferences: card deck and opponent visibility"
               className="rounded-lg border border-line px-3 py-1.5 text-sm leading-none text-muted hover:text-ink"
             >
               ⚙
@@ -244,7 +269,7 @@ export default function App() {
                   {view === 'table' && (
                     <>
                       <button
-                        onClick={() => setStudy((s) => !s)}
+                        onClick={toggleStudy}
                         className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-ink hover:bg-bg2"
                       >
                         <span>Live coach</span>
@@ -280,7 +305,7 @@ export default function App() {
                     onClick={() => { setView('prefs'); setMenuOpen(false) }}
                     className="block w-full rounded-md px-2 py-2 text-left text-sm text-ink hover:bg-bg2"
                   >
-                    Preferences · deck &amp; felt
+                    Preferences · deck &amp; visibility
                   </button>
                   <button
                     onClick={() => { void newSession(); setMenuOpen(false) }}
@@ -399,8 +424,8 @@ export default function App() {
             )}
           </main>
 
-          {/* desktop side panel — its column is ALWAYS reserved so opening the coach
-              or log never reflows or resizes the table (it just fills this dock). */}
+          {/* Desktop side panel. Its column is always reserved, so opening the coach
+              or the log never reflows or resizes the table. */}
           <aside className="hidden min-h-0 w-80 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex">
             {(study || coaching || coachLoading) && (
               <CoachPanel coaching={coaching} loading={coachLoading} />

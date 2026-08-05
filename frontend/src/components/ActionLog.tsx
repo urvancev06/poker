@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ActionLogEntry } from '../api'
+import { actionText } from '../lib/actionText'
 
 const STREET_LABEL: Record<string, string> = {
   preflop: 'Preflop',
@@ -8,24 +9,7 @@ const STREET_LABEL: Record<string, string> = {
   river: 'River',
 }
 
-export function actionText(a: ActionLogEntry): string {
-  switch (a.action) {
-    case 'fold':
-      return 'folds'
-    case 'check':
-      return 'checks'
-    case 'call':
-      return 'calls'
-    case 'bet':
-      return `bets ${a.to_amount}`
-    case 'raise':
-      return `raises to ${a.to_amount}`
-    default:
-      return a.action
-  }
-}
-
-/** A running, candid record of who did what this hand — like a real client. */
+/** Running record of who did what this hand, grouped by street. */
 export function ActionLog({ history, heroSeat }: { history: ActionLogEntry[]; heroSeat: number }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -34,7 +18,6 @@ export function ActionLog({ history, heroSeat }: { history: ActionLogEntry[]; he
     bottomRef.current?.scrollIntoView({ block: 'nearest' })
   }, [history.length])
 
-  // Group consecutive entries by street, preserving order.
   const groups: Array<{ street: string; entries: ActionLogEntry[] }> = []
   for (const e of history) {
     const last = groups[groups.length - 1]

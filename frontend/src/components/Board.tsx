@@ -16,8 +16,8 @@ export function Board({
   const positions = n + incoming
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* Once the hand is over the chips are pushed and the pot reads 0, which is
-          meaningless — hide it then (keep the space so the board doesn't jump). */}
+      {/* The pot reads 0 once the chips are pushed; hide it then, but keep the
+          space reserved so the board doesn't jump. */}
       <div className={`text-center leading-none ${pot > 0 ? '' : 'invisible'}`}>
         <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-faint">Pot</div>
         <div className="mt-1 text-[28px] font-light tabular-nums text-ink">{pot}</div>

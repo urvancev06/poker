@@ -2,11 +2,9 @@
 // ranges are a solid 100bb 6-max baseline, NOT solver truth — exact frequencies
 // and mixing always defer to GTO Wizard (mirrors the project's honesty rules).
 
-// The percentage labels that used to sit here (~15%, ~19%, ...) are gone on purpose.
-// They overstated their own lists by 1.3-4.4 points, and — worse — they were the copy
-// that got wired into the bots and the leak detector as executable inputs while the
-// hand lists, which are correct, were never used (audit F-01, F-03). The width column
-// is now COMPUTED from the list at render time, so it cannot drift from it again.
+// The hand lists are the source of truth. The width shown beside each row is computed
+// from the list at render time (rangeCombos below), never written next to it, so the
+// two cannot drift apart.
 const RFI: Array<[string, string]> = [
   ['UTG', '22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo'],
   ['MP / HJ', '22+, A9s+, A5s–A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+'],
@@ -16,8 +14,8 @@ const RFI: Array<[string, string]> = [
   ['BB', 'No RFI — defend vs opens: wide vs BTN/CO/SB, tighter vs UTG/MP; mix flats with a polarized 3-bet.'],
 ]
 
-/** Combos a range token expands to, so the width beside each row is derived from the
- *  list rather than asserted next to it. Mirrors backend poker/math/ranges.py. */
+/** Combos a range string expands to, out of 1326. Mirrors backend poker/math/ranges.py -
+ *  the two must agree, or the study page and the bots describe different ranges. */
 function rangeCombos(text: string): number {
   const R = '23456789TJQKA'
   const idx = (c: string) => R.indexOf(c.toUpperCase())
@@ -70,9 +68,7 @@ const FRAMEWORK: Array<[string, string]> = [
 ]
 
 // Exact hypergeometric values, not the rule of 2 and 4: one card = outs/47;
-// two cards = 1 - C(47-outs,2)/C(47,2). The gutshot two-card figure read 17% and is
-// 16.47%, which rounds to 16 (audit F-40); the combo one-card cell was blank, hiding
-// that a 15-out draw is still an underdog on a single card.
+// two cards = 1 - C(47-outs,2)/C(47,2).
 const DRAWS: Array<[string, string, string, string]> = [
   ['Flush draw', '9', '19%', '35%'],
   ['Open-ender', '8', '17%', '31%'],

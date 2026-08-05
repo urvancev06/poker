@@ -236,7 +236,7 @@ export interface LeakSummary {
   examples: Leak[]
 }
 
-// --- Bot lab + learning (Phase 7) ---
+// --- Bot lab (offline archetype tuning) + the CFR trainer ---
 export interface LabKnob {
   key: string
   label: string

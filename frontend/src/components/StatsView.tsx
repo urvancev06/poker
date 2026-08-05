@@ -4,8 +4,6 @@ import { api, type HeroStatLine, type MyStats } from '../api'
 // Stat rows, with the sample size at which each becomes worth reading. Below its
 // threshold a stat is shown greyed and unjudged rather than coloured pass/fail:
 // VPIP at 30 hands has a 95% CI of +/-15 points, which is wider than its whole band.
-// (The banner used to vanish at 100 hands while its own text demanded 500-1000+,
-// and every row was coloured from hand one — audit F-50.)
 const ROWS: Array<{ key: keyof HeroStatLine; label: string; stable: number; note: string }> = [
   { key: 'vpip', label: 'VPIP', stable: 500, note: 'stabilises ~500 hands' },
   { key: 'pfr', label: 'PFR', stable: 500, note: 'stabilises ~500 hands' },
@@ -18,8 +16,8 @@ const ROWS: Array<{ key: keyof HeroStatLine; label: string; stable: number; note
   { key: 'cbet', label: 'C-BET', stable: 2000, note: 'measured per c-bet opportunity — board-dependent' },
 ]
 
-// Gate 3 is stated over 2,000+ hands. Lifetime-only made that window impossible to
-// isolate — early learning hands drag the average forever (audit F-37).
+// Trailing windows as well as lifetime: early learning hands drag a lifetime average
+// forever, so recent form is only readable in a window of its own.
 const WINDOWS: Array<{ label: string; last?: number }> = [
   { label: 'Lifetime' },
   { label: 'Last 500', last: 500 },
@@ -37,8 +35,16 @@ export function StatsView() {
   const [err, setErr] = useState<string | null>(null)
   const [win, setWin] = useState(0)
 
-  useEffect(() => {
+  // Picking another window drops the numbers on screen, so the old window's stats
+  // are never shown under the new label. Done during render rather than in the
+  // effect below, which would only clear them after a frame.
+  const [shownWin, setShownWin] = useState(win)
+  if (shownWin !== win) {
+    setShownWin(win)
     setStats(null)
+  }
+
+  useEffect(() => {
     api
       .myStats(undefined, WINDOWS[win].last)
       .then(setStats)
@@ -135,13 +141,9 @@ export function StatsView() {
   )
 }
 
-/** One stat, with its band drawn as an interval and the value placed on it.
- *
- * This replaces a radar chart. A radar plots "further from centre = more", which
- * cannot express "inside an interval is good": four of its five axes read backwards,
- * so a VPIP of 40 sat outside the target polygon and looked like a strength while the
- * row beneath it was red. It also drew the target at the band MIDPOINT, a number the
- * API never returns (audit F-38). An interval is the honest shape for a band. */
+/** One stat, with its band drawn as an interval and the value placed on it. A target
+ *  here is a range, not a point, so anything that collapses it to one number (a band
+ *  midpoint, a "further is better" axis) misreads it. */
 function StatRow({
   row,
   value,
@@ -205,11 +207,9 @@ function StatRow({
   )
 }
 
-/** Trend on a FIXED per-stat scale with the target band drawn behind the bars.
- *
- * Each row used to be rescaled by its own maximum, so every row's peak was full
- * height and nothing was comparable to anything — including to its own band, which
- * was not drawn at all (audit F-51). */
+/** Trend on a FIXED per-stat scale, with the target band drawn behind the bars.
+ *  Scaling a row to its own maximum instead would make every row's peak full height
+ *  and comparable to nothing, its own band included. */
 function Trend({
   trend,
   targets,

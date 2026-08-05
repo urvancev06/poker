@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-// Mono Minimal — Editorial (references/DESIGN.md): Sora for UI/headings, IBM Plex
-// Mono for every number and caps micro-label. Bundled locally (no CDN).
+// Mono Minimal - Editorial (DESIGN.md): Sora for UI/headings, IBM Plex Mono for
+// every number and caps micro-label. Bundled locally, not pulled from a CDN.
 import '@fontsource/sora/400.css'
 import '@fontsource/sora/500.css'
 import '@fontsource/sora/600.css'

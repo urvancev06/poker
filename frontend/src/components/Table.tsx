@@ -1,21 +1,19 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Reads, SessionState } from '../api'
 import { Board } from './Board'
-import { Seat, type VisibilityMode } from './Seat'
+import { Seat } from './Seat'
+import type { VisibilityMode } from '../lib/prefsContext'
 
-// The table is laid out ONCE at this fixed design size (px), then scaled as a
-// single unit to fit whatever space it's given (see useFitScale). Because the
-// scale is uniform, every seat / card / chip / the pot keep their exact
-// relationship at any window size — the geometry can never compress or collide.
-// Landscape design box (a real poker table is wider than tall). The table is
-// laid out once at this size and scaled to fit, so it uses the full available
-// width instead of being squeezed into a narrow portrait column.
+// The table is laid out once at this fixed design size (px), then scaled as a
+// single unit to fit the space it's given (see useFitScale). The uniform scale
+// is what stops seats, cards and the pot ever colliding at odd window sizes.
+// Landscape, because a real poker table is wider than tall.
 const DESIGN_W = 920
 const DESIGN_H = 620
 
-// Screen positions for up to 6 players; hero (player 0) sits bottom-centre and
-// opponents keep stable seats while the dealer button rotates. Percentages are
-// of the fixed design box above, tuned so no seat rides outside the wide oval.
+// Seat positions as percentages of the design box, tuned so no seat rides
+// outside the oval. Hero (player 0) sits bottom-centre and opponents keep fixed
+// seats while the dealer button rotates.
 const POSITIONS = [
   { left: '50%', top: '86%' }, // 0 hero (kept clear of the action bar below)
   { left: '12%', top: '72%' }, // 1
@@ -25,9 +23,8 @@ const POSITIONS = [
   { left: '88%', top: '72%' }, // 5
 ]
 
-/** Fit a fixed DESIGN_W×DESIGN_H box into the observed parent, uniformly.
- * scale = min(availW/DESIGN_W, availH/DESIGN_H), capped at 1 so we never
- * upscale past the crisp design size. */
+/** Uniform scale that fits the design box into the observed parent, capped at 1
+ * so we never upscale past the crisp design size. */
 function useFitScale(ref: React.RefObject<HTMLDivElement | null>) {
   const [scale, setScale] = useState(1)
   useLayoutEffect(() => {

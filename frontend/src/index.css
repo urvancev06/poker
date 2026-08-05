@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Mono Minimal — Editorial (references/DESIGN.md). Dark, flat, type-driven.
+/* Mono Minimal - Editorial (DESIGN.md). Dark, flat, type-driven.
    One accent: terminal green. Surfaces are drawn with hairlines + a faint fill step.
-   Palette tuned for WCAG AA legibility (ratios vs bg noted); accent is untouched. */
+   Contrast ratios against --color-bg are noted per token; keep them at WCAG AA. */
 @theme {
   --color-bg: #111114; /* base — lifted off near-black */
   --color-bg2: #2a2a34; /* raised surface — 1.33:1 step above bg so panels read */
@@ -10,8 +10,8 @@
   --color-felt-edge: #101116;
 
   --color-ink: #ffffff; /* primary text — 18.9:1 */
-  --color-muted: #bdbec8; /* secondary text — 10.2:1 (was 7.7) */
-  --color-faint: #94959f; /* tertiary / caption labels / axis — 6.3:1 (was 3.7; now clears AA) */
+  --color-muted: #bdbec8; /* secondary text — 10.2:1 */
+  --color-faint: #94959f; /* tertiary / caption labels / axis — 6.3:1 */
   --color-line: #5f6170; /* borders — visible hairline, 3.1:1 (meets UI 3:1) */
   --color-hair: #2e2f37; /* faint internal dividers — kept intentionally soft */
 
@@ -46,7 +46,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Accent focus ring on every control. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;

@@ -9,8 +9,8 @@ import {
 
 type Tab = 'sim' | 'cfr'
 
-// The stats we surface in the lab table — the gate-relevant ones (have bands)
-// plus the headline win rate. Stats are OUTPUTS of the knobs (PROJECT.md §3).
+// The stats with target bands, in table order. These are outputs of the
+// strategy knobs, never inputs.
 const STAT_COLS: Array<[string, string]> = [
   ['vpip', 'VPIP'],
   ['pfr', 'PFR'],
@@ -110,9 +110,9 @@ function BotLab() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">
-        You never set a bot's VPIP — you set a <em>strategy</em> and measure what comes out
-        (PROJECT.md §3). Pick a lineup, nudge a knob, run the sim, and watch the stats land in
-        (or fall out of) their target bands. This is the Phase-3 tuning loop, live.
+        You never set a bot's VPIP — you set a <em>strategy</em> and measure what comes out.
+        Pick a lineup, nudge a knob, run the sim, and watch the stats land in (or fall out
+        of) their target bands.
       </p>
 
       {/* lineup + run controls */}
@@ -272,7 +272,8 @@ function LabResults({ result }: { result: LabResult }) {
         <strong className="text-ink"> The pass/fail here is indicative, not the gate.</strong>{' '}
         WTSD is measured over flops seen, not hands, so a Nit contributes only ~1,850 of them
         even at the 25k cap — enough noise to flip the badge on its own. The real gate is
-        100k hands via scripts/simulate.py, and Nit WTSD sits ~1.2σ from its bound even there.
+        100k hands via backend/scripts/simulate.py, and Nit WTSD sits ~1.2σ from its bound
+        even there.
       </p>
     </div>
   )

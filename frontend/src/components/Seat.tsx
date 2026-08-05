@@ -1,42 +1,9 @@
 import type { BotRead, Seat as SeatData } from '../api'
 import { Card, DealtCard } from './Card'
 
-// Single definition lives in prefs.tsx (it is persisted there).
-import type { VisibilityMode } from '../prefs'
-export type { VisibilityMode }
-
-const ARCH_LABEL: Record<string, string> = {
-  Nit: 'Nit',
-  TAG: 'TAG',
-  LAG: 'LAG',
-  'Calling Station': 'Station',
-  Maniac: 'Maniac',
-}
-
-/** The mode-gated seat label (archetype / HUD stats / nothing), shared by the
- * desktop and mobile tables. Display only — never affects bot behaviour. */
-export function seatLabel(
-  isHero: boolean,
-  mode: VisibilityMode,
-  archetype: string,
-  read?: BotRead,
-): React.ReactNode {
-  if (isHero) return <span className="text-accent">You</span>
-  if (mode === 'labeled') return <span className="text-muted">{ARCH_LABEL[archetype] ?? archetype}</span>
-  if (mode === 'hud') {
-    return read?.ready && read.stats ? (
-      <span className="tabular-nums text-muted">
-        {read.stats.vpip ?? '—'}/{read.stats.pfr ?? '—'}
-        {read.stats.af != null && <span className="text-muted/70"> · AF {read.stats.af}</span>}
-      </span>
-    ) : (
-      <span className="italic text-muted/60">
-        read {read?.hands ?? 0}/{read?.min_hands ?? 30}
-      </span>
-    )
-  }
-  return null
-}
+// Single definition lives in lib/prefsContext.ts (it is persisted by prefs.tsx).
+import type { VisibilityMode } from '../lib/prefsContext'
+import { seatLabel } from '../lib/seatLabel'
 
 function ChipStack({ amount }: { amount: number }) {
   if (!amount) return null
@@ -50,8 +17,9 @@ function ChipStack({ amount }: { amount: number }) {
 
 /**
  * One player's seat. The archetype label / HUD is DISPLAY-gated by `mode`
- * (STRATEGY.md "reads are earned") — never the bot's behaviour. Per-bot stats
- * for HUD mode arrive in Phase 6; until then HUD shows a "read forming" hint.
+ * (STRATEGY.md "reads are earned, not given") - it never reaches the bot's
+ * behaviour. HUD mode shows live VPIP/PFR/AF once the backend marks that bot's
+ * sample big enough, and the observed-hand count until then.
  */
 export function Seat({
   seat,

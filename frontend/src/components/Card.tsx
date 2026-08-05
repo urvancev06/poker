@@ -1,10 +1,10 @@
-// Renders a single playing card as inline SVG using the user's chosen deck
-// (see prefs.tsx). All decks share the same 100x140 viewBox, so every deck fits
-// identically — only styling differs. `deckId` overrides the active deck (for
-// previews in Preferences). Card strings are like "Ah", "Td", "Kc".
+// Playing cards as inline SVG, drawn with whichever deck the user picked (see
+// lib/decks.tsx). `deckId` overrides the active deck, for the previews in
+// Preferences. Card strings look like "Ah", "Td", "Kc".
 
 import { useEffect, useId, useState } from 'react'
-import { deckById, useDeck, type Parts } from '../prefs'
+import { deckById, type Parts } from '../lib/decks'
+import { useDeck } from '../lib/prefsContext'
 
 const SUIT_GLYPH: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
 const CARD_RATIO = 1.4
@@ -58,10 +58,9 @@ export function Card({
 }
 
 /**
- * A card that flips from back to face-up when it mounts — the "deal" reveal.
- * Key it by the card value so a new card (new hand / next street) remounts and
- * flips, while existing cards stay put. Honours prefers-reduced-motion via the
- * global CSS that zeroes transition durations.
+ * Flips from back to face-up on mount: the deal reveal. Key it by card value, so
+ * a new card remounts and flips while existing cards stay put.
+ * prefers-reduced-motion is handled by global CSS that zeroes transitions.
  */
 export function DealtCard({ card, width = 64 }: { card: string; width?: number }) {
   const [shown, setShown] = useState(false)
@@ -94,16 +93,15 @@ export function DealtCard({ card, width = 64 }: { card: string; width?: number }
 }
 
 /**
- * A community card that sits face-down until its value is dealt, then flips in
- * place — so the flop/turn/river are physically on the table and turn over,
- * rather than appearing from nowhere. Key it by board POSITION (not value) so
- * the same element persists and animates when `card` goes null -> value.
+ * A community card that sits face-down until its value arrives, then flips in
+ * place. Key it by board POSITION, not value, so the same element persists and
+ * animates when `card` goes null -> value.
  */
 export function BoardCard({ card, width = 72 }: { card: string | null; width?: number }) {
   const [last, setLast] = useState<string | null>(card)
-  useEffect(() => {
-    if (card) setLast(card)
-  }, [card])
+  // Adjusted during render, not in an effect: `last` is only ever read while
+  // `card` is null, so the rendered face is the same either way.
+  if (card && card !== last) setLast(card)
   const height = Math.round(width * CARD_RATIO)
   const faceUp = !!card
   const front = card ?? last // keep showing the last card during a flip-down (board reset)
@@ -127,15 +125,5 @@ export function BoardCard({ card, width = 72 }: { card: string | null; width?: n
         </div>
       </div>
     </div>
-  )
-}
-
-/** An empty card slot (e.g. an undealt board position). Softer than a real card. */
-export function CardSlot({ width = 64 }: { width?: number }) {
-  return (
-    <div
-      className="rounded-xl border border-dashed border-line/60"
-      style={{ width, height: Math.round(width * CARD_RATIO), background: 'rgba(0,0,0,0.15)' }}
-    />
   )
 }

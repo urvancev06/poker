@@ -1,14 +1,14 @@
 import type { Reads, SessionState } from '../api'
 import { Board } from './Board'
 import { Card, DealtCard } from './Card'
-import { seatLabel, type VisibilityMode } from './Seat'
+import { seatLabel } from '../lib/seatLabel'
+import type { VisibilityMode } from '../lib/prefsContext'
 
 type SeatData = SessionState['state']['seats'][number]
 
-// Portrait layout for phones (Offsuit-style structure): opponents in ONE even
-// row across the top, the board given room in the middle, your hand pinned at
-// the bottom with the action buttons directly beneath (in App). The desktop oval
-// is used on large screens instead.
+// Portrait layout for phones: opponents in one row across the top, the board in
+// the middle, your hand pinned at the bottom with the action buttons directly
+// beneath (rendered in App). Large screens use the oval Table instead.
 export function MobileTable({
   session,
   mode,
@@ -24,12 +24,12 @@ export function MobileTable({
     playerToSeat[player] = seat
   })
   const n = session.archetypes.length
-  const opponents = Array.from({ length: n - 1 }, (_, i) => i + 1) // players 1..n-1
+  const opponents = Array.from({ length: n - 1 }, (_, i) => i + 1)
   const hero = state.seats[session.hero_seat]
 
   return (
     <div className="felt flex h-full w-full flex-col justify-between gap-3 rounded-2xl p-3 ring-1 ring-black/30">
-      {/* opponents — a single, evenly spaced row */}
+      {/* opponents, evenly spaced */}
       <div className="flex items-start justify-between gap-1">
         {opponents.map((player) => {
           const sd = state.seats[playerToSeat[player]]
@@ -47,7 +47,7 @@ export function MobileTable({
         })}
       </div>
 
-      {/* board + pot, with room */}
+      {/* board + pot */}
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <Board board={state.board} pot={state.pot} cardWidth={48} />
       </div>
