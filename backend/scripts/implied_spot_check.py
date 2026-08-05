@@ -1,15 +1,14 @@
 """Implied / reverse-implied odds battery + calibration.
 
-Two things this must prove (per the design review):
-  1. the set-mine flip lands at the right PLACE — 22 turns Fold->Call as the stack
+Two things this must prove:
+  1. the set-mine flip lands in the right PLACE: 22 turns Fold->Call as the stack
      behind grows, and that boundary sits near the rule-of-15 (~15x the call), not
-     at 8x (too loose) or 25x (too tight); the endpoints prove it moves, the
-     boundary proves it moves at the right place;
-  2. reverse-implied (Y) fires on a dominated hand (-> fold) but does NOT over-fire
-     on a decent non-premium made hand (which must still call) — both directions,
+     at 8x (too loose) or 25x (too tight);
+  2. reverse-implied odds fire on a dominated hand (-> fold) but do NOT over-fire
+     on a decent non-premium made hand (which must still call). Both directions,
      because quiet over-folding dressed up as "reverse implied" is the failure mode.
 
-    backend/.venv/bin/python scripts/implied_spot_check.py
+    cd backend && .venv/bin/python -m scripts.implied_spot_check
 """
 
 from __future__ import annotations
@@ -59,7 +58,7 @@ def setmine(behind, call=14, pot=29, villain="TAG"):
                  hero_seat=5, villain_seat=1, behind=behind)
 
 
-# --- reverse-implied (Y) both directions, and a draw, all facing a flop c-bet ----
+# --- reverse-implied both directions, and a draw, all facing a flop c-bet -------
 # villain (UTG, seat2) opens, hero (BB, seat1) defends, villain c-bets the flop.
 def _flop_cbet_hist():
     return [

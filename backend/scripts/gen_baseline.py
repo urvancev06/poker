@@ -1,7 +1,10 @@
-"""Generate the locked Phase-3 baseline: the 100k gate report + the measured
-bet-range composition, written to backend/validation/phase3_gate.txt.
+"""Regenerate the locked bot-validation baseline: the 100k-hand stat gate report
+plus the measured bet-range composition, written to backend/validation/phase3_gate.txt.
 
-    backend/.venv/bin/python scripts/gen_baseline.py
+Rerun this after any change to bot strategy; a diff in the committed baseline is
+the signal that the archetypes moved.
+
+    cd backend && .venv/bin/python -m scripts.gen_baseline
 """
 
 from __future__ import annotations
@@ -31,8 +34,8 @@ def main() -> int:
     table = format_table(counts, MEASURE_HANDS, SEED)
 
     header = (
-        "PHASE-3 VALIDATION GATE  (the brain, validated headless before the UI)\n"
-        f"  command : backend/.venv/bin/python scripts/gen_baseline.py\n"
+        "BOT VALIDATION GATE  (measured headless, before any UI work)\n"
+        f"  command : cd backend && .venv/bin/python -m scripts.gen_baseline\n"
         f"  gate    : {GATE_HANDS:,} hands, seed {SEED}\n"
         f"  hard gate stats: VPIP, PFR, AF, WTSD in band for every archetype\n"
     )
