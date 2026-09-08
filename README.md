@@ -17,10 +17,11 @@ solver and does not claim to be.
 
 ![The table with the coach open](docs/screenshots/table-coach.png)
 
-The table with the live coach open. Holding A♥A♦ on a Q♦ 2♦ 5♦ flop, the panel shows
-realised equity against the villain's conditioned range, the price being offered, the EV
-of the call, and the read the range came from - here a TAG that c-bet the flop, narrowed
-to the top ~10.7% of hands.
+The table with the live coach open. Holding 2♣9♣ on a 7♣ 8♣ Q♣ flop - a made flush -
+against a Calling Station and a Maniac who have both bet, with one player still to act
+behind. The coach discounts 75% raw equity to 67% realised, prices the call exactly, and
+says to raise for value rather than just call. Underneath is the action-conditioned range
+each number was computed against.
 
 ![The bot lab](docs/screenshots/lab.png)
 
@@ -139,7 +140,7 @@ Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_
 
 ## What the tests assert
 
-**107 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+**110 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
 majority check a specific numeric or structural property:
 
 | Area | Tests | Examples of what is asserted |
@@ -148,7 +149,7 @@ majority check a specific numeric or structural property:
 | `test_engine.py` | 13 | hand-ranking order, split pots when the board plays, three-way side-pot distribution, legal actions by position and facing bets, short-stack all-in, illegal actions rejected, and **chip conservation across randomised complete hands** |
 | `test_lab_and_cfr.py` | 12 | the three CFR checks above, plus the lab's report structure, hand caps, and that loosening a calldown knob actually raises the measured WTSD |
 | `test_api.py` | 10 | endpoint contracts end to end |
-| `test_coach.py` | 9 | that a value hand ahead raises rather than folds, that a marginal out-of-position call flips to a fold once equity is realised rather than raw, and that every verdict string carries a tone |
+| `test_coach.py` | 12 | that a hand well ahead raises rather than just calling - judged on equity, not on the made tier alone - that the coach never suggests a bet or raise the engine would reject, that a marginal out-of-position call flips to a fold once equity is realised rather than raw, and that every verdict string carries a tone |
 | `test_villain_model.py` | 6 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, and the river bluff slice is low and ordered by archetype |
 | remainder | 36 | bot/sim behaviour, implied-odds spots, leak detection, replay reconstruction, calibration |
 
@@ -174,7 +175,7 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
-.venv/bin/python -m pytest                        # 107 tests
+.venv/bin/python -m pytest                        # 110 tests
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
