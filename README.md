@@ -13,6 +13,40 @@ than trust it.
 It is a personal training tool - single-user, play-money, local-first. It is not a GTO
 solver and does not claim to be.
 
+## What it looks like
+
+![The table with the coach open](docs/screenshots/table-coach.png)
+
+The table with the live coach open. Holding A♥A♦ on a Q♦ 2♦ 5♦ flop, the panel shows
+realised equity against the villain's conditioned range, the price being offered, the EV
+of the call, and the read the range came from - here a TAG that c-bet the flop, narrowed
+to the top ~10.7% of hands.
+
+![The bot lab](docs/screenshots/lab.png)
+
+The bot lab. A 25,000-hand run with all five archetypes measured against their
+STRATEGY.md §4 bands. The statistics are outputs, so the loop is: move a knob, re-run,
+see where the measured numbers land. The in-browser run is capped at 25,000 hands - the
+≥100,000-hand gate described below runs offline.
+
+![CFR on Kuhn poker](docs/screenshots/cfr.png)
+
+CFR on Kuhn poker after 50,000 iterations: a learned game value of −0.0555 against the
+exact −1/18 ≈ −0.0556, exploitability down to 0.0061, and the learned strategy for every
+information set.
+
+![Hand review](docs/screenshots/history.png)
+
+Hand review. Every stored hand replays street by street, and each decision is re-scored
+against the equity it actually needed. The flagged line here is an ATo open from UTG,
+which is not in the UTG opening range; the leak report counts the ones that recur.
+
+![Your own statistics](docs/screenshots/stats.png)
+
+The statistics view - your own play held to target bands, shown here over a 700-hand demo
+session. A stat stays grey and unjudged until the sample is large enough to read it -
+VPIP needs roughly 500 hands, 3-bet roughly 3,000.
+
 ## The strategy model
 
 A bot is a **parameter set**, not a script. `poker.bots.strategy` defines one
