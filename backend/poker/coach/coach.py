@@ -45,6 +45,12 @@ _SET_MINE_RATE = 0.03      # set-mine implied pot ≈ this × stack-behind (flip
 _DRAW_IMPLIED_MULT = 0.5   # strong-draw implied pot ≈ this × current pot
 _REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (dominated WEAK pairs only)
 
+# Equity against the villain's modelled range at which the hero is far enough ahead to
+# build the pot rather than just call. Deliberately independent of the made tier: a big
+# overpair crushes a c-betting range as thoroughly as two pair does, and gating value
+# lines on tier alone talks the coach out of raising its own best hands.
+_VALUE_EQUITY = 0.72
+
 
 def _implied_adjustment(
     *, street: str, is_pocket_pair: bool, is_draw: bool, made_tier: MadeTier,
@@ -251,6 +257,8 @@ def _suggest(
     villain_desc: str,
     players_behind: int,
     implied_note: str = "",
+    can_bet: bool = True,
+    can_raise: bool = True,
 ) -> tuple[str, str]:
     """A candid verdict + rationale derived from the computed numbers. ``is_strong``
     means a real value hand (two pair or better); ``realized`` is raw equity after
@@ -260,7 +268,9 @@ def _suggest(
     real_pct = f"{realized * 100:.0f}%"
 
     if can_check:  # no bet to face — a betting/checking decision, not a price one
-        if is_strong:
+        if not can_bet:
+            return ("Check.", "Betting is closed here — there is nothing to bet into, so check.")
+        if is_strong or equity_frac >= _VALUE_EQUITY:
             return ("Bet for value.", f"You have {tier_name} (~{raw_pct} equity) — bet to get value while ahead.")
         if is_draw:
             return (
@@ -280,8 +290,10 @@ def _suggest(
         else ""
     )
 
-    # A genuinely strong made hand that's well ahead: raise, don't just call.
-    if is_strong and equity_frac >= 0.72:
+    # Far enough ahead to build the pot rather than just call — whether the strength is
+    # in the made tier or in the equity itself. Only when a raise is legal: facing an
+    # all-in, or with every villain already all-in, calling is the most the hero can do.
+    if equity_frac >= _VALUE_EQUITY and can_raise:
         return (
             "Raise for value.",
             f"{tier_name}, ~{raw_pct} vs {villain_desc} — well ahead; raise to get value rather than just call.",
@@ -454,6 +466,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         villain_desc=villain_desc,
         players_behind=players_behind,
         implied_note=implied_note,
+        can_bet=legal.can_bet,
+        can_raise=legal.can_raise,
     )
 
     return Coaching(

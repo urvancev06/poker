@@ -184,3 +184,64 @@ def test_every_verdict_string_has_a_tone():
     unmapped = seen - set(VERDICT_TONE)
     assert not unmapped, f"verdict strings with no tone: {sorted(unmapped)}"
     assert len(seen) >= 8, f"expected the full verdict ladder, only saw {sorted(seen)}"
+
+
+def test_overpair_well_ahead_raises_rather_than_calling():
+    """A value line must follow the equity, not just the made tier. An overpair with
+    a nut flush draw is one pair by tier but crushes a c-betting range, and gating
+    the raise on two-pair-or-better talked the coach out of raising its best hands."""
+    verdict, why = _suggest(
+        can_check=False,
+        tier_name="a pair + flush draw",
+        is_strong=False,  # one pair by tier
+        is_draw=True,
+        equity_frac=0.89,  # but crushing their range
+        realized=0.88,
+        required=0.20,
+        in_position=True,
+        action_closed=False,
+        villain_desc="TAG's modelled range",
+        players_behind=0,
+    )
+    assert verdict == "Raise for value."
+    assert "a pair + flush draw" in why
+
+
+def test_never_suggests_a_raise_when_raising_is_illegal():
+    """Facing an all-in there is nothing to raise to, so even a monster can only call.
+    A verdict the engine would reject is worse than a conservative one."""
+    verdict, _ = _suggest(
+        can_check=False,
+        tier_name="two pair",
+        is_strong=True,
+        is_draw=False,
+        equity_frac=0.93,
+        realized=0.93,
+        required=0.25,
+        in_position=True,
+        action_closed=True,  # all-in: raw equity is realized
+        villain_desc="a Maniac",
+        players_behind=0,
+        can_raise=False,
+    )
+    assert not verdict.lower().startswith("raise")
+    assert verdict == "Call."
+
+
+def test_never_suggests_a_bet_when_betting_is_illegal():
+    """Every villain already all-in: the hero can check the hand down but cannot bet."""
+    verdict, _ = _suggest(
+        can_check=True,
+        tier_name="two pair",
+        is_strong=True,
+        is_draw=False,
+        equity_frac=0.85,
+        realized=0.85,
+        required=None,
+        in_position=True,
+        action_closed=False,
+        villain_desc="the field",
+        players_behind=0,
+        can_bet=False,
+    )
+    assert verdict == "Check."
