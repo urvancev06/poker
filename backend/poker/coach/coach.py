@@ -261,9 +261,12 @@ def _suggest(
     can_raise: bool = True,
 ) -> tuple[str, str]:
     """A candid verdict + rationale derived from the computed numbers. ``is_strong``
-    means a real value hand (two pair or better); ``realized`` is raw equity after
-    the realization factor. ``required`` already reflects the implied/reverse price
-    adjustment; ``implied_note`` explains why it moved."""
+    means a real value hand by tier (two pair or better) — it opens a value bet on its
+    own, but it is not required for one, since ``equity_frac`` past ``_VALUE_EQUITY``
+    does too. ``realized`` is raw equity after the realization factor. ``required``
+    already reflects the implied/reverse price adjustment; ``implied_note`` explains why
+    it moved. ``can_bet``/``can_raise`` are the engine's legal actions, so the verdict
+    can never name a line the engine would reject."""
     raw_pct = f"{equity_frac * 100:.0f}%"
     real_pct = f"{realized * 100:.0f}%"
 

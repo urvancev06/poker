@@ -1,8 +1,11 @@
 """Coach verdict logic (the candid suggested line).
 
 Two invariants:
-- a value hand (two pair+) that is clearly ahead never gets a Fold verdict, and a
-  fold always states the numbers behind it;
+- a hand that is clearly ahead never gets a Fold verdict, and a fold always states
+  the numbers behind it. "Clearly ahead" is measured by equity against the modelled
+  range, not by the made tier: an overpair can crush a betting range that two pair
+  would, so value lines must not be gated on tier alone (STRATEGY.md §3 counts top
+  pair good kicker as a strong made hand);
 - while money is still behind, the verdict is judged on *realized* equity (raw
   equity discounted for position and multiway), so a marginal hand that beats the
   raw price can still be a fold. Once action is closed (river or all-in) raw
