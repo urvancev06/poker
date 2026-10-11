@@ -1,0 +1,220 @@
+/* My stats: what utilities do not say well. SVG strokes and fills, the row grid that
+   changes shape with its group's state and the breakpoint, and the rail's dot states.
+   Ported from the approved prototype (round2/stage/stats.html). */
+
+.stats {
+  --gate-a: var(--signal); /* the readiness ring: the atmosphere's blue */
+  --gate-b: #64d2ff;
+  --in-band: var(--win);
+  --out-band: #ff9f0a; /* 10.2:1 on the void; out of band also says "+59.9" in text */
+  --bar: #6b6b6e; /* trend bars, 3.9:1 on the void */
+}
+
+/* the window selector: a 380 px capsule at 32 px, full width on a phone */
+.seg.stats-window {
+  width: 380px;
+}
+.seg.stats-window .seg__opt {
+  height: 32px;
+  font-size: 14px;
+}
+@media (max-width: 599.98px) {
+  .seg.stats-window {
+    width: auto;
+  }
+}
+
+/* ---------- the readiness ring ---------- */
+.gate-ring path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 16;
+}
+.gate-ring__track {
+  stroke: #fff;
+  stroke-opacity: 0.12;
+}
+.gate-ring__gate {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  fill: var(--dust);
+}
+.gate-ring__gate.is-next {
+  fill: var(--ink);
+}
+
+/* ---------- a stat row: name, value, the rail, and (once ready) its state ---------- */
+.stat-row__btn {
+  display: grid;
+  grid-template-columns: 170px 120px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 36px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--dur-quick) ease;
+}
+.stat-groups.has-state .stat-row__btn {
+  grid-template-columns: 170px 120px minmax(0, 1fr) 110px;
+}
+.stat-row__btn:hover,
+.stat-row__btn[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.04);
+}
+.stat-row__value {
+  text-align: right;
+}
+.stat-row__value.is-null {
+  color: var(--dust);
+  font-size: var(--fs-body);
+}
+.stat-row__state {
+  justify-self: end;
+}
+.stat-row__def {
+  margin: 2px 12px 10px;
+  padding-left: calc(170px + 120px + 72px);
+  line-height: 1.45;
+}
+
+/* a target is a range, never a point: the band on a bare rail; its numbers appear when
+   the row is pointed at, focused or open */
+.stat-row__track {
+  position: relative;
+  height: 40px;
+}
+.stat-row__lbl {
+  position: absolute;
+  top: 0;
+  translate: -50% 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: opacity var(--dur-quick) ease;
+}
+.stat-row__rail,
+.stat-row__band {
+  position: absolute;
+  top: 24px;
+  height: 6px;
+  border-radius: 3px;
+}
+.stat-row__rail {
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+.stat-row__band {
+  min-width: 6px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.stat-row__dot {
+  position: absolute;
+  top: 27px;
+  width: 14px;
+  height: 14px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--void);
+}
+/* unjudged: hollow (the cue that is not colour); in / out: filled, and the state column
+   says "In range" or the distance */
+.stat-row[data-state="unjudged"] .stat-row__dot {
+  background: var(--void);
+  box-shadow: inset 0 0 0 2.5px var(--ink), 0 0 0 3px var(--void);
+}
+.stat-row[data-state="in"] .stat-row__dot {
+  background: var(--in-band);
+}
+.stat-row[data-state="out"] .stat-row__dot {
+  background: var(--out-band);
+}
+
+@media (max-width: 1099.98px) {
+  .stat-row__btn {
+    grid-template-columns: 120px 100px minmax(0, 1fr);
+    column-gap: 24px;
+  }
+  .stat-groups.has-state .stat-row__btn {
+    grid-template-columns: 120px 100px minmax(0, 1fr) 96px;
+  }
+  .stat-row__def {
+    padding-left: calc(120px + 100px + 48px);
+  }
+}
+
+@media (max-width: 599.98px) {
+  .stat-row__btn,
+  .stat-groups.has-state .stat-row__btn {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name value" "track track";
+    row-gap: 2px;
+    padding: 12px 8px 8px;
+  }
+  .stat-group.is-ready .stat-row__btn {
+    grid-template-areas: "name value" "track track" "state state";
+  }
+  .stat-row__name {
+    grid-area: name;
+  }
+  .stat-row__value {
+    grid-area: value;
+    font-size: 24px;
+  }
+  .stat-row__track {
+    grid-area: track;
+  }
+  .stat-row__state {
+    grid-area: state;
+    justify-self: start;
+    font-size: var(--fs-foot);
+  }
+  .stat-row__def {
+    margin: 0 8px 10px;
+    padding-left: 0;
+  }
+}
+
+/* ---------- the trend ---------- */
+.trend-chart__band line {
+  stroke: rgba(255, 255, 255, 0.45); /* 4.4:1 on the void */
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+/* the same two edges cut through the bars (the void shows through: 3.9:1 on a grey bar,
+   19:1 on the ink one), so the band reads over every bar */
+.trend-chart__cut line {
+  stroke: var(--void);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.trend-chart__bar {
+  fill: var(--bar);
+  transition: fill var(--dur-quick) ease;
+}
+.trend-chart__bar.is-in {
+  fill: var(--in-band);
+}
+.trend-chart__bar.is-on {
+  fill: var(--ink);
+}
+.trend-chart__cap {
+  fill: var(--ink);
+}
+/* no value in this slice: a hollow marker, never a bar */
+.trend-chart__none {
+  fill: none;
+  stroke: var(--dust);
+  stroke-width: 1.5;
+}
+.trend-chart__none.is-on {
+  stroke: var(--ink);
+}
