@@ -50,6 +50,9 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const scope = DOCK_ERRORS.find((s) => errors[s])
   const dockError = scope ? errors[scope] : undefined
 
+  // the maths explains one decision: it closes when the coach leaves 'ready' (you acted)
+  if (mathsOpen && coachStatus !== 'ready') setMathsOpen(false)
+
   const openMaths = () => {
     onLogOpenChange(false)
     setMathsOpen(true)
@@ -115,6 +118,8 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
       onRetry={() => table.retry('coach')}
       onDismissError={() => table.dismissError('coach')}
       onOpenMaths={openMaths}
+      onHide={table.hideCoach}
+      mathsOpen={mathsOpen}
     />
   )
 
@@ -141,7 +146,13 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
       <Sheet open={logOpen && !!session} onClose={() => onLogOpenChange(false)} title="This hand" bottomInset={desk ? 16 : undefined}>
         {session && <ActionLog history={session.state.history} heroSeat={session.hero_seat} />}
       </Sheet>
-      <MathsSheet coaching={coaching} open={mathsOpen && coachStatus === 'ready'} onClose={() => setMathsOpen(false)} bottomInset={desk ? 16 : undefined} />
+      <MathsSheet
+        coaching={coaching}
+        open={mathsOpen && coachStatus === 'ready'}
+        onClose={() => setMathsOpen(false)}
+        bottomInset={desk ? 16 : undefined}
+        positions={session?.state.seats.map((s) => s.position)}
+      />
     </main>
   )
 }
