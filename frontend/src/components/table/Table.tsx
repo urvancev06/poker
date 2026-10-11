@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { Reads, SessionState } from '../api'
+import type { Reads, SessionState } from '../../api'
 import { Board } from './Board'
 import { Seat } from './Seat'
-import type { VisibilityMode } from '../lib/prefsContext'
+import type { VisibilityMode } from '../../lib/prefsContext'
 
 // The table is laid out once at this fixed design size (px), then scaled as a
 // single unit to fit the space it's given (see useFitScale). The uniform scale

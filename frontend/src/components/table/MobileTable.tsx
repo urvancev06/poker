@@ -1,8 +1,8 @@
-import type { Reads, SessionState } from '../api'
+import type { Reads, SessionState } from '../../api'
 import { Board } from './Board'
-import { Card, DealtCard } from './Card'
-import { seatLabel } from '../lib/seatLabel'
-import type { VisibilityMode } from '../lib/prefsContext'
+import { Card, DealtCard } from '../Card'
+import { seatLabel } from '../../lib/seatLabel'
+import type { VisibilityMode } from '../../lib/prefsContext'
 
 type SeatData = SessionState['state']['seats'][number]
 

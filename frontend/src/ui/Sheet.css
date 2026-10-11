@@ -1,0 +1,87 @@
+/* Sheets: opaque #1c1c1e, a 30 px squircle. Desktop: a side panel. Phone and tablet: a
+   bottom sheet with a grabber and two detents. Geometry (top / bottom / width / height)
+   comes from props via style; everything else is here. */
+.sheet {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet);
+  background: var(--sheet-fill);
+  box-shadow: var(--sheet-shadow);
+  color: var(--ink);
+  overscroll-behavior: contain;
+}
+@supports (corner-shape: squircle) {
+  .sheet {
+    corner-shape: squircle;
+  }
+}
+.sheet[data-layout="side"] {
+  right: 16px;
+  padding: 18px 20px 14px;
+}
+.sheet[data-layout="bottom"] {
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 640px;
+  padding: 8px 20px 16px;
+}
+.sheet__grab {
+  display: none;
+}
+.sheet[data-layout="bottom"] .sheet__grab {
+  display: block;
+  flex: none;
+  width: 36px;
+  height: 5px;
+  margin: 0 auto 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3);
+}
+.sheet__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 0 16px;
+}
+.sheet[data-layout="bottom"] .sheet__drag {
+  touch-action: none;
+  cursor: grab;
+  /* a selection here would turn the next drag into a native text drag (pointercancel) */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.sheet__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.sheet__title[data-tone="good"] { color: var(--win); }
+.sheet__title[data-tone="close"] { color: var(--close); }
+.sheet__title[data-tone="fold"] { color: var(--loss); }
+.sheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+  overscroll-behavior: contain;
+}
+/* more below: the last 28 px fade out, so it reads as scrollable, never as clipped */
+.sheet__body.has-more {
+  -webkit-mask: linear-gradient(#000 calc(100% - 28px), transparent);
+  mask: linear-gradient(#000 calc(100% - 28px), transparent);
+}
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgba(0, 0, 0, 0.55);
+}

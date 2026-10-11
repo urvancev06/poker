@@ -1,0 +1,38 @@
+/* Cards. The SVG carries the continuous-corner outline; the element's own radius matches
+   it, so a context's box-shadow (felt, hero hand) follows the card. */
+.card {
+  display: block;
+  flex: none;
+  border-radius: 16% / 11.43%;
+  user-select: none;
+}
+.card text {
+  font-family: var(--font);
+  font-weight: 650;
+  font-optical-sizing: auto;
+}
+
+/* A card that turns over in place (the deal, a board card arriving). */
+.card-flip {
+  flex: none;
+  perspective: 800px;
+}
+.card-flip__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateY(-180deg);
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.card-flip.is-up .card-flip__inner {
+  transform: none;
+}
+.card-flip__side {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.card-flip__side--back {
+  transform: rotateY(180deg);
+}

@@ -1,0 +1,26 @@
+/* The coach ring. Strokes by size (the small ring thickens so over/under still reads at
+   52 px); colours by tone, from the backend `tone` only. */
+.coach-ring {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+.coach-ring[data-tone="good"] { --ta: var(--tone-good-a); --tb: var(--tone-good-b); }
+.coach-ring[data-tone="neutral"] { --ta: var(--tone-neutral-a); --tb: var(--tone-neutral-b); }
+.coach-ring[data-tone="close"] { --ta: var(--tone-close-a); --tb: var(--tone-close-b); }
+.coach-ring[data-tone="fold"] { --ta: var(--tone-fold-a); --tb: var(--tone-fold-b); }
+.coach-ring circle { fill: none; stroke-linecap: round; }
+.coach-ring .coach-ring__track { stroke: var(--tb); stroke-opacity: 0.16; stroke-width: 14; }
+.coach-ring .coach-ring__fill { stroke-width: 14; }
+.coach-ring .coach-ring__ptrack { stroke: #fff; stroke-opacity: 0.1; stroke-width: 7; }
+.coach-ring .coach-ring__price { stroke: var(--fog); stroke-width: 7; }
+.coach-ring line { stroke-linecap: round; }
+.coach-ring .coach-ring__halo { stroke: #000; stroke-width: 6; }
+.coach-ring .coach-ring__notch { stroke: var(--ink); stroke-width: 2.6; }
+.coach-ring .coach-ring__raw { fill: var(--ink); stroke: #000; stroke-width: 1.2; paint-order: stroke; }
+.coach-ring stop.coach-ring__a { stop-color: var(--ta); }
+.coach-ring stop.coach-ring__b { stop-color: var(--tb); }
+.coach-ring--sm .coach-ring__track, .coach-ring--sm .coach-ring__fill { stroke-width: 17; }
+.coach-ring--sm .coach-ring__ptrack, .coach-ring--sm .coach-ring__price { stroke-width: 9; }
+.coach-ring--sm .coach-ring__halo { stroke-width: 9; }
+.coach-ring--sm .coach-ring__notch { stroke-width: 4.4; }

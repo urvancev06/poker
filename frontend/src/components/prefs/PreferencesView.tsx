@@ -1,12 +1,12 @@
-import { Card } from './Card'
-import { DECKS } from '../lib/decks'
-import { usePrefs } from '../lib/prefsContext'
+import { Card } from '../Card'
+import { DECKS } from '../../lib/decks'
+import { usePrefs } from '../../lib/prefsContext'
 
 export function PreferencesView() {
   const { deckId, setDeckId, visibility, setVisibility } = usePrefs()
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-10">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 pt-6 pb-10 sm:px-8">
       <div>
         <h2 className="font-display text-2xl text-ink">Preferences</h2>
         <p className="mt-1 text-sm text-muted">Customise your board — saved on this device.</p>

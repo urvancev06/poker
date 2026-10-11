@@ -1,60 +1,254 @@
 @import "tailwindcss";
 
-/* Mono Minimal - Editorial (DESIGN.md). Dark, flat, type-driven.
-   One accent: terminal green. Surfaces are drawn with hairlines + a faint fill step.
-   Contrast ratios against --color-bg are noted per token; keep them at WCAG AA. */
+/* ==========================================================================
+   Stage: tokens, base, materials.
+   The look is the approved round-3 "Stage" prototype (scratchpad/round2/stage/stage.css,
+   notes.md): a true black void, a planet limb glowing blue at the bottom, one glass dock,
+   type floating on the void.
+
+   Two layers of names, on purpose:
+   - :root holds the prototype's short names (--ink, --fog, --fs-body, --r-sheet ...), so
+     component CSS ported from the prototype reads the same.
+   - @theme maps them into Tailwind's namespaces, so utilities work: text-ink, bg-sheet,
+     rounded-sheet, text-body, tracking-display, ease-spring, shadow-glass, sm:, lg: ...
+   Contrast figures are measured on rendered pages (notes.md "Colour").
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* colour: Apple dark web tokens on true black (ratio on #000) */
+  --void: #000;
+  --ink: #f5f5f7; /* primary text, 19.3:1 */
+  --fog: #a1a1a6; /* secondary text and the price ring, 8.2:1 */
+  --dust: #86868b; /* tertiary text, 5.8:1 */
+  --dust-sheet: #98989d; /* tertiary text on the #1c1c1e sheet, 5.9:1 */
+  --signal: #2997ff; /* interactive, focus, and the atmosphere's light, 6.96:1 */
+  --win: #30d158; /* 10.4:1 */
+  --loss: #ff453a; /* 6.2:1 */
+  --close: #ffd60a; /* 14.9:1 */
+  --hairline: rgba(255, 255, 255, 0.12);
+
+  /* coach ring tones: arc start -> tip (all >= 3:1 on black and on their own track) */
+  --tone-good-a: #1aa64a;
+  --tone-good-b: #4cf27a;
+  --tone-neutral-a: #8e8e93;
+  --tone-neutral-b: #f5f5f7;
+  --tone-close-a: #d4a400;
+  --tone-close-b: #ffe14d;
+  --tone-fold-a: #d8382c;
+  --tone-fold-b: #ff6a5f;
+
+  /* materials
+     glass = floats over light (the dock over the atmosphere). One per screen.
+     sheet = an opaque, elevated surface (#1c1c1e) for anything over the void: sheets,
+             the menu, tooltips. Nothing behind it to blur, so no backdrop-filter. */
+  --glass-fill: rgba(22, 26, 34, 0.46);
+  --glass-blur: blur(36px) saturate(170%);
+  --glass-line: rgba(255, 255, 255, 0.15);
+  --glass-spec: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --glass-under: inset 0 -1px 0 rgba(140, 200, 255, 0.26); /* the light comes from below */
+  --glass-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.4);
+  --sheet-fill: #1c1c1e;
+  --sheet-line: rgba(255, 255, 255, 0.1);
+  --sheet-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 0 1px var(--sheet-line), 0 30px 80px rgba(0, 0, 0, 0.7);
+  --fill-quiet: rgba(255, 255, 255, 0.07); /* tinted buttons, the nav capsule */
+  --fill-quiet-hi: rgba(255, 255, 255, 0.13);
+  --fill-act: rgba(255, 255, 255, 0.1); /* secondary capsules in the dock */
+  --fill-act-hi: rgba(255, 255, 255, 0.16);
+
+  /* radii by hierarchy. Capsules are true capsules (radius = height / 2, never squircled).
+     corner-shape: squircle (the `squircle` utility) only on surfaces whose radius is less
+     than half their height: sheets 30, the menu 22, tooltips 14, menu items 12. */
+  --r-control: 12px;
+  --r-tip: 14px;
+  --r-button: 18px;
+  --r-menu: 22px;
+  --r-sheet: 30px;
+
+  /* type: one family. SF Pro on Apple devices, Inter Variable (opsz) everywhere else */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif;
+  --fs-hero: 80px;
+  --fs-facts: 64px;
+  --fs-display: 56px;
+  --fs-verdict: 30px;
+  --fs-title: 28px;
+  --fs-headline: 20px;
+  --fs-body: 17px;
+  --fs-callout: 15px;
+  --fs-foot: 13px;
+  --fs-caption: 12px;
+  --track-display: -0.035em;
+  --track-title: -0.022em;
+  --track-body: -0.011em;
+
+  --dur-quick: 200ms;
+  --dur-base: 460ms;
+
+  /* breakpoints, defined once. JS reads the same numbers from lib/breakpoints.ts (a test
+     keeps them equal). phone < 600 <= tablet < 1100 <= desk */
+  --bp-sm: 600px;
+  --bp-lg: 1100px;
+
+  /* shell geometry */
+  --bar-h: 64px;
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+@media (max-width: 599.98px) {
+  :root {
+    --bar-h: 56px;
+  }
+}
+
+/* Tailwind's own palette is removed: every colour comes from the tokens above. */
 @theme {
-  --color-bg: #111114; /* base — lifted off near-black */
-  --color-bg2: #2a2a34; /* raised surface — 1.33:1 step above bg so panels read */
-  --color-felt-core: #1c1d23; /* the table "felt" — a flat, faintly-raised dark */
-  --color-felt-edge: #101116;
+  --color-*: initial;
+  --breakpoint-*: initial;
+  --breakpoint-sm: 600px;
+  --breakpoint-lg: 1100px;
 
-  --color-ink: #ffffff; /* primary text — 18.9:1 */
-  --color-muted: #bdbec8; /* secondary text — 10.2:1 */
-  --color-faint: #94959f; /* tertiary / caption labels / axis — 6.3:1 */
-  --color-line: #5f6170; /* borders — visible hairline, 3.1:1 (meets UI 3:1) */
-  --color-hair: #2e2f37; /* faint internal dividers — kept intentionally soft */
+  /* springs: damped oscillators sampled into linear() (prototype tools/springs.js).
+     spring  zeta 1.00, critically damped: everything that moves
+     bouncy  zeta 0.70, 4.6% overshoot: only the hand lifting on your turn
+     grow    zeta 0.68, ~3% of the final width: only the dock growing into its buttons
+     lib/motion.ts carries the same strings for element.animate() (a test keeps them equal). */
+  --ease-spring: linear(0, 0.0209, 0.0724, 0.1418, 0.2198, 0.3005, 0.3797, 0.4549, 0.5246, 0.5879, 0.6448, 0.6953, 0.7397, 0.7784, 0.812, 0.8409, 0.8658, 0.887, 0.9051, 0.9204, 0.9334, 0.9444, 0.9536, 0.9614, 0.9679, 0.9733, 0.9778, 0.9816, 0.9848, 0.9874, 0.9896, 0.9914, 0.9929, 0.9942, 0.9952, 0.996, 0.9967, 0.9973, 0.9978, 0.9982, 1);
+  --ease-bouncy: linear(0, 0.014, 0.0516, 0.1065, 0.1736, 0.2484, 0.3273, 0.4072, 0.4857, 0.5611, 0.632, 0.6974, 0.7568, 0.8099, 0.8566, 0.897, 0.9315, 0.9603, 0.9839, 1.0029, 1.0177, 1.0288, 1.0367, 1.0419, 1.0448, 1.046, 1.0456, 1.0441, 1.0417, 1.0387, 1.0353, 1.0317, 1.028, 1.0244, 1.0209, 1.0176, 1.0145, 1.0117, 1.0092, 1.007, 1.0051, 1.0035, 1.0021, 1.001, 1, 0.9993, 0.9988, 0.9984, 0.9981, 0.998, 0.9979, 0.9979, 0.998, 0.9981, 0.9982, 0.9983, 1);
+  --ease-grow: linear(0, 0.0147, 0.0542, 0.112, 0.1824, 0.2609, 0.3433, 0.4265, 0.508, 0.5859, 0.6586, 0.7254, 0.7854, 0.8386, 0.8849, 0.9245, 0.9576, 0.9848, 1.0065, 1.0234, 1.036, 1.0448, 1.0504, 1.0534, 1.0543, 1.0534, 1.0512, 1.048, 1.0442, 1.0399, 1.0354, 1.0309, 1.0265, 1.0223, 1.0183, 1.0147, 1.0115, 1.0086, 1.0061, 1.004, 1.0022, 1.0008, 0.9996, 0.9987, 0.998, 0.9975, 0.9972, 0.9971, 0.9971, 0.9971, 0.9972, 0.9974, 0.9976, 0.9978, 0.9981, 0.9983, 1);
 
-  --color-accent: #2bd673; /* terminal green */
-  --color-accent-soft: rgba(43, 214, 115, 0.12);
-  --color-accent-ink: #06140c; /* text on an accent fill */
+  --font-weight-strong: 650;
+}
 
-  --color-card: #f4f4f5; /* playing-card face (kept light for legibility) */
-  --color-card-ink: #18181b;
-  --color-card-red: #e0574c;
+@theme inline {
+  --color-white: #fff;
+  --color-black: #000;
+  --color-void: var(--void);
+  --color-ink: var(--ink);
+  --color-fog: var(--fog);
+  --color-dust: var(--dust);
+  --color-dust-sheet: var(--dust-sheet);
+  --color-signal: var(--signal);
+  --color-win: var(--win);
+  --color-loss: var(--loss);
+  --color-close: var(--close);
+  --color-hairline: var(--hairline);
+  --color-sheet: var(--sheet-fill);
+  --color-sheet-line: var(--sheet-line);
+  --color-glass: var(--glass-fill);
+  --color-quiet: var(--fill-quiet);
+  --color-quiet-hi: var(--fill-quiet-hi);
+  --color-act: var(--fill-act);
+  --color-act-hi: var(--fill-act-hi);
 
-  --color-win: #2bd673;
-  --color-loss: #e0574c;
-  --color-warning: #f0b429;
+  --font-sans: var(--font);
 
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-ui: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --text-hero: var(--fs-hero);
+  --text-hero--line-height: 1;
+  --text-hero--letter-spacing: -0.045em;
+  --text-facts: var(--fs-facts);
+  --text-facts--line-height: 1;
+  --text-facts--letter-spacing: var(--track-display);
+  --text-display: var(--fs-display);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: var(--track-display);
+  --text-verdict: var(--fs-verdict);
+  --text-verdict--line-height: 1.06;
+  --text-verdict--letter-spacing: -0.028em;
+  --text-title: var(--fs-title);
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.02em;
+  --text-headline: var(--fs-headline);
+  --text-headline--line-height: 1.2;
+  --text-headline--letter-spacing: -0.018em;
+  --text-body: var(--fs-body);
+  --text-body--line-height: 1.45;
+  --text-callout: var(--fs-callout);
+  --text-callout--line-height: 1.35;
+  --text-foot: var(--fs-foot);
+  --text-foot--line-height: 1.35;
+  --text-foot--letter-spacing: 0;
+  --text-caption: var(--fs-caption);
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: 0;
+
+  --tracking-display: var(--track-display);
+  --tracking-title: var(--track-title);
+  --tracking-body: var(--track-body);
+
+  --radius-control: var(--r-control);
+  --radius-tip: var(--r-tip);
+  --radius-button: var(--r-button);
+  --radius-menu: var(--r-menu);
+  --radius-sheet: var(--r-sheet);
+
+  --shadow-glass: var(--glass-shadow);
+  --shadow-sheet: var(--sheet-shadow);
+
+  /* ---- legacy aliases (the pre-Stage views, until each builder rewrites its view).
+     Delete this block, `felt` and `animate-rise` below once nothing uses them. ---- */
+  --color-bg: var(--void);
+  --color-bg2: var(--sheet-fill);
+  --color-felt-core: #0b0c10;
+  --color-felt-edge: #050608;
+  --color-muted: var(--fog);
+  --color-faint: var(--dust);
+  --color-line: rgba(255, 255, 255, 0.18);
+  --color-hair: var(--sheet-line);
+  --color-accent: var(--signal);
+  --color-accent-soft: rgba(41, 151, 255, 0.12);
+  --color-accent-ink: #000;
+  --color-card: #fff;
+  --color-card-ink: #1d1d1f;
+  --color-card-red: #d70015;
+  --color-warning: var(--close);
+  --font-display: var(--font);
+  --font-ui: var(--font);
+  --font-mono: var(--font);
 }
 
 @layer base {
-  html,
-  body,
-  #root {
-    height: 100%;
+  html {
+    background: var(--void);
   }
   body {
     margin: 0;
-    background-color: var(--color-bg);
-    color: var(--color-ink);
-    font-family: var(--font-ui);
+    min-height: 100dvh;
+    background: var(--void);
+    color: var(--ink);
+    font-family: var(--font);
+    font-optical-sizing: auto;
+    font-size: var(--fs-body);
+    line-height: 1.35;
+    letter-spacing: var(--track-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* one focus ring everywhere: 2px signal blue, outside the control */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus {
+    outline: none;
+  }
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--signal);
     outline-offset: 2px;
   }
 
-  /* Slim, dark scrollbars — accent on hover. */
+  /* thin, quiet scrollbars */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #2a2a2e transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
   ::-webkit-scrollbar {
     width: 9px;
@@ -64,28 +258,47 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2e;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(43, 214, 115, 0.55);
+    background: rgba(255, 255, 255, 0.32);
     background-clip: padding-box;
   }
 }
 
-/* Every number / tabular figure renders in mono (DESIGN.md type rule). */
-.tabular-nums {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum";
+/* ---------- materials ---------- */
+
+/* The glass: fill + backdrop blur + the light-logic rim (hairline, top specular, blue
+   lower edge because the light comes from below) + the deep shadow. One per screen. */
+@utility material-glass {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-spec), inset 0 0 0 1px var(--glass-line), var(--glass-under), var(--glass-shadow);
+}
+/* The rim alone (light only, no blur): for a glass built in parts, like the dock, whose
+   blurred box stays one size while a separate rim follows the visible shape. */
+@utility glass-rim {
+  box-shadow: var(--glass-spec), inset 0 0 0 1px var(--glass-line), var(--glass-under);
+}
+/* The opaque elevated surface for anything over the void. */
+@utility material-sheet {
+  background: var(--sheet-fill);
+  box-shadow: var(--sheet-shadow);
+}
+/* Apple's continuous corner where the engine has it (Chromium 139+); a plain radius
+   elsewhere. Never on a capsule: a squircle at radius 999 squares a pill off. */
+@utility squircle {
+  corner-shape: squircle;
 }
 
-/* The table "felt": a flat, faintly-raised dark surface — no green, no glow. */
+/* ---------- legacy (see the alias block above) ---------- */
 @utility felt {
   background: var(--color-felt-core);
 }
-
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -97,14 +310,19 @@
   }
 }
 .animate-rise {
-  animation: rise-in 0.28s ease-out both;
+  animation: rise-in 0.28s var(--ease-spring) both;
 }
 
+/* Reduced motion: every CSS transition and animation is instant. element.animate() goes
+   through lib/motion.ts, which skips the animation for the same preference. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
   }
 }

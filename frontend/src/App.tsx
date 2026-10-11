@@ -1,458 +1,131 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, type ActionType, type Coaching, type Reads, type SessionState } from './api'
-import { usePrefs, type VisibilityMode } from './lib/prefsContext'
-import { CoachPanel, CoachStrip } from './components/CoachPanel'
-import { Table } from './components/Table'
-import { MobileTable } from './components/MobileTable'
-import { ActionBar } from './components/ActionBar'
-import { StatsView } from './components/StatsView'
-import { HistoryView } from './components/HistoryView'
-import { LabView } from './components/LabView'
-import { StudyView } from './components/StudyView'
-import { ActionLog } from './components/ActionLog'
-import { actionText } from './lib/actionText'
-import { PreferencesView } from './components/PreferencesView'
+// The Stage shell: the space behind every view, the top bar (brand, the centred capsule
+// nav, the log button, New game, the "..." menu) and view switching.
+//
+// The table session lives here (lib/useTableSession.ts), above the views, so the game
+// keeps running while another view is open: bots keep stepping and the coach keeps
+// fetching (inventory 5.1). Every view stays mounted once visited (React <Activity>):
+// hidden views keep their state, and their effects pause until they are shown again.
+// Each view has its own LayerHost, so its sheets and tooltips hide with it.
+// No router and no URL state: a reload lands on the table.
 
-// Pause between bot actions when watching a hand unfold (ms).
-const STEP_MS = 650
+import { Activity, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { usePrefs } from './lib/prefsContext'
+import { useTableSession } from './lib/useTableSession'
+import type { View } from './lib/views'
+import { LayerHost } from './ui/LayerHost'
+import { Space } from './ui/Space'
+import { TopBar } from './components/shell/TopBar'
+import { MoreMenu } from './components/shell/MoreMenu'
+import { TableView } from './components/table/TableView'
+import { StatsView } from './components/stats/StatsView'
+import { HistoryView } from './components/history/HistoryView'
+import { LabView } from './components/lab/LabView'
+import { StudyView } from './components/study/StudyView'
+import { PreferencesView } from './components/prefs/PreferencesView'
 
-const MODES: Array<[VisibilityMode, string, string]> = [
-  ['labeled', 'Labeled', 'archetype shown'],
-  ['hud', 'HUD', 'stats after a sample'],
-  ['live', 'Live', 'read it yourself'],
-]
-type View = 'table' | 'study' | 'stats' | 'history' | 'lab' | 'prefs'
+function isTyping(t: EventTarget | null): boolean {
+  return t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable]')
+}
+
+/** A scrolling view under the fixed top bar; the bottom padding keeps text off the limb. */
+function Page({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <Activity mode={active ? 'visible' : 'hidden'}>
+      <LayerHost>
+        <main className="relative z-[1] pt-[var(--bar-h)] pb-40">{children}</main>
+      </LayerHost>
+    </Activity>
+  )
+}
 
 export default function App() {
-  const [session, setSession] = useState<SessionState | null>(null)
-  const [reads, setReads] = useState<Reads>()
-  const [coaching, setCoaching] = useState<Coaching | null>(null)
-  const [coachLoading, setCoachLoading] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  // Persisted in prefs so the Labeled -> HUD -> Live progression sticks across reloads.
-  const { visibility: mode, setVisibility: setMode } = usePrefs()
+  const table = useTableSession()
+  const { visibility, setVisibility } = usePrefs()
   const [view, setView] = useState<View>('table')
-  const [study, setStudy] = useState(false)
-  const [showLog, setShowLog] = useState(false)
+  const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set<View>(['table']))
+  const [logOpen, setLogOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const refreshReads = useCallback((s: SessionState) => {
-    api.reads(s.session_id).then(setReads).catch(() => {})
+  const navigate = useCallback((v: View) => {
+    setView(v)
+    setVisited((s) => (s.has(v) ? s : new Set(s).add(v)))
+    if (v !== 'table') setLogOpen(false)
+    window.scrollTo(0, 0)
   }, [])
 
-  // Step mode: bots don't pre-act, so we can watch the whole hand unfold. The
-  // result is applied in callbacks, so the mount effect below stays free of
-  // synchronous state updates.
-  const startSession = useCallback(
-    () =>
-      api
-        .createSession({ auto_advance: false })
-        .then((s) => {
-          setSession(s)
-          refreshReads(s)
-        })
-        .catch((e: Error) => {
-          setError(`Can't reach the backend — is it running on :8000? (${e.message})`)
-        }),
-    [refreshReads],
-  )
+  const newGame = useCallback(() => {
+    navigate('table')
+    void table.newGame()
+  }, [navigate, table])
 
-  // New game clears what the last session left on screen; the first deal has
-  // nothing to clear, so the mount effect calls startSession directly.
-  const newSession = useCallback(async () => {
-    setError(null)
-    setCoaching(null)
-    await startSession()
-  }, [startSession])
-
+  // L toggles the hand log on the table.
+  const onTable = view === 'table'
   useEffect(() => {
-    void startSession()
-  }, [startSession])
-
-  // While a bot is to act, step one action after a short pause. The effect
-  // re-runs on each new state, which paces out the whole street.
-  useEffect(() => {
-    if (!session || session.hand_over || session.hero_to_act) return
-    let cancelled = false
-    const t = setTimeout(async () => {
-      try {
-        const s = await api.advance(session.session_id)
-        if (!cancelled) {
-          setSession(s)
-          if (s.hand_over) refreshReads(s)
-        }
-      } catch {
-        /* a transient error just stops the auto-step; the user can act/retry */
+    if (!onTable) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return
+      if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        setLogOpen((o) => !o)
       }
-    }, STEP_MS)
-    return () => {
-      cancelled = true
-      clearTimeout(t)
     }
-  }, [session, refreshReads])
-
-  const askCoach = useCallback(async (id: string) => {
-    setCoachLoading(true)
-    try {
-      setCoaching(await api.coach(id))
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setCoachLoading(false)
-    }
-  }, [])
-
-  // Switching the coach off drops whatever it was showing; switching it on lets
-  // the effect below ask about the current spot. Nothing else changes `study`,
-  // so the clear belongs here rather than in that effect.
-  const toggleStudy = () => {
-    if (study) setCoaching(null)
-    setStudy(!study)
-  }
-
-  // Study Mode: surface the coach automatically on the hero's turn.
-  useEffect(() => {
-    if (!study || !session || !session.hero_to_act) return
-    // askCoach raises the loading flag as the request starts, so the panel reads
-    // "computing equity…" on the frame the turn arrives. That flag has to be set
-    // synchronously; the only way around the rule is to repeat this trigger in
-    // every place that sets a session, off a ref copy of `study`.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void askCoach(session.session_id)
-  }, [study, session, askCoach])
-
-  // Decision clock: starts when the hero becomes the actor, read when they act.
-  // Wall clock on purpose, so it includes thinking and interruptions; it is only
-  // ever summarised as a median.
-  const decisionStart = useRef<number | null>(null)
-  useEffect(() => {
-    if (session?.hero_to_act) {
-      if (decisionStart.current === null) decisionStart.current = performance.now()
-    } else {
-      decisionStart.current = null
-    }
-  }, [session?.hero_to_act, session?.hand_index])
-
-  const act = async (type: ActionType, toAmount?: number) => {
-    if (!session) return
-    setBusy(true)
-    setCoaching(null)
-    try {
-      const started = decisionStart.current
-      const elapsedMs = started === null ? undefined : Math.round(performance.now() - started)
-      decisionStart.current = null
-      const s = await api.submitAction(session.session_id, type, toAmount, elapsedMs)
-      setSession(s)
-      refreshReads(s)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const nextHand = async () => {
-    if (!session) return
-    setCoaching(null)
-    const s = await api.nextHand(session.session_id)
-    setSession(s)
-    refreshReads(s)
-  }
-
-  const heroNet = session?.last_result?.hero_net ?? 0
-  const heroSeatData = session?.state.seats[session.hero_seat]
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onTable])
 
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-7xl flex-col overflow-hidden px-6 py-4">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <img src="/brand/urvancev-logo-white.svg" alt="" className="h-7 w-7 opacity-90" />
-            <span className="font-display text-xl -tracking-[0.02em] text-ink">Poker</span>
-          </div>
-          <nav className="hidden max-w-full gap-1 overflow-x-auto text-xs lowercase tracking-wide lg:flex">
-            {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`shrink-0 rounded-md px-3 py-1.5 transition ${
-                  view === v ? 'bg-bg2 text-ink ring-1 ring-inset ring-line' : 'text-muted hover:text-ink'
-                }`}
-              >
-                {v === 'stats' ? 'my stats' : v}
-              </button>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* desktop controls */}
-          <div className="hidden items-center gap-3 lg:flex">
-            {view === 'table' && (
-              <>
-                <button
-                  onClick={toggleStudy}
-                  title="Coach shows live advice on your turn; Play hides it until review"
-                  className={`rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
-                    study ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
-                  }`}
-                >
-                  {study ? 'Coach' : 'Play'}
-                </button>
-                <div className="flex overflow-hidden rounded-lg border border-line">
-                  {MODES.map(([m, label, hint]) => (
-                    <button
-                      key={m}
-                      title={hint}
-                      onClick={() => setMode(m)}
-                      className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
-                        mode === m ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowLog((s) => !s)}
-                  title="Show the action log (who folded/called/raised)"
-                  className={`rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition ${
-                    showLog ? 'bg-accent text-accent-ink' : 'border border-line text-muted hover:text-ink'
-                  }`}
-                >
-                  Log
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setView('prefs')}
-              title="Preferences: card deck and opponent visibility"
-              className="rounded-lg border border-line px-3 py-1.5 text-sm leading-none text-muted hover:text-ink"
-            >
-              ⚙
-            </button>
-            <button
-              onClick={newSession}
-              className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
-            >
-              New game
-            </button>
-          </div>
+    <div className="relative min-h-dvh">
+      <Space variant={onTable ? 'stage' : 'page'} dollyKey={view} intro />
+      <TopBar
+        view={view}
+        onNavigate={navigate}
+        logOpen={logOpen}
+        onToggleLog={() => setLogOpen((o) => !o)}
+        onNewGame={newGame}
+        menu={
+          <MoreMenu
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            view={view}
+            onNavigate={navigate}
+            coachMode={table.coachMode}
+            onCoachMode={table.setCoachMode}
+            visibility={visibility}
+            onVisibility={setVisibility}
+            onNewGame={newGame}
+          />
+        }
+      />
 
-          {/* phone menu */}
-          <div className="relative lg:hidden">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Menu"
-              className="rounded-lg border border-line px-3 py-1.5 text-lg leading-none text-muted hover:text-ink"
-            >
-              ☰
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="fixed right-3 top-16 z-50 w-56 rounded-xl border border-line bg-bg p-2 shadow-2xl">
-                  {/* view navigation (the desktop tab strip is hidden on phones) */}
-                  <div className="mb-1 px-2 pt-1 text-[10px] uppercase tracking-wider text-muted">View</div>
-                  {(['table', 'study', 'stats', 'history', 'lab'] as View[]).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => { setView(v); setMenuOpen(false) }}
-                      className={`block w-full rounded-md px-2 py-2 text-left text-sm capitalize hover:bg-bg2 ${
-                        view === v ? 'text-accent' : 'text-ink'
-                      }`}
-                    >
-                      {v === 'stats' ? 'My stats' : v}
-                    </button>
-                  ))}
-                  <div className="my-1 border-t border-line" />
-                  {view === 'table' && (
-                    <>
-                      <button
-                        onClick={toggleStudy}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-ink hover:bg-bg2"
-                      >
-                        <span>Live coach</span>
-                        <span className={study ? 'text-accent' : 'text-muted'}>{study ? 'on' : 'off'}</span>
-                      </button>
-                      <div className="px-2 py-1.5">
-                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted">Opponents</div>
-                        <div className="flex overflow-hidden rounded-lg border border-line">
-                          {MODES.map(([m, label]) => (
-                            <button
-                              key={m}
-                              onClick={() => setMode(m)}
-                              className={`flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-wide ${
-                                mode === m ? 'bg-accent text-accent-ink' : 'text-muted'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setShowLog((s) => !s)}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-ink hover:bg-bg2"
-                      >
-                        <span>Action log</span>
-                        <span className={showLog ? 'text-accent' : 'text-muted'}>{showLog ? 'on' : 'off'}</span>
-                      </button>
-                      <div className="my-1 border-t border-line" />
-                    </>
-                  )}
-                  <button
-                    onClick={() => { setView('prefs'); setMenuOpen(false) }}
-                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-ink hover:bg-bg2"
-                  >
-                    Preferences · deck &amp; visibility
-                  </button>
-                  <button
-                    onClick={() => { void newSession(); setMenuOpen(false) }}
-                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-accent hover:bg-bg2"
-                  >
-                    New game
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {error && (
-        <div className="mb-4 rounded-lg border border-loss/50 bg-loss/10 px-4 py-2 text-sm text-loss">
-          {error}
-        </div>
+      <Activity mode={onTable ? 'visible' : 'hidden'}>
+        <LayerHost>
+          <TableView table={table} logOpen={logOpen} onLogOpenChange={setLogOpen} />
+        </LayerHost>
+      </Activity>
+      {visited.has('stats') && (
+        <Page active={view === 'stats'}>
+          <StatsView />
+        </Page>
       )}
-
-      {view !== 'table' && (
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          {view === 'study' && <StudyView />}
-          {view === 'stats' && <StatsView />}
-          {view === 'history' && <HistoryView sessionId={session?.session_id} />}
-          {view === 'lab' && <LabView />}
-          {view === 'prefs' && <PreferencesView />}
-        </div>
+      {visited.has('history') && (
+        <Page active={view === 'history'}>
+          <HistoryView sessionId={table.session?.session_id} />
+        </Page>
       )}
-
-      {view === 'table' && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-          <main className="flex min-h-0 flex-1 flex-col">
-            {session ? (
-              <>
-                <div className="flex min-h-0 flex-1 items-center justify-center">
-                  {/* desktop oval */}
-                  <div className="hidden h-full w-full items-center justify-center lg:flex">
-                    <Table session={session} mode={mode} reads={reads} />
-                  </div>
-                  {/* phone portrait */}
-                  <div className="flex h-full w-full lg:hidden">
-                    <MobileTable session={session} mode={mode} reads={reads} />
-                  </div>
-                </div>
-
-                {/* compact coach line on phones (full panel is the desktop aside) */}
-                {(study || coaching || coachLoading) && (
-                  <div className="mt-2 shrink-0 lg:hidden">
-                    <CoachStrip coaching={coaching} loading={coachLoading} />
-                  </div>
-                )}
-
-                <div className="mt-3 flex h-[128px] shrink-0 flex-col items-center justify-center gap-3 overflow-y-auto">
-                  {session.hand_over ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <div
-                        className={`animate-rise flex items-center gap-2.5 rounded-xl px-6 py-2.5 text-lg font-bold uppercase tracking-wide ring-1 ${
-                          heroNet > 0
-                            ? 'bg-win/15 text-win ring-win/40'
-                            : heroNet < 0
-                              ? 'bg-loss/15 text-loss ring-loss/40'
-                              : 'bg-bg2 text-ink ring-line'
-                        }`}
-                      >
-                        <span>{heroNet > 0 ? 'You won' : heroNet < 0 ? 'You lost' : 'Chop'}</span>
-                        <span className="tabular-nums">
-                          {heroNet > 0 ? '+' : ''}
-                          {heroNet}
-                        </span>
-                      </div>
-                      <button
-                        onClick={nextHand}
-                        className="rounded-lg bg-accent px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-accent-ink hover:brightness-110"
-                      >
-                        Next hand
-                      </button>
-                    </div>
-                  ) : session.hero_to_act && session.state.legal_actions && heroSeatData ? (
-                    <>
-                      <ActionBar
-                        legal={session.state.legal_actions}
-                        pot={session.state.pot}
-                        heroBet={heroSeatData.bet}
-                        onAction={act}
-                        disabled={busy}
-                      />
-                      {!study && (
-                        <button
-                          onClick={() =>
-                            coaching || coachLoading
-                              ? setCoaching(null)
-                              : askCoach(session.session_id)
-                          }
-                          className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint underline-offset-4 hover:text-accent hover:underline"
-                        >
-                          {coaching || coachLoading ? 'hide coach ✕' : 'ask the coach →'}
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <div className="font-mono text-xs uppercase tracking-[0.12em] text-faint">
-                      {(() => {
-                        const h = session.state.history
-                        const last = h && h.length ? h[h.length - 1] : null
-                        if (!last) return 'dealing…'
-                        const who = last.seat === session.hero_seat ? 'You' : last.position
-                        return `${who} ${actionText(last)}…`
-                      })()}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="grid flex-1 place-items-center text-muted">Dealing you in…</div>
-            )}
-          </main>
-
-          {/* Desktop side panel. Its column is always reserved, so opening the coach
-              or the log never reflows or resizes the table. */}
-          <aside className="hidden min-h-0 w-80 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden lg:flex">
-            {(study || coaching || coachLoading) && (
-              <CoachPanel coaching={coaching} loading={coachLoading} />
-            )}
-            {showLog && session && (
-              <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
-            )}
-          </aside>
-
-          {/* phone: action log as a dismissible bottom sheet */}
-          {showLog && session && (
-            <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
-              <div className="mx-auto max-w-md rounded-2xl border border-line bg-bg p-3 shadow-2xl">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="font-mono text-xs uppercase tracking-wider text-muted">Action log</span>
-                  <button
-                    onClick={() => setShowLog(false)}
-                    className="text-lg leading-none text-muted hover:text-ink"
-                  >
-                    ×
-                  </button>
-                </div>
-                <ActionLog history={session.state.history} heroSeat={session.hero_seat} />
-              </div>
-            </div>
-          )}
-        </div>
+      {visited.has('study') && (
+        <Page active={view === 'study'}>
+          <StudyView />
+        </Page>
+      )}
+      {visited.has('lab') && (
+        <Page active={view === 'lab'}>
+          <LabView />
+        </Page>
+      )}
+      {visited.has('prefs') && (
+        <Page active={view === 'prefs'}>
+          <PreferencesView />
+        </Page>
       )}
     </div>
   )

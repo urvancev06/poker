@@ -5,7 +5,7 @@ import {
   type LabArchetypesInfo,
   type LabResult,
   type LabRow,
-} from '../api'
+} from '../../api'
 
 type Tab = 'sim' | 'cfr'
 
@@ -22,7 +22,7 @@ const STAT_COLS: Array<[string, string]> = [
 export function LabView() {
   const [tab, setTab] = useState<Tab>('sim')
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-8">
       <div className="mb-5 flex items-center gap-4">
         <h2 className="font-display text-2xl text-ink">Lab</h2>
         <div className="flex overflow-hidden rounded-lg border border-line text-xs uppercase tracking-wide">

@@ -23,19 +23,21 @@ VITE_API_URL=/api npm run build
 
 ```
 src/
-  main.tsx      entry point
-  App.tsx       shell: view nav, coach toggle, opponent visibility mode, hand pacing
-  api.ts        typed client mirroring the backend serialisers
-  index.css     Tailwind import and the theme tokens (see ../DESIGN.md)
-  prefs.tsx     preferences provider (persists deck + opponent visibility)
-  lib/          deck definitions and card geometry, seat labels, action text
-  components/   Table, Seat, Board, Card, ActionBar, ActionLog, CoachPanel,
-                StatsView, HistoryView, LabView, StudyView, MobileTable
+  main.tsx      entry point (Inter Variable with its opsz axis, self-hosted)
+  App.tsx       the Stage shell: space background, top bar, centred nav, "..." menu, views
+  api.ts        typed client mirroring the backend serialisers; throws ApiError
+  index.css     Stage tokens (colour, type, radii, materials, springs, breakpoints) as
+                CSS vars and Tailwind @theme
+  prefs.tsx     preferences provider (deck, opponent visibility, coach mode)
+  ui/           shared primitives: Space, Glass, Capsule, IconButton, Segmented, Sheet,
+                Disclosure, Tooltip, InfoButton, Ring, Icons, ErrorNotice (see ui/README.md)
+  lib/          pure logic with vitest tests, the table session hook, decks
+  components/   Card, shell/, table/, coach/, stats/, history/, lab/, study/, prefs/
 ```
 
-Cards are drawn as inline SVG in `components/Card.tsx`, with face layouts and backs
-defined in `lib/decks.tsx` (five selectable decks). Nothing is fetched at runtime, so there
-are no card image assets.
+Cards are inline SVG on one 100 x 140 viewBox (`components/Card.tsx`, `lib/decks.tsx`, five
+selectable decks), so there are no card image assets.
 
-`MobileTable.tsx` is a separate portrait layout for small screens; the desktop table
-scales to fit its container so seats never overlap the board.
+```bash
+npm test         # vitest (pure logic in src/lib)
+```

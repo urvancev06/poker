@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type HandReview, type HandSummary, type LeakSummary } from '../api'
-import { Card } from './Card'
+import { api, type HandReview, type HandSummary, type LeakSummary } from '../../api'
+import { Card } from '../Card'
 
 const LEAK_LABEL: Record<string, string> = {
   loose_open: 'Opened too loose',
@@ -40,7 +40,7 @@ export function HistoryView({ sessionId }: { sessionId?: string }) {
   }, [scope, window_])
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[320px_1fr]">
+    <div className="mx-auto grid max-w-5xl gap-6 px-4 pt-6 sm:px-8 lg:grid-cols-[320px_1fr]">
       <div>
         <h2 className="font-display text-2xl text-ink">Hand history</h2>
         {err && <div className="text-loss">{err}</div>}

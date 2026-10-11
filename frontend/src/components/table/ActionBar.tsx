@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ActionType, LegalActions } from '../api'
+import type { ActionType, LegalActions } from '../../api'
 
 const QUICK: Array<[string, number]> = [
   // ⅓ is the smallest c-bet size the Study framework teaches.

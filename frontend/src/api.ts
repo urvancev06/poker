@@ -1,7 +1,13 @@
 // Typed client for the Poker backend API (poker.api.app). Types mirror the
 // serializers in backend/poker/api/serializers.py and coach.as_dict().
+// Every failure throws an ApiError (lib/apiError.ts) carrying the HTTP status, a code and
+// the backend's readable detail; a network failure has status null and code 'network'.
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+import { errorFromResponse, toApiError, ApiError } from './lib/apiError'
+
+export { ApiError }
+
+export const API_BASE: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise'
 
@@ -36,13 +42,22 @@ export interface ActionLogEntry {
   to_amount: number | null
 }
 
+/** A pot layer. At hand end every amount is 0, and mid-hand it excludes this street's
+ * bets and is [] preflop (B13): it cannot drive a side-pot display on its own. */
+export interface PotLayer {
+  amount: number
+  eligible_seats: number[]
+}
+
 export interface GameStateDict {
   table_size: number
   button: number
   blinds: [number, number]
+  /** Goes stale after an all-in runout (B12): derive the street from board.length. */
   street: string
   board: string[]
   pot: number
+  pots?: PotLayer[]
   actor: number | null
   is_over: boolean
   seats: Seat[]
@@ -64,6 +79,13 @@ export interface HandResult {
   results_by_player: Record<string, number>
   actions: Array<Record<string, unknown>>
   lineup: string[]
+  button_player?: number
+  blinds?: [number, number]
+  start_stacks?: number[]
+  /** Hole cards actually shown at showdown, keyed by seat ("JdQc"). Empty when nobody showed (B3). */
+  shown_cards?: Record<string, string>
+  hero_decision_ms?: number[]
+  hero_summary?: Record<string, unknown>
 }
 
 export interface SessionState {
@@ -116,15 +138,21 @@ export interface Coaching {
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'content-type': 'application/json' },
-    ...init,
-  })
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}))
-    throw new Error((detail as { detail?: string }).detail ?? `HTTP ${res.status}`)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'content-type': 'application/json' },
+      ...init,
+    })
+  } catch (e) {
+    throw toApiError(e, path, API_BASE)
   }
-  return res.json() as Promise<T>
+  if (!res.ok) throw await errorFromResponse(res, path)
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new ApiError({ status: res.status, code: 'bad_response', detail: 'The response was not valid JSON.', path })
+  }
 }
 
 export interface CreateSessionBody {
@@ -158,6 +186,7 @@ export interface HeroStatLine {
   pfr: number | null
   threebet: number | null
   ats: number | null
+  fold_to_steal?: number | null
   af: number | null
   wtsd: number | null
   wsd: number | null
@@ -174,6 +203,8 @@ export interface StatsWindow {
   last: number | null
   session_id: string | null
   hands: number
+  big_blind?: number
+  hands_at_this_blind?: number
 }
 
 export interface MyStats {
@@ -213,6 +244,8 @@ export interface ReviewDecision {
   hand_label: string
   equity_pct: number | null
   required_pct: number | null
+  realized_pct?: number | null
+  required_direct_pct?: number | null
   leaks: Leak[]
 }
 export interface ReviewStreet {

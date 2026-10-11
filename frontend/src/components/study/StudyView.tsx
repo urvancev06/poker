@@ -141,7 +141,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export function StudyView() {
   return (
-    <div className="mx-auto max-w-4xl space-y-5 pb-10">
+    <div className="mx-auto max-w-4xl space-y-5 px-4 pt-6 pb-10 sm:px-8">
       <div>
         <h2 className="font-display text-2xl text-ink">Study</h2>
         <p className="mt-1 text-sm text-muted">
@@ -214,7 +214,7 @@ export function StudyView() {
         </div>
       </Card>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <Card title="Pot odds &amp; equity (computed exactly)">
           <ul className="space-y-2 text-sm text-muted">
             <li><span className="text-ink">Price to call:</span> call ÷ (pot-after-bet + call). E.g. pot 24 after a 10 bet, call 10 → 10/34 = <span className="tabular-nums text-accent">29%</span> needed.</li>
@@ -261,7 +261,7 @@ export function StudyView() {
         </p>
       </Card>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <Card title="Stat definitions (reg targets)">
           <div className="space-y-1.5 text-sm">
             {STATS.map(([k, t, d]) => (

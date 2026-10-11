@@ -1,17 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-// Mono Minimal - Editorial (DESIGN.md): Sora for UI/headings, IBM Plex Mono for
-// every number and caps micro-label. Bundled locally, not pulled from a CDN.
-import '@fontsource/sora/400.css'
-import '@fontsource/sora/500.css'
-import '@fontsource/sora/600.css'
-import '@fontsource/sora/700.css'
-import '@fontsource/ibm-plex-mono/300.css'
-import '@fontsource/ibm-plex-mono/400.css'
-import '@fontsource/ibm-plex-mono/500.css'
-import '@fontsource/ibm-plex-mono/600.css'
-import '@fontsource/ibm-plex-mono/700.css'
+// One family (index.css --font): SF Pro on Apple devices, Inter Variable with its optical
+// size axis everywhere else. Self-hosted, never pulled from a CDN.
+import '@fontsource-variable/inter/opsz.css'
 
 import './index.css'
 import App from './App.tsx'

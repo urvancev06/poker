@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import type { ActionLogEntry } from '../api'
-import { actionText } from '../lib/actionText'
+import type { ActionLogEntry } from '../../api'
+import { actionText } from '../../lib/actionText'
 
 const STREET_LABEL: Record<string, string> = {
   preflop: 'Preflop',

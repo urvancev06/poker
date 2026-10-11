@@ -1,0 +1,25 @@
+.tip {
+  position: fixed;
+  z-index: 50;
+  left: -9999px;
+  top: 0;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border-radius: var(--r-tip);
+  background: var(--sheet-fill);
+  box-shadow: var(--sheet-shadow);
+  color: var(--ink);
+  font-size: var(--fs-foot);
+  line-height: 1.35;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.tip.is-interactive {
+  pointer-events: auto;
+}
+@supports (corner-shape: squircle) {
+  .tip {
+    corner-shape: squircle;
+  }
+}

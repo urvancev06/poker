@@ -1,9 +1,9 @@
-import type { BotRead, Seat as SeatData } from '../api'
-import { Card, DealtCard } from './Card'
+import type { BotRead, Seat as SeatData } from '../../api'
+import { Card, DealtCard } from '../Card'
 
 // Single definition lives in lib/prefsContext.ts (it is persisted by prefs.tsx).
-import type { VisibilityMode } from '../lib/prefsContext'
-import { seatLabel } from '../lib/seatLabel'
+import type { VisibilityMode } from '../../lib/prefsContext'
+import { seatLabel } from '../../lib/seatLabel'
 
 function ChipStack({ amount }: { amount: number }) {
   if (!amount) return null

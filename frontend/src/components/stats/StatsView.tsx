@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type HeroStatLine, type MyStats } from '../api'
+import { api, type HeroStatLine, type MyStats } from '../../api'
 
 // Stat rows, with the sample size at which each becomes worth reading. Below its
 // threshold a stat is shown greyed and unjudged rather than coloured pass/fail:
@@ -59,7 +59,7 @@ export function StatsView() {
   const n = o.hands
 
   return (
-    <div className="mx-auto max-w-4xl pb-10">
+    <div className="mx-auto max-w-4xl px-4 pt-6 pb-10 sm:px-8">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[11px] uppercase tracking-[0.18em] text-faint">Your profile</div>
         <div className="flex overflow-hidden rounded-lg border border-line text-[11px]">

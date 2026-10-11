@@ -1,4 +1,4 @@
-import { BoardCard } from './Card'
+import { BoardCard } from '../Card'
 
 export function Board({
   board,
