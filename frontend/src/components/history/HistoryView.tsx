@@ -1,181 +1,208 @@
-import { useEffect, useState } from 'react'
-import { api, type HandReview, type HandSummary, type LeakSummary } from '../../api'
-import { Card } from '../Card'
+/**
+ * History: every stored hand, replayed street by street with each of your decisions
+ * re-scored (realized equity against the price), and the leaks those decisions add up to
+ * over a window (inventory 14).
+ *
+ *   <HistoryView sessionId={table.session?.session_id} onGoToTable={() => navigate('table')} />
+ *
+ * Props: sessionId (optional): the game on the table, for "This session" and to name its
+ * group; onGoToTable (optional): the empty state's "Go to the table".
+ *
+ * Layout: the title with the scope and window; then, on a desk, two columns: the leak report
+ * and the hand list on the left, the replay on a #1c1c1e sheet on the right that stays in
+ * view while the list scrolls. On a phone or tablet: one column, and the replay opens as a
+ * bottom sheet.
+ *
+ * States: list loading / error (scoped, never "No hands yet") / empty (per scope) / no game
+ * for "This session"; leak report loading (the slow first pass, with progress) / error /
+ * clean / counts; replay placeholder / loading (the row's summary is shown at once) / error
+ * / loaded; a failed refresh keeps what is on screen and says so.
+ */
+import { useMemo, useState, type ReactNode } from 'react'
+import type { HandSummary } from '../../api'
+import { describeError, type ApiError } from '../../lib/apiError'
+import { BP, useLayoutKind, useViewportSize } from '../../lib/breakpoints'
+import { DEFAULT_WINDOW, LEAK_WINDOWS, handNumber, inWindow, reportScope, type LeakWindow, type Scope } from '../../lib/historyList'
+import { chips } from '../../lib/format'
+import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { Capsule } from '../../ui/Capsule'
+import { ErrorNotice } from '../../ui/ErrorNotice'
+import { Segmented } from '../../ui/Segmented'
+import { Sheet } from '../../ui/Sheet'
+import { HandList } from './HandList'
+import { LeakReport } from './LeakReport'
+import { ReplayBody, ReplayPanel } from './Replay'
+import { useHandList, useLeakReport, useReplay, type Pick } from './useHistoryData'
+import './HistoryView.css'
 
-const LEAK_LABEL: Record<string, string> = {
-  loose_open: 'Opened too loose',
-  limp: 'Limped (raise-or-fold)',
-  tight_fold: 'Folded too tight',
-  call_no_odds: 'Called without odds',
-  fold_with_odds: 'Folded with the odds',
-  missed_value: 'Missed value',
+export interface HistoryViewProps {
+  sessionId?: string
+  onGoToTable?: () => void
 }
 
-// Leak counts only mean anything over hundreds of hands, and a reload mints a
-// fresh session, so the default scope is all hands and this-session is opt-in.
-const LEAK_WINDOWS = [200, 500, 1000] as const
+const SCOPE_OPTIONS = [
+  { value: 'all' as const, label: 'All hands' },
+  { value: 'session' as const, label: 'This session' },
+]
 
-export function HistoryView({ sessionId }: { sessionId?: string }) {
-  const [hands, setHands] = useState<HandSummary[]>([])
-  const [leaks, setLeaks] = useState<LeakSummary | null>(null)
-  const [review, setReview] = useState<HandReview | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [thisSession, setThisSession] = useState(false)
-  const [window_, setWindow] = useState<number>(500)
+// "Last 500" reads "500" on a phone; the full label stays for screen readers.
+type WindowValue = `${LeakWindow}`
+const WINDOW_OPTIONS = LEAK_WINDOWS.map((w) => ({
+  value: String(w) as WindowValue,
+  label: (
+    <>
+      <span className="max-sm:sr-only">Last </span>
+      {chips(w)}
+    </>
+  ),
+}))
 
-  const scope = thisSession ? sessionId : undefined
+/** Keeps stars out from under the column. Its own component so a resize re-renders only this. */
+function SpaceColumn() {
+  const { w, h } = useViewportSize()
+  const phone = w < BP.sm
+  const col = Math.min(w, 1120) - (phone ? 0 : 56)
+  const rect = w > 0 ? (phone ? { x: 0, y: 120, w, h: h - 120 } : { x: (w - col) / 2, y: 0, w: col, h }) : null
+  useSpaceAvoid('history', [rect])
+  return null
+}
 
-  // Changing the scope or the window drops the leak report on screen, so counts
-  // from the old query are never shown under the new one. Done during render
-  // rather than in the effect below, which would only clear them after a frame.
-  const [shownQuery, setShownQuery] = useState({ scope, window: window_ })
-  if (shownQuery.scope !== scope || shownQuery.window !== window_) {
-    setShownQuery({ scope, window: window_ })
-    setLeaks(null)
+/** The picked hand, with the row's summary so the replay's header shows at once. */
+interface Picked extends Pick {
+  summary: HandSummary
+}
+
+export function HistoryView({ sessionId, onGoToTable }: HistoryViewProps) {
+  const [scope, setScope] = useState<Scope>('all')
+  const [win, setWin] = useState<LeakWindow>(DEFAULT_WINDOW)
+  const [picked, setPicked] = useState<Picked | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const desk = useLayoutKind() === 'desk'
+
+  const list = useHandList(scope, sessionId)
+  const hands = useMemo(() => (list.hands ? inWindow(list.hands, win) : null), [list.hands, win])
+  const leaks = useLeakReport(scope, sessionId, win, !list.noSession)
+  const replay = useReplay(picked)
+
+  // A notice over hands still on screen can be dismissed; each new failure shows again.
+  const [dismissed, setDismissed] = useState<ApiError | null>(null)
+  const staleList = hands !== null && list.error !== null && list.error !== dismissed
+
+  const choose = (h: HandSummary) => {
+    setPicked((p) => ({ id: h.id, n: (p?.n ?? 0) + 1, summary: h }))
+    if (!desk) setSheetOpen(true)
   }
 
-  useEffect(() => {
-    api.listHands(scope, 100).then(setHands).catch((e) => setErr((e as Error).message))
-    api.leaks(scope, window_).then(setLeaks).catch(() => {})
-  }, [scope, window_])
+  const note = hands ? reportScope(hands.length, win, scope) : ''
+  const hasHands = hands !== null && hands.length > 0
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 px-4 pt-6 sm:px-8 lg:grid-cols-[320px_1fr]">
-      <div>
-        <h2 className="font-display text-2xl text-ink">Hand history</h2>
-        {err && <div className="text-loss">{err}</div>}
-
-        <div className="my-4 flex flex-wrap items-center gap-2 text-[11px]">
-          <div className="flex overflow-hidden rounded-lg border border-line">
-            {([false, true] as const).map((v) => (
-              <button
-                key={String(v)}
-                onClick={() => setThisSession(v)}
-                disabled={v && !sessionId}
-                className={`px-2 py-1 ${thisSession === v ? 'bg-accent/20 text-ink' : 'text-muted'} disabled:opacity-40`}
-              >
-                {v ? 'This session' : 'All hands'}
-              </button>
-            ))}
+    <div className="history mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
+      <SpaceColumn />
+      <div className="flex flex-wrap items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[18px]">
+        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">History</h1>
+        <div className="flex flex-col items-end gap-2 max-sm:items-stretch">
+          <div className="flex flex-wrap justify-end gap-3 max-sm:flex-col max-sm:gap-2.5">
+            <Segmented className="history-scope" label="Hands" value={scope} onChange={setScope} options={SCOPE_OPTIONS} />
+            <Segmented
+              className="history-window"
+              label="Window"
+              value={String(win) as WindowValue}
+              onChange={(v) => setWin(Number(v) as LeakWindow)}
+              options={WINDOW_OPTIONS}
+            />
           </div>
-          <div className="flex overflow-hidden rounded-lg border border-line">
-            {LEAK_WINDOWS.map((w) => (
-              <button
-                key={w}
-                onClick={() => setWindow(w)}
-                className={`px-2 py-1 tabular-nums ${window_ === w ? 'bg-accent/20 text-ink' : 'text-muted'}`}
-              >
-                last {w}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {leaks && leaks.hands_reviewed > 0 && (
-          <div className="my-4 rounded-xl border border-line bg-bg2/70 p-4">
-            <h3 className="font-display text-base text-ink">Leak report</h3>
-            <p className="mb-2 text-[11px] text-muted">
-              {leaks.hands_reviewed} hands{thisSession ? ' · this session' : ' · all sessions'} · computed, candid
-            </p>
-            {leaks.by_type.length === 0 ? (
-              <p className="text-sm text-win">No clear leaks flagged. Clean play.</p>
-            ) : (
-              <ul className="space-y-1 text-sm">
-                {leaks.by_type.map((l) => (
-                  <li key={l.type} className="flex justify-between">
-                    <span className="text-muted">{LEAK_LABEL[l.type] ?? l.type}</span>
-                    <span className="tabular-nums text-loss">{l.count}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        <div className="max-h-[60vh] space-y-1 overflow-y-auto pr-1">
-          {hands.map((h) => (
-            <button
-              key={h.id}
-              onClick={() => api.handReview(h.id).then(setReview)}
-              className="flex w-full items-center justify-between rounded-lg border border-line bg-bg2/50 px-3 py-2 text-left text-sm hover:border-muted"
-            >
-              <span className="text-muted">
-                #{h.hand_index} · {h.hero_position} · {h.hero_cards}
-              </span>
-              <span className={`tabular-nums ${h.hero_net > 0 ? 'text-win' : h.hero_net < 0 ? 'text-loss' : 'text-muted'}`}>
-                {h.hero_net > 0 ? '+' : ''}
-                {h.hero_net}
-              </span>
-            </button>
-          ))}
-          {hands.length === 0 && <p className="text-sm text-muted">No hands yet — play some.</p>}
+          <p className="m-0 min-h-[18px] text-foot text-fog max-sm:text-center" aria-live="polite">
+            {note}
+          </p>
         </div>
       </div>
 
-      <div>{review ? <Replay review={review} /> : <p className="text-muted">Select a hand to replay it with coaching.</p>}</div>
+      {staleList ? (
+        <div className="material-sheet squircle mt-7 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+          <ErrorNotice
+            error={list.error!}
+            context="history"
+            headline={`${describeError(list.error!, 'history').headline} These hands may be out of date.`}
+            onRetry={
+              describeError(list.error!, 'history').retryable
+                ? () => {
+                    list.retry()
+                    leaks.retry()
+                  }
+                : undefined
+            }
+            onDismiss={() => setDismissed(list.error)}
+            busy={list.loading}
+            layout="row"
+            className="max-sm:flex-col max-sm:items-start"
+          />
+        </div>
+      ) : null}
+
+      {list.noSession ? (
+        <Invite title="No game is on the table yet." body="This session’s hands show here once you play one." className="mt-16">
+          <Capsule variant="quiet" size="md" onClick={() => setScope('all')}>
+            Show all hands
+          </Capsule>
+        </Invite>
+      ) : hands === null ? (
+        list.error ? (
+          <div className="material-sheet squircle mt-12 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+            <ErrorNotice error={list.error} context="history" headline="Your hands didn’t load." onRetry={describeError(list.error, 'history').retryable ? list.retry : undefined} busy={list.loading} layout="row" className="max-sm:flex-col max-sm:items-start" />
+          </div>
+        ) : (
+          <p className="history-wait mt-16 text-callout text-fog" aria-busy="true">
+            Loading your hands
+          </p>
+        )
+      ) : !hasHands ? (
+        <Invite
+          title={scope === 'session' ? 'No hands this session yet.' : 'No hands yet.'}
+          body="Every hand you finish at the table lands here, with each of your decisions re-scored against the price you were offered."
+          className="mt-16"
+        >
+          <div className="flex flex-wrap gap-3 max-sm:justify-center">
+            {onGoToTable ? (
+              <Capsule variant="primary" size="md" onClick={onGoToTable}>
+                Go to the table
+              </Capsule>
+            ) : null}
+            {scope === 'session' ? (
+              <Capsule variant="quiet" size="md" onClick={() => setScope('all')}>
+                Show all hands
+              </Capsule>
+            ) : null}
+          </div>
+        </Invite>
+      ) : (
+        <div className="mt-12 grid items-start gap-12 lg:grid-cols-[400px_minmax(0,1fr)] max-lg:mx-auto max-lg:max-w-[640px] max-sm:mt-9 max-sm:gap-10">
+          <div className="grid min-w-0 gap-12 max-sm:gap-10">
+            <LeakReport load={leaks} known={hands.length} window={win} quietStale={list.error !== null} />
+            <HandList key={`${scope}|${win}`} hands={hands} sessionId={sessionId} selectedId={picked?.id ?? null} onSelect={choose} />
+          </div>
+          {desk ? <ReplayPanel picked={picked?.summary ?? null} load={replay} onLatest={() => choose(hands[0])} /> : null}
+        </div>
+      )}
+
+      {!desk && picked ? (
+        <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={`Hand ${handNumber(picked.summary.hand_index)}`} layout="bottom">
+          <ReplayBody summary={picked.summary} load={replay} />
+        </Sheet>
+      ) : null}
+      <p className="sr-only" role="status">
+        {list.loading && hands === null && !list.noSession ? 'Loading your hands' : ''}
+      </p>
     </div>
   )
 }
 
-function Replay({ review }: { review: HandReview }) {
+function Invite({ title, body, className = '', children }: { title: string; body: string; className?: string; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-bg2/60 p-5">
-      <div className="mb-4 flex items-center gap-4">
-        <div className="flex gap-1">
-          {review.hero_cards?.map((c, i) => <Card key={i} card={c} width={44} />)}
-        </div>
-        <div>
-          <div className="text-sm text-muted">
-            board: {review.board.join(' ') || '—'}
-          </div>
-          <div className={`font-bold tabular-nums ${review.hero_net > 0 ? 'text-win' : review.hero_net < 0 ? 'text-loss' : 'text-ink'}`}>
-            {review.hero_net > 0 ? '+' : ''}
-            {review.hero_net}
-            {review.went_to_showdown && <span className="ml-2 text-[11px] uppercase text-muted">showdown</span>}
-          </div>
-        </div>
-      </div>
-
-      {review.streets.map((st) => (
-        <div key={st.street} className="mb-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted">
-            {st.street} {st.board.length > 0 && `· ${st.board.join(' ')}`}
-          </div>
-          <div className="text-sm text-ink">
-            {st.actions.map((a, i) => (
-              <span key={i} className={a.is_hero ? 'text-accent' : 'text-muted'}>
-                {a.position} {a.action}
-                {a.to_amount ? ` ${a.to_amount}` : ''}
-                {i < st.actions.length - 1 ? ' · ' : ''}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <div className="mt-4 border-t border-line pt-3">
-        <h3 className="mb-2 font-display text-base text-ink">Your decisions</h3>
-        {review.decisions.map((d, i) => (
-          <div key={i} className="mb-2 text-sm">
-            <span className="text-muted">[{d.street}] </span>
-            <span className="text-ink">
-              {d.action}
-              {d.to_amount ? ` ${d.to_amount}` : ''} · {d.hand_label}
-            </span>
-            {d.equity_pct != null && (
-              <span className="text-muted tabular-nums">
-                {' '}
-                · {d.equity_pct}% eq{d.required_pct != null ? ` vs ${d.required_pct}% needed` : ''}
-              </span>
-            )}
-            {d.leaks.map((l, j) => (
-              <div key={j} className="mt-0.5 border-l-2 border-loss pl-2 text-loss">
-                {l.note}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+    <div className={`grid max-w-[460px] justify-items-start max-sm:mx-auto max-sm:justify-items-center max-sm:text-center ${className}`}>
+      <p className="m-0 text-headline font-strong">{title}</p>
+      <p className="m-0 mt-2 text-callout text-fog">{body}</p>
+      {children ? <div className="mt-5">{children}</div> : null}
     </div>
   )
 }

@@ -109,7 +109,7 @@ export default function App() {
       )}
       {visited.has('history') && (
         <Page active={view === 'history'}>
-          <HistoryView sessionId={table.session?.session_id} />
+          <HistoryView sessionId={table.session?.session_id} onGoToTable={() => navigate('table')} />
         </Page>
       )}
       {visited.has('study') && (
