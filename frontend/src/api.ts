@@ -228,6 +228,13 @@ export interface HandSummary {
   went_to_showdown: boolean
 }
 
+/** GET /hands/{id}: the summary plus the stored hand. History reads `shown_cards`, `lineup`,
+ * `actions` (seat and player per action), `start_stacks` (by seat), `blinds` and
+ * `results_by_player` from it: /review leaves them out (B19). */
+export interface HandRecord extends HandSummary {
+  data: Partial<HandResult>
+}
+
 export interface Leak {
   type: string
   note: string
@@ -367,6 +374,7 @@ export const api = {
   listHands: (sessionId?: string, limit = 50) =>
     req<HandSummary[]>(`/hands?limit=${limit}${sessionId ? `&session_id=${sessionId}` : ''}`),
   handReview: (id: number) => req<HandReview>(`/hands/${id}/review`),
+  handDetail: (id: number) => req<HandRecord>(`/hands/${id}`),
   leaks: (sessionId?: string, limit?: number) => {
     const q = new URLSearchParams()
     if (sessionId) q.set('session_id', sessionId)
