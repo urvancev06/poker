@@ -1,0 +1,28 @@
+/* The coach glance: only what Tailwind cannot say well. */
+
+/* Loading: held back 300 ms (a fast answer never flashes it), then the faint ring
+   breathes. Opacity only. Reduced motion: shown at once, still. */
+.coach-loading {
+  animation: coach-appear 200ms ease-out 300ms backwards;
+}
+.coach-loading__ring {
+  color: var(--ink);
+  animation: coach-breathe 1.2s ease-in-out 300ms infinite;
+}
+@keyframes coach-appear {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes coach-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-loading,
+  .coach-loading__ring {
+    animation: none;
+  }
+}

@@ -1,262 +1,145 @@
-import { useEffect, useState } from 'react'
-import { api, type HeroStatLine, type MyStats } from '../../api'
+/**
+ * My stats. One ring for how much of the window can be read, the two facts beside it, then
+ * each stat against its target range, grouped by the sample gate that makes it readable,
+ * then the trend. Nothing is judged before its gate (inventory §13).
+ *
+ *   <StatsView onGoToTable={() => navigate('table')} />
+ *
+ * Props: onGoToTable (optional): the empty state's "Go to the table"; without it the empty
+ * state only says what to do.
+ *
+ * States: loading (tracks and names only, never placeholder bars), error (scoped notice with
+ * the backend's detail and Try again; figures already on screen stay), empty (0 hands:
+ * an invitation instead of the facts), all unjudged (< 500 hands), some judged, no trend
+ * (< 40 hands), window larger than the data (a note under the selector, B24).
+ */
+import { useState } from 'react'
+import type { MyStats } from '../../api'
+import type { ApiError } from '../../lib/apiError'
+import { decisionFact, resultFact, staleHeadline, windowNote, windowLast, WINDOWS, type WindowId } from '../../lib/stats'
+import { BP, useViewportSize } from '../../lib/breakpoints'
+import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { Capsule } from '../../ui/Capsule'
+import { ErrorNotice } from '../../ui/ErrorNotice'
+import { Segmented } from '../../ui/Segmented'
+import { Facts } from './Facts'
+import { GateRing } from './GateRing'
+import { StatGroups } from './StatGroups'
+import { TrendSection } from './TrendSection'
+import { useMyStats } from './useMyStats'
+import './StatsView.css'
 
-// Stat rows, with the sample size at which each becomes worth reading. Below its
-// threshold a stat is shown greyed and unjudged rather than coloured pass/fail:
-// VPIP at 30 hands has a 95% CI of +/-15 points, which is wider than its whole band.
-const ROWS: Array<{ key: keyof HeroStatLine; label: string; stable: number; note: string }> = [
-  { key: 'vpip', label: 'VPIP', stable: 500, note: 'stabilises ~500 hands' },
-  { key: 'pfr', label: 'PFR', stable: 500, note: 'stabilises ~500 hands' },
-  { key: 'threebet', label: '3-BET', stable: 3000, note: 'measured per opportunity (~0.42/hand) — needs ~3,000 hands' },
-  { key: 'ats', label: 'ATS', stable: 2000, note: 'steal spots are ~15% of hands' },
-  { key: 'af', label: 'AF', stable: 2000, note: 'postflop only — slow to settle' },
-  { key: 'wtsd', label: 'WTSD', stable: 2000, note: 'measured per flop seen, not per hand' },
-  { key: 'wsd', label: 'W$SD', stable: 3000, note: 'showdowns are a fraction of flops' },
-  { key: 'wwsf', label: 'WWSF', stable: 2000, note: 'measured per flop seen' },
-  { key: 'cbet', label: 'C-BET', stable: 2000, note: 'measured per c-bet opportunity — board-dependent' },
-]
-
-// Trailing windows as well as lifetime: early learning hands drag a lifetime average
-// forever, so recent form is only readable in a window of its own.
-const WINDOWS: Array<{ label: string; last?: number }> = [
-  { label: 'Lifetime' },
-  { label: 'Last 500', last: 500 },
-  { label: 'Last 2000', last: 2000 },
-  { label: 'Last 5000', last: 5000 },
-]
-
-function inBand(v: number | null, b?: [number, number]): boolean | null {
-  if (v == null || !b) return null
-  return v >= b[0] && v <= b[1]
+export interface StatsViewProps {
+  onGoToTable?: () => void
 }
 
-export function StatsView() {
-  const [stats, setStats] = useState<MyStats | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [win, setWin] = useState(0)
+// "Last 500" reads "500" on a phone; the full label stays for screen readers.
+const WINDOW_OPTIONS = WINDOWS.map((w) => ({
+  value: w.id,
+  label:
+    w.last === null ? (
+      w.label
+    ) : (
+      <>
+        <span className="max-sm:sr-only">Last </span>
+        {w.short}
+      </>
+    ),
+}))
 
-  // Picking another window drops the numbers on screen, so the old window's stats
-  // are never shown under the new label. Done during render rather than in the
-  // effect below, which would only clear them after a frame.
-  const [shownWin, setShownWin] = useState(win)
-  if (shownWin !== win) {
-    setShownWin(win)
-    setStats(null)
-  }
+/** Keeps stars out from under the column (they drop to a whisper there). Its own
+ *  component so a resize re-renders only this. */
+function SpaceColumn() {
+  const { w, h } = useViewportSize()
+  const phone = w < BP.sm
+  const col = Math.min(w, 1120) - (phone ? 0 : 56)
+  const rect = w > 0 ? (phone ? { x: 0, y: 120, w, h: h - 120 } : { x: (w - col) / 2, y: 0, w: col, h }) : null
+  useSpaceAvoid('stats', [rect])
+  return null
+}
 
-  useEffect(() => {
-    api
-      .myStats(undefined, WINDOWS[win].last)
-      .then(setStats)
-      .catch((e) => setErr((e as Error).message))
-  }, [win])
+export function StatsView({ onGoToTable }: StatsViewProps) {
+  const [win, setWin] = useState<WindowId>('all')
+  const { data, error, loading, targets, retry } = useMyStats(win)
+  // A notice over figures that are still on screen can be dismissed; each new failure is a
+  // new error object, so it shows again.
+  const [dismissed, setDismissed] = useState<ApiError | null>(null)
+  const showError = error !== null && error !== dismissed
 
-  if (err) return <div className="text-loss">{err}</div>
-  if (!stats) return <div className="text-muted">loading your stats…</div>
-
-  const o = stats.overall
-  const net = o.net_bb_per_100
-  const n = o.hands
+  const last = data?.window?.last ?? windowLast(win)
+  const note = data ? windowNote(last, data.overall.hands) : ''
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-6 pb-10 sm:px-8">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-faint">Your profile</div>
-        <div className="flex overflow-hidden rounded-lg border border-line text-[11px]">
-          {WINDOWS.map((w, i) => (
-            <button
-              key={w.label}
-              onClick={() => setWin(i)}
-              className={`px-2 py-1 ${win === i ? 'bg-accent/20 text-ink' : 'text-muted'}`}
-            >
-              {w.label}
-            </button>
-          ))}
+    <div className="stats mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
+      <SpaceColumn />
+      <div className="flex flex-wrap items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[18px]">
+        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">My stats</h1>
+        <div className="flex flex-col items-end gap-2 max-sm:items-stretch">
+          <Segmented className="stats-window" label="Window" value={win} onChange={setWin} options={WINDOW_OPTIONS} />
+          <p className="m-0 min-h-[18px] text-foot text-fog max-sm:text-center" aria-live="polite">
+            {note}
+          </p>
         </div>
       </div>
 
-      {n === 0 ? (
-        <h2 className="font-display text-3xl font-semibold -tracking-[0.02em] text-ink">
-          No hands yet — play a session to build your profile.
-        </h2>
-      ) : (
-        <h2 className="font-display text-3xl font-semibold -tracking-[0.02em] text-ink">
-          Over <span className="tabular-nums">{n.toLocaleString()}</span> hands you’re running{' '}
-          <span className={`tabular-nums ${net >= 0 ? 'text-accent' : 'text-loss'}`}>
-            {net >= 0 ? '+' : ''}
-            {net} bb/100
-          </span>
-          .
-        </h2>
-      )}
-
-      {n > 0 && (
-        <p className="mt-2 text-[11px] text-faint">
-          bb/100 is the noisiest number here — it needs tens of thousands of hands before it
-          means much. Judge the decisions, not this.
-        </p>
-      )}
-
-      {stats.decision_time && stats.decision_time.n > 0 && (
-        <div className="mt-4 flex flex-wrap items-baseline gap-2 text-sm">
-          <span className="text-muted">Median decision time</span>
-          <span className="tabular-nums text-ink">{stats.decision_time.median_s}s</span>
-          <span className="text-[11px] text-faint">
-            over {stats.decision_time.n} decisions · wall clock, so it counts interruptions too
-          </span>
+      {showError ? (
+        <div className="material-sheet squircle mt-7 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+          <ErrorNotice
+            error={error}
+            context="stats"
+            headline={data ? staleHeadline(error) : undefined}
+            onRetry={retry}
+            onDismiss={data ? () => setDismissed(error) : undefined}
+            busy={loading}
+            layout="row"
+            className="max-sm:flex-col max-sm:items-start"
+          />
         </div>
-      )}
+      ) : null}
 
-      <div className="mt-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <div className="text-[11px] uppercase tracking-[0.14em] text-faint">Stats</div>
-          <div className="text-[10px] text-faint">band ▮ · your value ●</div>
-        </div>
-        <div className="divide-y divide-hair">
-          {ROWS.map((row) => (
-            <StatRow
-              key={row.key}
-              row={row}
-              value={o[row.key] as number | null}
-              band={stats.targets[row.key]}
-              hands={n}
-            />
-          ))}
-        </div>
-      </div>
-
-      {stats.trend.length > 1 && (
-        <div className="mt-10">
-          <div className="mb-1 flex items-baseline justify-between">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-faint">Trend</div>
-            <div className="text-[10px] text-faint">
-              {stats.trend.length} buckets of ~{Math.floor(n / stats.trend.length).toLocaleString()}{' '}
-              hands
-            </div>
-          </div>
-          <Trend trend={stats.trend} targets={stats.targets} />
-        </div>
-      )}
+      {data ? <Loaded data={data} onGoToTable={onGoToTable} /> : error ? null : <Loading targets={targets} />}
+      <p className="sr-only" role="status">
+        {!data && !error ? 'Loading your stats' : ''}
+      </p>
     </div>
   )
 }
 
-/** One stat, with its band drawn as an interval and the value placed on it. A target
- *  here is a range, not a point, so anything that collapses it to one number (a band
- *  midpoint, a "further is better" axis) misreads it. */
-function StatRow({
-  row,
-  value,
-  band,
-  hands,
-}: {
-  row: { key: keyof HeroStatLine; label: string; stable: number; note: string }
-  value: number | null
-  band?: [number, number]
-  hands: number
-}) {
-  const enough = hands >= row.stable
-  const ok = enough ? inBand(value, band) : null
-  // Scale the track so the band occupies the middle half — enough room to show
-  // being outside it without the marker leaving the rail.
-  const lo = band ? band[0] : 0
-  const hi = band ? band[1] : 100
-  const span = Math.max(hi - lo, 1)
-  const min = lo - span
-  const max = hi + span
-  const pos = (v: number) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100))
-
+function Loading({ targets }: { targets: MyStats['targets'] | null }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
-      <div className="w-16 shrink-0">
-        <div className="text-[11px] uppercase tracking-[0.12em] text-faint">{row.label}</div>
-      </div>
-
-      <div className="relative h-1.5 flex-1 rounded-full bg-bg2">
-        {band && (
-          <div
-            className={`absolute h-full rounded-full ${enough ? 'bg-accent/25' : 'bg-line'}`}
-            style={{ left: `${pos(lo)}%`, width: `${pos(hi) - pos(lo)}%` }}
-          />
-        )}
-        {value != null && (
-          <div
-            className={`absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
-              ok === null ? 'bg-muted' : ok ? 'bg-accent' : 'bg-loss'
-            }`}
-            style={{ left: `${pos(value)}%` }}
-            title={`${value}`}
-          />
-        )}
-      </div>
-
-      <div className="flex w-32 shrink-0 items-baseline justify-end gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-faint tabular-nums">
-          {band ? `${band[0]}–${band[1]}` : ''}
-        </span>
-        <span
-          className={`w-12 text-right text-xl font-medium tabular-nums ${
-            ok === null ? 'text-muted' : ok ? 'text-accent' : 'text-loss'
-          }`}
-          title={enough ? undefined : `Too few hands to read — ${row.note}`}
-        >
-          {value == null ? '—' : value}
-        </span>
-      </div>
+    <div aria-busy="true">
+      <section aria-label="Sample size" className="mt-14 flex items-center justify-center gap-24 max-lg:gap-14 max-sm:mt-9 max-sm:flex-col max-sm:gap-8">
+        <GateRing hands={null} />
+        {/* the facts' place, held so nothing jumps when they land */}
+        <div className="w-[220px] max-sm:h-10" aria-hidden="true" />
+      </section>
+      {targets ? <StatGroups overall={null} targets={targets} /> : null}
     </div>
   )
 }
 
-/** Trend on a FIXED per-stat scale, with the target band drawn behind the bars.
- *  Scaling a row to its own maximum instead would make every row's peak full height
- *  and comparable to nothing, its own band included. */
-function Trend({
-  trend,
-  targets,
-}: {
-  trend: HeroStatLine[]
-  targets: Record<string, [number, number]>
-}) {
-  const keys: Array<[keyof HeroStatLine, string, number]> = [
-    ['vpip', 'VPIP', 50],
-    ['pfr', 'PFR', 40],
-    ['af', 'AF', 6],
-    ['wtsd', 'WTSD', 50],
-  ]
+function Loaded({ data, onGoToTable }: { data: MyStats; onGoToTable?: () => void }) {
+  const n = data.overall.hands
   return (
-    <div className="space-y-2.5">
-      {keys.map(([k, label, scaleMax]) => {
-        const band = targets[k]
-        const pct = (v: number) => Math.max(0, Math.min(100, (v / scaleMax) * 100))
-        return (
-          <div key={k} className="flex items-center gap-3">
-            <div className="w-12 text-[10px] uppercase tracking-wider text-faint">{label}</div>
-            <div className="relative h-7 flex-1">
-              {band && (
-                <div
-                  className="absolute inset-x-0 bg-accent/12"
-                  style={{ bottom: `${pct(band[0])}%`, height: `${pct(band[1]) - pct(band[0])}%` }}
-                />
-              )}
-              <div className="absolute inset-0 flex items-end gap-1">
-                {trend.map((t, i) => {
-                  const v = (t[k] as number | null) ?? 0
-                  const good = band ? v >= band[0] && v <= band[1] : true
-                  return (
-                    <div
-                      key={i}
-                      className={good ? 'flex-1 bg-accent/60' : 'flex-1 bg-loss/50'}
-                      style={{ height: `${pct(v)}%` }}
-                      title={`${v}`}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-            <div className="w-8 text-right text-[10px] text-faint tabular-nums">{scaleMax}</div>
+    <>
+      <section aria-label="Sample size" className="mt-14 flex items-center justify-center gap-24 max-lg:gap-14 max-sm:mt-9 max-sm:flex-col max-sm:gap-8">
+        <GateRing hands={n} />
+        {n > 0 ? (
+          <Facts decision={decisionFact(data.decision_time)} result={resultFact(data.overall, data.window)} />
+        ) : (
+          <div className="grid max-w-[340px] justify-items-start max-sm:justify-items-center max-sm:text-center">
+            <p className="m-0 text-headline font-strong">Play a session to build your profile.</p>
+            <p className="m-0 mt-2 text-callout text-fog">Decision time and bb/100 show after your first hand. Each stat is read once its sample is big enough.</p>
+            {onGoToTable ? (
+              <Capsule variant="primary" size="md" className="mt-5" onClick={onGoToTable}>
+                Go to the table
+              </Capsule>
+            ) : null}
           </div>
-        )
-      })}
-    </div>
+        )}
+      </section>
+      <StatGroups overall={data.overall} targets={data.targets} />
+      <TrendSection data={data} />
+    </>
   )
 }

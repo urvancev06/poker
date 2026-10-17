@@ -1,0 +1,311 @@
+/* The dock: one glass surface whose faces morph into each other (status, actions, sizing,
+   result, error). The blurred glass is a box sized once per morph, its visible capsule an
+   animated clip-path, so the backdrop-filter never resizes; the rim (hairline, top
+   specular, blue lower edge) is a separate light-only pill, and the deep shadow scales on
+   the compositor. Sizes are set by Dock.tsx from the measured face. */
+.dock {
+  position: fixed;
+  z-index: 10;
+  translate: -50% 0;
+  contain: layout;
+  pointer-events: none;
+}
+.dock[data-raised] {
+  z-index: 31; /* above a bottom sheet's scrim: you can act with the log open */
+}
+.dock__shade {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+  transform-origin: 50% 100%;
+}
+.dock__glass {
+  position: absolute;
+  inset: 0;
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.dock__rim {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  border-radius: 999px;
+  pointer-events: none;
+  box-shadow: var(--glass-spec), inset 0 0 0 1px var(--glass-line), var(--glass-under);
+}
+.face {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.face.is-leaving {
+  pointer-events: none;
+}
+.face--status {
+  height: 44px;
+  padding: 0 22px;
+  gap: 10px;
+}
+.face--status.has-tool {
+  padding-right: 5px;
+}
+.face--actions,
+.face--sizing {
+  height: 64px;
+  padding: 8px;
+  gap: 8px;
+}
+.face--result {
+  height: 64px;
+  padding: 8px 8px 8px 26px;
+  gap: 14px;
+}
+.face--error {
+  height: 64px;
+  padding: 8px 8px 8px 16px;
+}
+
+/* the status text cross-fades: the old line fades out over the new one */
+.status__text {
+  display: grid;
+}
+.status__text > * {
+  grid-area: 1 / 1;
+}
+.status__text > [aria-hidden] {
+  justify-self: center;
+}
+.status__dot {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--ink);
+  animation: dock-spin 0.9s linear infinite;
+}
+@keyframes dock-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* while a request is in flight, the button you pressed stays lit and the rest step back */
+.dock[aria-busy="true"] .face--actions button:not([data-pressed]),
+.dock[aria-busy="true"] .face--sizing button:not([data-pressed]) {
+  opacity: 0.4;
+}
+.dock button[data-pressed] {
+  opacity: 1;
+}
+
+/* presets: the pressed one is a raised pill with a light rim (>= 3:1 against its track,
+   so the choice never rests on fill alone) and a heavier label */
+.presets {
+  display: flex;
+  padding: 4px;
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.26);
+}
+.presets button {
+  height: 40px;
+  min-width: 44px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: #d1d1d6;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  letter-spacing: 0;
+  transition:
+    background-color var(--dur-quick) ease,
+    color var(--dur-quick) ease,
+    box-shadow var(--dur-quick) ease;
+}
+.presets button:hover {
+  color: var(--ink);
+}
+.presets button[aria-pressed="true"] {
+  background: #636366;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* the slider: a 6 px track filled in ink, a 26 px white thumb, the pot presets as ticks */
+.slider-wrap {
+  position: relative;
+  width: 180px;
+  height: 48px;
+  display: grid;
+  align-items: center;
+}
+.slider {
+  --fill: 0%;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--ink) var(--fill), rgba(255, 255, 255, 0.4) var(--fill));
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 3px 8px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink);
+}
+.slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+.slider:focus-visible {
+  outline-offset: -6px;
+  border-radius: 24px;
+}
+.slider__ticks {
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 50%;
+  height: 0;
+  z-index: 0;
+}
+.slider__ticks i {
+  position: absolute;
+  top: 8px;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+.amount {
+  width: 64px;
+  height: 48px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  text-align: center;
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  transition: background-color var(--dur-quick) ease;
+}
+.amount:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.amount:focus-visible {
+  background: rgba(0, 0, 0, 0.3);
+  outline-offset: 0;
+}
+
+/* ---------- phone ---------- */
+.dock[data-phone] .face--actions,
+.dock[data-phone] .face--result,
+.dock[data-phone] .face--error {
+  width: calc(100vw - 16px);
+  height: 66px;
+}
+.dock[data-phone] .face--actions > button {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  padding: 0 8px;
+}
+/* sizing on a phone: two rows. Back and the presets; then the slider, the amount, confirm */
+.dock[data-phone] .face--sizing {
+  width: calc(100vw - 16px);
+  height: auto;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 48px minmax(0, 1fr) 56px auto;
+  grid-template-areas:
+    "back presets presets presets"
+    "slider slider amount confirm";
+}
+.dock[data-phone] .face--sizing .sizing__back {
+  grid-area: back;
+}
+.dock[data-phone] .face--sizing .presets {
+  grid-area: presets;
+}
+.dock[data-phone] .face--sizing .presets button {
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+}
+.dock[data-phone] .face--sizing .slider-wrap {
+  grid-area: slider;
+  width: auto;
+}
+.dock[data-phone] .face--sizing .amount {
+  grid-area: amount;
+  width: 56px;
+}
+.dock[data-phone] .face--sizing .sizing__confirm {
+  grid-area: confirm;
+  min-width: 118px;
+  padding: 0 16px;
+}
+.dock[data-phone] .face--result {
+  padding: 8px 8px 8px 20px;
+  gap: 10px;
+}
+.dock[data-phone] .face--result .result__sub {
+  display: none;
+}
+.dock[data-phone] .face--result > button {
+  margin-left: auto;
+  min-width: 0;
+}
+.dock[data-phone] .face--error {
+  height: auto;
+  min-height: 66px;
+  padding: 8px 8px 8px 14px;
+  white-space: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status__dot {
+    animation: none;
+  }
+}

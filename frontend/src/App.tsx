@@ -104,7 +104,7 @@ export default function App() {
       </Activity>
       {visited.has('stats') && (
         <Page active={view === 'stats'}>
-          <StatsView />
+          <StatsView onGoToTable={() => navigate('table')} />
         </Page>
       )}
       {visited.has('history') && (
