@@ -132,8 +132,11 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
     setPrevLog(logOpen)
     if (logOpen && mathsOpen) setMathsOpen(false)
   }
+  // the maths explains one decision: it closes when the coach leaves 'ready' (you acted)
+  if (mathsOpen && coachStatus !== 'ready') setMathsOpen(false)
   const mathsShown = mathsOpen && coachStatus === 'ready'
   const logShown = logOpen && !!session
+
   const openMaths = () => {
     onLogOpenChange(false)
     setMathsOpen(true)
@@ -503,8 +506,11 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
           onRetry={() => table.retry('coach')}
           onDismissError={() => table.dismissError('coach')}
           onOpenMaths={openMaths}
+          onHide={table.hideCoach}
+          mathsOpen={mathsShown}
         />
-        {table.coachMode !== 'on' && (coachStatus === 'ready' || coachStatus === 'loading') && (
+        {/* CoachGlance offers Hide on a ready answer; this one cancels a request in flight */}
+        {table.coachMode !== 'on' && coachStatus === 'loading' && (
           <button
             type="button"
             onClick={table.hideCoach}
@@ -538,7 +544,13 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
       <Sheet open={logShown} onClose={() => onLogOpenChange(false)} title="This hand" bottomInset={sheetInset}>
         <HandLog streets={log} />
       </Sheet>
-      <MathsSheet coaching={table.coaching} open={mathsShown} onClose={() => setMathsOpen(false)} bottomInset={sheetInset} />
+      <MathsSheet
+        coaching={table.coaching}
+        open={mathsShown}
+        onClose={() => setMathsOpen(false)}
+        bottomInset={sheetInset}
+        positions={session?.state.seats.map((s) => s.position)}
+      />
     </div>
   )
 }
