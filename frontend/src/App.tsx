@@ -124,7 +124,7 @@ export default function App() {
       )}
       {visited.has('prefs') && (
         <Page active={view === 'prefs'}>
-          <PreferencesView />
+          <PreferencesView coachMode={table.coachMode} onCoachMode={table.setCoachMode} />
         </Page>
       )}
     </div>
