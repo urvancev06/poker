@@ -1,0 +1,661 @@
+/* Lab: what utilities do not say well. The results matrix that changes shape at 1100 and
+   600, the rails (band, dot, the dot's slide), the knob sliders and their default notch,
+   the run dock, and the chart strokes. The visual language is My stats (StatsView.css):
+   bare hairline rails, a pale band, a dot; no axes; fixed scales. */
+
+.lab {
+  --in-band: var(--win); /* 10.4:1 on the void */
+  --out-band: #ff9f0a; /* 10.2:1 on the void; out of band also reads "−0.4" in text */
+  --bar: #6b6b6e; /* chart bars and dots, 3.9:1 on the void */
+}
+
+/* the tool switch and the tune picker: 32 px capsules like the stats window */
+.seg.lab-tools {
+  width: 300px;
+}
+.seg.lab-tools .seg__opt,
+.seg.lab-tune-pick .seg__opt {
+  height: 32px;
+  font-size: 14px;
+}
+.seg.lab-tune-pick {
+  min-width: 440px;
+}
+@media (max-width: 599.98px) {
+  .seg.lab-tools,
+  .seg.lab-tune-pick {
+    width: auto;
+    min-width: 0;
+  }
+  .seg.lab-tune-pick .seg__opt {
+    padding: 0 6px;
+  }
+}
+/* a changed archetype in the tune picker: a blue dot with a dark ring, so it holds on the
+   selected (grey) segment too (signal against the ring: 7:1) */
+.lab-changed-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- lineup: six capsule pickers with their seat numbers ---------- */
+.lab-lineup {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 1099.98px) {
+  .lab-lineup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.lab-seat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--fill-quiet);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: background-color var(--dur-quick) ease;
+}
+.lab-seat:hover {
+  background: var(--fill-quiet-hi);
+}
+.lab-seat:has(:focus-visible) {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.lab-seat__no {
+  position: absolute;
+  left: 16px;
+  pointer-events: none;
+}
+.lab-seat__pick {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 30px 0 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+.lab-seat__pick:focus-visible {
+  outline: none;
+}
+.lab-seat__pick option {
+  background: var(--sheet-fill);
+  color: var(--ink);
+}
+.lab-seat__chev {
+  position: absolute;
+  right: 16px;
+  rotate: 90deg;
+  pointer-events: none;
+}
+@media (max-width: 599.98px) {
+  .lab-lineup {
+    gap: 8px;
+  }
+  .lab-seat__no {
+    left: 13px;
+  }
+  .lab-seat__pick {
+    padding: 0 22px 0 26px;
+  }
+  .lab-seat__chev {
+    right: 11px;
+  }
+}
+
+/* ---------- the verdict line, in the coach's register ---------- */
+.lab-verdict[data-tone="idle"] {
+  color: var(--fog);
+}
+.lab-verdict[data-tone="pass"] {
+  color: var(--in-band);
+}
+.lab-verdict[data-tone="fail"] {
+  color: var(--out-band);
+}
+
+/* ---------- the results: a matrix on a desk, blocks below ---------- */
+.lab-matrix__head,
+.lab-row__btn {
+  display: grid;
+  grid-template-columns: 196px repeat(5, minmax(0, 1fr)) 84px;
+  column-gap: 24px;
+}
+.lab-matrix {
+  margin-inline: -12px;
+}
+.lab-matrix__head {
+  padding: 0 12px 6px;
+}
+.lab-row__btn {
+  align-items: start;
+  width: 100%;
+  margin: 0;
+  padding: 16px 12px 2px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--dur-quick) ease;
+}
+.lab-row__btn:hover,
+.lab-row__btn[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.04);
+}
+.lab-row__who {
+  min-width: 0;
+}
+.lab-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.lab-cell__name {
+  display: none;
+}
+.lab-cell__read {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 27px;
+  white-space: nowrap;
+}
+.lab-cell__value {
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  letter-spacing: -0.018em;
+}
+.lab-cell__value.is-none {
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--fog);
+}
+.lab-cell__rail {
+  margin-bottom: 22px; /* room for the band's numbers under the rail */
+}
+.lab-row__bb {
+  text-align: right;
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  color: var(--fog);
+  white-space: nowrap;
+}
+.lab-row__unit {
+  display: none;
+}
+.lab-row__more:not([hidden]) {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px;
+  padding: 0 0 16px calc(196px + 24px);
+  line-height: 1.45;
+}
+
+@media (max-width: 1099.98px) {
+  .lab-matrix__head {
+    display: none;
+  }
+  .lab-matrix > ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    column-gap: 32px;
+    row-gap: 12px;
+  }
+  .lab-row__btn {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 16px;
+    row-gap: 4px;
+    padding: 14px 12px;
+  }
+  .lab-row__who {
+    grid-column: 1;
+    grid-row: 1;
+    margin-bottom: 8px;
+  }
+  .lab-row__bb {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .lab-row__unit {
+    display: inline;
+  }
+  .lab-cell {
+    grid-column: 1 / -1;
+    grid-template-columns: 56px 116px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+  }
+  .lab-cell__name {
+    display: block;
+    line-height: 22px;
+  }
+  .lab-cell__read {
+    min-height: 22px;
+    align-items: center;
+  }
+  .lab-cell__value {
+    font-size: var(--fs-body);
+    line-height: 22px;
+  }
+  .lab-cell__rail {
+    margin-bottom: 0;
+  }
+  .lab-cell__rail .lab-rail__lbl {
+    display: none;
+  }
+  .lab-row__more:not([hidden]) {
+    padding-left: 0;
+  }
+}
+@media (max-width: 599.98px) {
+  .lab-matrix {
+    margin-inline: -8px;
+  }
+  .lab-matrix > ul {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+  .lab-row__btn {
+    padding: 12px 8px;
+    row-gap: 6px;
+  }
+  .lab-cell {
+    grid-template-columns: 50px 104px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .lab-row__more:not([hidden]) {
+    margin: 0 8px;
+  }
+}
+
+/* ---------- a rail: hairline track, pale band, the dot ---------- */
+.lab-rail {
+  position: relative;
+  display: block;
+  height: 20px;
+  container-type: inline-size;
+}
+.lab-rail__line,
+.lab-rail__band {
+  position: absolute;
+  top: 7px;
+  height: 6px;
+  border-radius: 3px;
+}
+.lab-rail__line {
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+.lab-rail__band {
+  left: calc(var(--lo) * 100%);
+  width: max(6px, calc((var(--hi) - var(--lo)) * 100%));
+  background: rgba(255, 255, 255, 0.5); /* 5.3:1 on the void, 4:1 on the track */
+}
+.lab-rail__band.is-open {
+  border-radius: 3px 0 0 3px;
+}
+/* a single textbook value: a notch across the track, not a band */
+.lab-rail__band.is-point {
+  top: 2px;
+  width: 3px;
+  height: 16px;
+  border-radius: 1.5px;
+  translate: -50% 0;
+  background: rgba(255, 255, 255, 0.62);
+}
+/* the dot slides to a new reading (translate, on the spring) and fades in the first time */
+.lab-rail__dot {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--void);
+  translate: calc(var(--p) * 100cqi - 50%) -50%;
+  transition:
+    translate var(--dur-base) var(--ease-spring),
+    scale var(--dur-base) var(--ease-spring),
+    opacity var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
+}
+@starting-style {
+  .lab-rail__dot {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+.lab-rail[data-state="in"] .lab-rail__dot {
+  background: var(--in-band);
+}
+.lab-rail[data-state="out"] .lab-rail__dot {
+  background: var(--out-band);
+}
+/* no target: hollow, the stats view's "not judged" (the cue that is not colour) */
+.lab-rail[data-state="unbanded"] .lab-rail__dot {
+  background: var(--void);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    0 0 0 3px var(--void);
+}
+.lab-rail__lbl {
+  position: absolute;
+  top: 24px;
+  left: calc((var(--lo) + var(--hi)) / 2 * 100%);
+  translate: -50% 0;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur-quick) ease;
+}
+.group:hover .lab-rail__lbl,
+.group:focus-visible .lab-rail__lbl,
+.group[aria-expanded="true"] .lab-rail__lbl {
+  opacity: 1;
+}
+/* a run in flight: the last run's dots step back (text keeps its contrast) */
+.lab-matrix.is-waiting .lab-rail__dot,
+.lab-waiting .lab-rail__dot,
+.lab-waiting .cfr-chart__bar,
+.lab-waiting .cfr-chart__dot {
+  opacity: 0.45;
+}
+
+/* ---------- knobs ---------- */
+.lab-knobs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 56px;
+  row-gap: 14px;
+}
+@media (max-width: 599.98px) {
+  .lab-knobs {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+}
+.lab-knob__label {
+  text-decoration: underline dotted rgba(255, 255, 255, 0.35);
+  text-underline-offset: 5px;
+  cursor: help;
+}
+.lab-knob__from {
+  min-height: 28px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+.lab-knob__from:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lab-knob__track {
+  --thumb: 22px;
+  --k-fill: rgba(255, 255, 255, 0.5);
+  position: relative;
+  height: 34px;
+}
+.lab-knob[data-changed] .lab-knob__track {
+  --k-fill: var(--signal);
+}
+.lab-slider {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.lab-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--k-fill) calc(var(--thumb) / 2 + var(--fill) * (100% - var(--thumb))),
+    rgba(255, 255, 255, 0.14) calc(var(--thumb) / 2 + var(--fill) * (100% - var(--thumb)))
+  );
+}
+.lab-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((6px - var(--thumb)) / 2);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 3px 8px rgba(0, 0, 0, 0.35),
+    0 1px 1px rgba(0, 0, 0, 0.2);
+}
+.lab-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.lab-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--k-fill);
+}
+.lab-slider::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+.lab-slider:focus-visible {
+  outline-offset: 2px;
+  border-radius: 17px;
+}
+/* the default: a notch across the track, shown once the knob moves off it. Under the
+   slider, so the track crosses it. (Hidden while unchanged: some defaults sit between
+   two steps, e.g. 0.68 on a 0.05 grid, where the thumb would not quite cover it.) */
+.lab-knob:not([data-changed]) .lab-knob__notch {
+  display: none;
+}
+.lab-knob__notch {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--thumb) / 2 + var(--def) * (100% - var(--thumb)));
+  z-index: 0;
+  width: 2px;
+  height: 20px;
+  translate: -50% -50%;
+  border-radius: 1px;
+  background: var(--ink);
+}
+
+/* ---------- the dock: the one glass element, the run controls ---------- */
+.lab-dock-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + var(--sab));
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.lab-dock {
+  /* Denser than the table's glass: here rows of text scroll behind it, and where the
+     backdrop blur is not drawn (some renderers skip a 36 px blur) the text under it must
+     not compete with the dock's own. */
+  --glass-fill: rgba(18, 21, 28, 0.84);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 64px;
+  padding: 8px;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+.lab-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 24px;
+  cursor: text;
+  transition: background-color var(--dur-quick) ease;
+}
+.lab-field:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.lab-field:focus-within {
+  background: rgba(0, 0, 0, 0.3);
+  outline: 2px solid var(--signal);
+  outline-offset: 0;
+}
+.lab-field__input {
+  width: 6.2ch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+}
+.lab-field__input:focus,
+.lab-field__input:focus-visible {
+  outline: none;
+}
+.lab-field--seed .lab-field__input {
+  width: 4ch;
+  field-sizing: content;
+  min-width: 1.5ch;
+  max-width: 10.5ch;
+}
+.lab-field--iters .lab-field__input {
+  width: 7.2ch;
+}
+.lab-dock__note {
+  min-width: 76px;
+  padding: 0 10px 0 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+.lab-dock__go {
+  min-width: 168px;
+}
+/* while a run is in flight the pressed button stays lit (the table dock's rule): it says
+   what is happening, so it is not faded like a disabled control */
+.lab-dock[aria-busy="true"] .lab-dock__go {
+  opacity: 1;
+}
+@media (max-width: 599.98px) {
+  .lab-dock-wrap {
+    bottom: calc(8px + var(--sab));
+  }
+  .lab-dock {
+    width: calc(100vw - 16px);
+  }
+  .lab-field {
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .lab-dock__note {
+    display: none;
+  }
+  .lab-dock__go {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+/* ---------- CFR: figures, charts, strategy ---------- */
+.lab-figure__value.is-pass {
+  color: var(--in-band);
+}
+.lab-figure__value.is-fail {
+  color: var(--out-band);
+}
+
+.cfr-chart__lines line {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+/* the line the reading is judged by: 0.02, or the band's two edges (4.4:1 on the void) */
+.cfr-chart__lines line.is-strong {
+  stroke: rgba(255, 255, 255, 0.45);
+}
+.cfr-chart__cut {
+  stroke: var(--void);
+  stroke-width: 1.5;
+  shape-rendering: crispEdges;
+}
+.cfr-chart__bar {
+  fill: var(--bar);
+  transition: fill var(--dur-quick) ease;
+}
+.cfr-chart__dot {
+  fill: var(--bar);
+  stroke: var(--void);
+  stroke-width: 2;
+  transition: fill var(--dur-quick) ease;
+}
+.cfr-chart__bar.is-on,
+.cfr-chart__dot.is-on {
+  fill: var(--ink);
+}
+.cfr-chart__scale {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10%;
+  pointer-events: none;
+}
+.cfr-chart__scale span {
+  position: absolute;
+  right: 0;
+  translate: 0 -50%;
+  line-height: 1;
+}
+.cfr-chart__ends {
+  width: 90%;
+}
+
+.kuhn-row {
+  display: grid;
+  grid-template-columns: 28px 56px minmax(0, 1fr) 168px;
+  align-items: center;
+  column-gap: 18px;
+  min-height: 50px;
+}
+.kuhn-row__value {
+  text-align: right;
+}
+@media (max-width: 599.98px) {
+  .kuhn-row {
+    grid-template-columns: 24px 52px minmax(0, 1fr);
+    column-gap: 14px;
+    min-height: 0;
+    padding: 6px 0;
+  }
+  .kuhn-row__target {
+    grid-column: 3;
+  }
+}
