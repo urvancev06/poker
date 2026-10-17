@@ -21,6 +21,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react'
 import { chips as chipText } from '../../lib/format'
 import { EASE, play } from '../../lib/motion'
 import { prefersReducedMotion } from '../../lib/motion'
+import { suffixIds } from '../../lib/svgIds'
 import { boardU, project, type TableLayout, type UV } from '../../lib/tableLayout'
 import { diffTable, type TableEvents } from '../../lib/tableMotion'
 import type { TableModel } from '../../lib/tableModel'
@@ -44,10 +45,14 @@ function planeD(L: TableLayout, from: UV, to: UV): [number, number] {
 const chipSpot = (L: TableLayout, p: number): UV => (p === 0 ? L.heroBet : L.bets[p as 1 | 2 | 3 | 4 | 5])
 const seatSpot = (L: TableLayout, p: number): UV => (p === 0 ? [0.5, 1.02] : L.g.seats[p as 1 | 2 | 3 | 4 | 5].cards)
 
-/** A throwaway copy of an element, in a ghost layer; it removes itself when done. */
+let ghosts = 0
+
+/** A throwaway copy of an element, in a ghost layer; it removes itself when done. Its SVG
+ * ids are its own (a card back's gradient and clip), so it paints after the original goes. */
 function ghostOf(el: Element | null, host: HTMLElement | null): HTMLElement | null {
   if (!el || !host) return null
   const g = el.cloneNode(true) as HTMLElement
+  suffixIds(g, `-ghost${++ghosts}`)
   g.hidden = false
   g.removeAttribute('data-chip')
   g.removeAttribute('data-backs')

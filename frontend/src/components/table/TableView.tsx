@@ -153,9 +153,13 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const [sizesKey, setSizesKey] = useState('')
   const sizes = useMemo(() => sizesFromKey(sizesKey), [sizesKey])
   // what the labels say (their size follows it), and the webfont arriving
-  const seatText = model
-    ? model.villains.map((v) => `${v.stack}|${v.allIn}|${v.button}|${v.actor}|${v.folded}|${v.net}|${v.label}|${v.tags.join(',')}`).join(';') + `|${visibility}|${JSON.stringify(reads ?? null)}`
-    : `boot|${visibility}`
+  const seatText = useMemo(
+    () =>
+      model
+        ? model.villains.map((v) => `${v.stack}|${v.allIn}|${v.button}|${v.actor}|${v.folded}|${v.net}|${v.label}|${v.tags.join(',')}`).join(';') + `|${visibility}|${JSON.stringify(reads ?? null)}`
+        : `boot|${visibility}`,
+    [model, visibility, reads],
+  )
   const [fontsReady, setFontsReady] = useState(false)
   useEffect(() => {
     let live = true
@@ -165,14 +169,19 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
     }
   }, [])
   useLayoutEffect(() => {
+    // uncap all five, read all five, restore all five: one forced layout, not five
+    const els = VILLAIN_SLOTS.map((_, i) => seatEls.current[i] ?? null)
+    const caps = els.map((el) => el?.style.maxWidth ?? '')
+    els.forEach((el) => {
+      if (el) el.style.maxWidth = 'none'
+    })
     const next: Partial<Record<VillainSlot, SeatSize>> = {}
     VILLAIN_SLOTS.forEach((k, i) => {
-      const el = seatEls.current[i]
-      if (!el) return
-      const cap = el.style.maxWidth
-      el.style.maxWidth = 'none'
-      next[k] = { w: Math.ceil(el.offsetWidth), h: Math.ceil(el.offsetHeight) }
-      el.style.maxWidth = cap
+      const el = els[i]
+      if (el) next[k] = { w: Math.ceil(el.offsetWidth), h: Math.ceil(el.offsetHeight) }
+    })
+    els.forEach((el, i) => {
+      if (el) el.style.maxWidth = caps[i]
     })
     const key = sizesKeyOf(next)
     if (key !== sizesKey) setSizesKey(key)
@@ -242,7 +251,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
 
   const dockRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
-  const coachRef = useRef<HTMLElement>(null)
+  const coachRef = useRef<HTMLDivElement>(null)
 
   // focus: the slider when sizing opens, back to Raise when it closes; the first action
   // when your turn arrives (only if focus was nowhere in particular, or in the dock)
@@ -350,6 +359,9 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const villains = model?.villains ?? null
   const pt = (u: number, v: number) => project(L, u, v)
   const sheetInset = desk ? H - L.dockBottom : H - (L.dockBottom - L.dockH - 8)
+  // a phone sheet's medium detent stops 8 px under your cards (lifted), so the hand you are
+  // acting on stays in sight; drag it up for the large detent
+  const sheetTop = phone ? L.heroTop - L.lift + L.hw * 1.4 + 8 : undefined
   const log = useMemo(() => (model && session ? handLog(model.history, session.hero_seat, model.replay.amounts) : []), [model, session])
   const showPot = !!model && !model.handOver && model.pot > 0
   const showBets = showPot && model.inBets > 0 && model.inBets < model.pot
@@ -416,7 +428,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   }
 
   return (
-    <div data-view="table">
+    <main data-view="table">
       <h1 className="sr-only">Table</h1>
       <div ref={stageRef} className="stage" data-geo={L.gk} style={stageVars(L)}>
         <div className="table-obj" aria-hidden="true">
@@ -489,19 +501,22 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
         </p>
       )}
 
-      <aside
+      {/* a positioning slot only: CoachGlance's own aside is the Coach landmark */}
+      <div
         ref={coachRef}
         className={`coach-slot flex ${L.coachAt === 'row' ? 'items-center' : 'flex-col items-start'}`}
-        aria-label="Coach"
         data-at={L.coachAt}
         hidden={!coachVisible}
-        style={L.coachAt === 'side' ? { left: L.coach.left, top: L.coach.top } : { left: L.axis, bottom: H - (L.dockBottom - L.dockH - 10) }}
+        // beside the hand it may use the room up to the edge (or a side panel), no more: a
+        // long verdict wraps instead of running under the panel
+        style={L.coachAt === 'side' ? { left: L.coach.left, top: L.coach.top, maxWidth: L.Weff - 16 - L.coach.left } : { left: L.axis, bottom: H - (L.dockBottom - L.dockH - 10) }}
       >
         <CoachGlance
           coaching={table.coaching}
           status={coachStatus}
           error={errors.coach}
           layout={L.coachAt}
+          tight={L.tight}
           onAsk={table.askCoach}
           onRetry={() => table.retry('coach')}
           onDismissError={() => table.dismissError('coach')}
@@ -519,7 +534,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
             Hide
           </button>
         )}
-      </aside>
+      </div>
 
       <Dock
         dockRef={dockRef}
@@ -541,7 +556,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
         {announcement(model, table)}
       </div>
 
-      <Sheet open={logShown} onClose={() => onLogOpenChange(false)} title="This hand" bottomInset={sheetInset}>
+      <Sheet open={logShown} onClose={() => onLogOpenChange(false)} title="This hand" bottomInset={sheetInset} mediumTop={sheetTop}>
         <HandLog streets={log} />
       </Sheet>
       <MathsSheet
@@ -549,8 +564,9 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
         open={mathsShown}
         onClose={() => setMathsOpen(false)}
         bottomInset={sheetInset}
+        mediumTop={sheetTop}
         positions={session?.state.seats.map((s) => s.position)}
       />
-    </div>
+    </main>
   )
 }

@@ -2,9 +2,10 @@
  * Sheet: a non-modal panel for reading beside the table (the maths, the hand log).
  *   - layout 'side' (default on desktop): a 360 px panel on the right, under the top bar.
  *   - layout 'bottom' (default on phone and tablet): a bottom sheet with a grabber and two
- *     detents. Medium is ~56% of the screen (never under 320 px); drag the grabber or the
- *     header up 48 px for large, down 80 px to close. Pass `bottomInset` to end it above the
- *     dock, so you can read and act without closing it.
+ *     detents. Medium is ~56% of the screen (never under 320 px), or stops at `mediumTop`
+ *     (lib/sheetHeights.ts); drag the grabber or the header up 48 px for large, down 80 px
+ *     to close. Pass `bottomInset` to end it above the dock, so you can read and act
+ *     without closing it.
  *   - Non-modal: no focus trap, the rest of the page stays live. Escape (when it is the
  *     top-most open layer) and Done close it. Opening focuses Done; closing returns focus
  *     to where it was. role="dialog" named by its title.
@@ -19,7 +20,9 @@
  * Props: open; onClose; title (ReactNode, the h2); label (accessible name when the title
  * is not plain text); leading (before the title, e.g. a small Ring); tone (colours the
  * title: 'good' | 'close' | 'fold' | 'neutral'); layout; bottomInset (px from the viewport
- * bottom where the sheet ends; default 16 side, 8 bottom); width (side, default 360);
+ * bottom where the sheet ends; default 16 side, 8 bottom); mediumTop (bottom only: the
+ * viewport y the medium detent may reach up to, e.g. under your cards); width (side,
+ * default 360);
  * scrim (bottom only, default true; a tap on it closes); doneLabel; children (the
  * scrolling body; a log can scrollIntoView its last row).
  */
@@ -40,6 +43,7 @@ import { Capsule } from './Capsule'
 import { barHeight, useLayoutKind, useViewportSize } from '../lib/breakpoints'
 import { useEscape } from '../lib/escapeStack'
 import { play, useReducedMotion } from '../lib/motion'
+import { sheetHeights } from '../lib/sheetHeights'
 import { useLayerTarget } from './layerContext'
 import './Sheet.css'
 
@@ -55,17 +59,11 @@ export interface SheetProps {
   tone?: string | null
   layout?: SheetLayout
   bottomInset?: number
+  mediumTop?: number
   width?: number
   scrim?: boolean
   doneLabel?: string
   children: ReactNode
-}
-
-/** Medium and large heights for a bottom sheet ending `bottom` px above the viewport bottom. */
-function heights(vh: number, vw: number, bottom: number) {
-  const large = Math.max(200, vh - bottom - (barHeight(vw) + 8))
-  const medium = Math.min(large, Math.max(320, Math.round(vh * 0.56)))
-  return { medium, large }
 }
 
 export function Sheet({
@@ -77,6 +75,7 @@ export function Sheet({
   tone,
   layout,
   bottomInset,
+  mediumTop,
   width = 360,
   scrim = true,
   doneLabel = 'Done',
@@ -108,9 +107,18 @@ export function Sheet({
 
   useEscape(open, onClose)
 
+  // Opening (only a real open: the view coming back into sight with the sheet already open
+  // re-runs these effects, and must neither take focus nor replay the entrance).
+  const wasOpen = useRef(false)
+  const opening = useRef(false)
+  useLayoutEffect(() => {
+    opening.current = open && !wasOpen.current
+    wasOpen.current = open
+  }, [open])
+
   // Focus: remember where it was, move to Done; give it back on close.
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open || !opening.current) return
     if (!returnFocus.current) returnFocus.current = document.activeElement as HTMLElement | null
     done.current?.focus({ preventScroll: true })
   }, [open])
@@ -130,7 +138,7 @@ export function Sheet({
     else play(el, [{ opacity: 0, transform: 'translateY(48px)' }, { opacity: 1, transform: 'none' }], { duration: 520 })
   })
   useLayoutEffect(() => {
-    if (open) enter()
+    if (open && opening.current) enter()
   }, [open])
 
   // Exit, then unmount.
@@ -143,7 +151,8 @@ export function Sheet({
       fill: 'forwards',
     })
     if (a) {
-      a.finished.then(finish, finish)
+      // a cancel is not a finish: reopening during the exit cancels it and keeps the sheet
+      a.finished.then(finish, () => {})
       return () => a.cancel()
     }
     const raf = requestAnimationFrame(finish)
@@ -216,7 +225,7 @@ export function Sheet({
     style.width = Math.min(width, vw - 32)
   } else {
     const bottom = bottomInset ?? 8
-    const h = heights(vh, vw, bottom)
+    const h = sheetHeights(vh, barH, bottom, mediumTop)
     style.bottom = bottom
     style.height = detent === 'large' ? h.large : h.medium
   }

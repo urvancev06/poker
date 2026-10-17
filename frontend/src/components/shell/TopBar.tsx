@@ -3,7 +3,8 @@
  *   left    the mark and "Poker" (goes to the table)
  *   centre  the capsule nav: Table / My stats / History (from 1100 px; the menu has them below)
  *   right   the hand log (table only, L), New game (from 600 px), the "..." menu
- * On scrolling views a black gradient sits behind it so content fades under it.
+ * On scrolling views a black scrim sits behind it: solid through the bar (nothing scrolled
+ * reads through the brand or the nav), fading out over the 24 px below it.
  */
 import type { ReactNode } from 'react'
 import { PRIMARY_VIEWS, VIEW_LABEL, type View } from '../../lib/views'
@@ -25,7 +26,9 @@ export function TopBar({ view, onNavigate, logOpen, onToggleLog, onNewGame, menu
   return (
     <header
       className={`fixed inset-x-0 top-0 z-20 flex h-[var(--bar-h)] items-center pr-3 pl-4 sm:pr-4 sm:pl-6 ${
-        view === 'table' ? '' : "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-linear-to-b before:from-black before:from-40% before:to-transparent before:content-['']"
+        view === 'table'
+          ? ''
+          : "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:-z-10 before:h-[calc(var(--bar-h)+24px)] before:bg-linear-to-b before:from-black before:from-70% before:to-transparent before:content-['']"
       }`}
     >
       <button

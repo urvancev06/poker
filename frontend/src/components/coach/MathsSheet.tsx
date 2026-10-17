@@ -21,6 +21,8 @@
  *   onClose()    Done, Escape, a tap on the scrim, or a drag down
  *   bottomInset  optional: px from the viewport bottom where the sheet ends (above the
  *                dock, so you can read and act); default 16 side, 8 bottom
+ *   mediumTop    optional: how high the phone sheet's medium detent may reach (viewport
+ *                y, under your cards: ui/Sheet)
  * Optional:
  *   positions    position by seat index (session.state.seats[i].position), to name
  *                villains in HUD and Live modes; without it they read "Opponent"
@@ -46,13 +48,14 @@ export interface MathsSheetProps {
   open: boolean
   onClose(): void
   bottomInset?: number
+  mediumTop?: number
   positions?: readonly string[]
   width?: number
 }
 
 const ROW = 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-[9px] not-first:border-t not-first:border-white/6'
 
-export function MathsSheet({ coaching, open, onClose, bottomInset, positions, width }: MathsSheetProps) {
+export function MathsSheet({ coaching, open, onClose, bottomInset, mediumTop, positions, width }: MathsSheetProps) {
   // Keep the last answer while the sheet animates out (coaching goes null when you act).
   const [last, setLast] = useState(coaching)
   if (coaching && coaching !== last) setLast(coaching)
@@ -73,6 +76,7 @@ export function MathsSheet({ coaching, open, onClose, bottomInset, positions, wi
       label="The maths"
       tone={view.tone}
       bottomInset={bottomInset}
+      mediumTop={mediumTop}
       width={width ?? sidePanelWidth(vw)}
       leading={
         view.priced ? <Ring realizedPct={view.eq} needPct={view.need} rawPct={view.raw} tone={view.tone} size={SHEET_RING_PX} /> : undefined

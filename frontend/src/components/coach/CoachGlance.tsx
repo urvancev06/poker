@@ -241,14 +241,18 @@ function Summary({ view, row, ringSize, tight, expanded, revealDelay, autoFocus,
   const button = useFocusWhen<HTMLButtonElement>(autoFocus, onFocused)
   const text = useRef<HTMLSpanElement>(null)
 
-  // A new answer mounts a new summary: the reveal runs once per answer, not on re-renders.
-  const reveal = useEffectEvent(() => [
-    play(button.current, [{ opacity: 0 }, { opacity: 1 }], { delay: revealDelay, duration: 260, ease: 'ease-out' }),
-    play(text.current, [{ opacity: 0, transform: 'translateX(-8px)' }, { opacity: 1, transform: 'none' }], { delay: revealDelay + 260, duration: 480 }),
-  ])
+  // A new answer mounts a new summary: the reveal runs once per answer, not on re-renders,
+  // and not when the table comes back into sight (Activity re-runs layout effects; the ref
+  // survives it).
+  const revealed = useRef(false)
+  const reveal = useEffectEvent(() => {
+    play(button.current, [{ opacity: 0 }, { opacity: 1 }], { delay: revealDelay, duration: 260, ease: 'ease-out' })
+    play(text.current, [{ opacity: 0, transform: 'translateX(-8px)' }, { opacity: 1, transform: 'none' }], { delay: revealDelay + 260, duration: 480 })
+  })
   useLayoutEffect(() => {
-    const anims = reveal()
-    return () => anims.forEach((a) => a?.cancel())
+    if (revealed.current) return
+    revealed.current = true
+    reveal()
   }, [])
 
   const figures = view.figures.filter((f) => !(f.kind === 'ev' && (row || tight)))

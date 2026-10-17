@@ -8,7 +8,7 @@ export const DEFAULT_DECK: DeckId = 'standard'
 
 export const DECK_NAMES: Record<DeckId, string> = {
   standard: 'Standard',
-  four: 'Four-colour',
+  four: 'Four-color',
   large: 'Large index',
   minimal: 'Minimal',
   classic: 'Classic',

@@ -67,7 +67,7 @@ export const OPENING_RANGES: readonly OpeningRange[] = (Object.keys(OPEN_LISTS) 
 })
 
 /** The big blind has no opening range: it checks its option when folded to. */
-export const BB_DEFENCE = 'The big blind never opens: folded to, it checks its option. Against an open, defend wide against the button, cutoff and small blind, tighter against UTG and MP, and mix calls with a polarised 3-bet.'
+export const BB_DEFENCE = 'The big blind never opens: folded to, it checks its option. Against an open, defend wide against the button, cutoff and small blind, tighter against UTG and MP, and mix calls with a polarized 3-bet.'
 
 /** What follows the open. Term, then the line. */
 export const PREFLOP_FOLLOW_ON: readonly { term: string; text: string }[] = [

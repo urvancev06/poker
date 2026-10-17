@@ -1,5 +1,6 @@
 /**
- * Glass: the one material that floats over light (the dock over the atmosphere). Fill,
+ * Glass (dev harness only: the app draws its glass in parts, the table dock in Dock.css and
+ * the Lab dock with `material-glass`): the one material that floats over light. Fill,
  * backdrop blur, and the light-logic rim: a hairline, a top specular, and a blue lower
  * edge because the light comes from below; then the deep two-part shadow.
  *

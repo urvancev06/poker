@@ -20,13 +20,23 @@
 //   B25  Hide during loading cancels the request (its answer is dropped)
 //   409  Try again after a conflict (not your turn, hand not over, table moved on)
 //        reloads the state instead of resubmitting
+//   F1   the decision clock is keyed by the decision: two hero decisions in a row (call,
+//        then first to act on the next street) each send their own decision_ms
+//   F2   a dismissed coach error offers the coach again, never a spinner with no request
+//   C1   New game (and the boot) start a new generation: a response to a request from the
+//        old game (an action, a bot step, a deal, a reload, reads) is dropped when it lands;
+//        New game ignores a second press while it is creating the table
+//   C5   the automatic coach asks once per decision: switching modes back and forth does
+//        not ask again for an answer already on screen (or on its way)
+// The clock and the generation are plain classes in lib/sessionGuards.ts (tested there).
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type ActionType, type Coaching, type Reads, type SessionState } from '../api'
 import { toApiError, type ApiError } from './apiError'
-import { deriveCoachStatus, type CoachStatus } from './coachStatus'
+import { coachSlot, type CoachStatus } from './coachStatus'
 import { usePrefs } from './prefsContext'
 import type { CoachMode } from './prefsSchema'
+import { DecisionClock, Generation } from './sessionGuards'
 
 /** Pause between bot actions while a hand unfolds (ms). */
 export const STEP_MS = 650
@@ -43,7 +53,7 @@ export interface TableSession {
   reads: Reads | undefined
   /** No session yet and no boot error: "Dealing you in". */
   booting: boolean
-  /** A hero action or a deal is in flight: disable every control. */
+  /** A hero action, a deal or a new table is in flight: disable every control. */
   busy: boolean
   /** session.hero_to_act, false without a session. */
   heroTurn: boolean
@@ -74,7 +84,8 @@ export interface TableSession {
   act: (type: ActionType, toAmount?: number) => Promise<void>
   /** Deal the next hand (when hand_over). Ignored while a deal is in flight. */
   nextHand: () => Promise<void>
-  /** Start a fresh session: stacks back to 200, hand 0, HUD reads reset. */
+  /** Start a fresh session: stacks back to 200, hand 0, HUD reads reset. Ignored while a
+   * new table is being created; whatever the old game still had in flight is dropped. */
   newGame: () => Promise<void>
 
   /** You folded and the bots are still playing: they can be fast-forwarded. */
@@ -100,9 +111,10 @@ export function useTableSession(): TableSession {
   const [reads, setReads] = useState<Reads>()
   // The coach's answer and the decision it answers; an error and the decision it was for.
   const [coach, setCoach] = useState<{ key: string; coaching: Coaching } | null>(null)
-  const [coachErr, setCoachErr] = useState<{ key: string; error: ApiError } | null>(null)
+  const [coachErr, setCoachErr] = useState<{ key: string; error: ApiError; dismissed: boolean } | null>(null)
   const [acting, setActing] = useState(false)
   const [dealing, setDealing] = useState(false)
+  const [starting, setStarting] = useState(false)
   const [errors, setErrors] = useState<Omit<SessionErrors, 'coach'>>({})
   // The decision the player asked the coach about (modes off / think).
   const [askedFor, setAskedFor] = useState<string | null>(null)
@@ -113,7 +125,13 @@ export function useTableSession(): TableSession {
   const lastAction = useRef<{ type: ActionType; toAmount?: number } | null>(null)
   // Every coach request takes a ticket; only the latest ticket's answer is applied.
   const coachTicket = useRef(0)
+  // The decision the automatic coach (modes on / think) last asked about (C5).
+  const autoAsked = useRef<string | null>(null)
   const dealingRef = useRef(false)
+  const startingRef = useRef(false)
+  // Which game a response belongs to (C1), and how long each decision took (F1, B23).
+  const [gen] = useState(() => new Generation())
+  const [clock] = useState(() => new DecisionClock())
 
   const setError = useCallback((scope: Exclude<SessionErrorScope, 'coach'>, e: unknown) => {
     setErrors((prev) => ({ ...prev, [scope]: toApiError(e) }))
@@ -128,43 +146,73 @@ export function useTableSession(): TableSession {
   }, [])
   const dismissError = useCallback(
     (scope: SessionErrorScope) => {
-      if (scope === 'coach') setCoachErr(null)
+      // the error stays on record as dismissed: the coach offers itself again (F2)
+      if (scope === 'coach') setCoachErr((e) => (e && !e.dismissed ? { ...e, dismissed: true } : e))
       else dismissScoped(scope)
     },
     [dismissScoped],
   )
 
-  const refreshReads = useCallback((s: SessionState) => {
-    api.reads(s.session_id).then(setReads).catch(() => {})
-  }, [])
+  const refreshReads = useCallback(
+    (s: SessionState) => {
+      const alive = gen.current()
+      api
+        .reads(s.session_id)
+        .then((r) => {
+          if (alive()) setReads(r)
+        })
+        .catch(() => {})
+    },
+    [gen],
+  )
 
   // Step mode: bots don't pre-act, so the whole hand can be watched. The result is
   // applied in callbacks, so the mount effect stays free of synchronous state updates.
   const startSession = useCallback(
-    (scope: 'boot' | 'newGame') =>
-      api
+    (scope: 'boot' | 'newGame') => {
+      const alive = gen.current()
+      return api
         .createSession({ auto_advance: false })
         .then((s) => {
+          if (!alive()) return
           setSession(s)
+          // a new table starts with no reads (the old game's are gone)
+          setReads(undefined)
           refreshReads(s)
         })
-        .catch((e: unknown) => setError(scope, e)),
-    [refreshReads, setError],
+        .catch((e: unknown) => {
+          if (alive()) setError(scope, e)
+        })
+    },
+    [gen, refreshReads, setError],
   )
 
-  // New game clears what the last session left on screen.
+  // New game clears what the last session left on screen, and drops what it still had in
+  // flight (a new generation). A second press while the table is being created is ignored.
   const newGame = useCallback(async () => {
+    if (startingRef.current) return
+    startingRef.current = true
+    setStarting(true)
+    gen.bump()
     coachTicket.current++
+    autoAsked.current = null
     setErrors({})
     setCoach(null)
     setCoachErr(null)
     setSkipFor(null)
-    await startSession('newGame')
-  }, [startSession])
+    try {
+      await startSession('newGame')
+    } finally {
+      startingRef.current = false
+      setStarting(false)
+    }
+  }, [gen, startSession])
 
+  // The boot. Its cleanup drops a superseded result (StrictMode runs this twice in dev).
   useEffect(() => {
     void startSession('boot')
-  }, [startSession])
+    return () => gen.bump()
+  }, [gen, startSession])
 
   const handKey = runningHandKey(session)
   const skipping = !!handKey && skipFor === handKey
@@ -173,17 +221,18 @@ export function useTableSession(): TableSession {
   useEffect(() => {
     if (!session || session.hand_over || session.hero_to_act) return
     let cancelled = false
+    const alive = gen.current()
     const t = setTimeout(
       async () => {
         try {
           const s = await api.advance(session.session_id)
-          if (!cancelled) {
+          if (!cancelled && alive()) {
             setSession(s)
             if (s.hand_over) refreshReads(s)
           }
         } catch (e) {
           // stepping stops here until retry('advance')
-          if (!cancelled) setError('advance', e)
+          if (!cancelled && alive()) setError('advance', e)
         }
       },
       skipping ? 0 : session.state.history.length === 0 ? FIRST_STEP_MS : STEP_MS,
@@ -192,7 +241,7 @@ export function useTableSession(): TableSession {
       cancelled = true
       clearTimeout(t)
     }
-  }, [session, refreshReads, setError, stepNonce, skipping])
+  }, [session, gen, refreshReads, setError, stepNonce, skipping])
 
   const decisionKey = decisionKeyOf(session)
   const heroTurn = !!session?.hero_to_act
@@ -209,86 +258,90 @@ export function useTableSession(): TableSession {
       },
       (e: unknown) => {
         if (ticket !== coachTicket.current) return
-        setCoachErr({ key, error: toApiError(e) })
+        setCoachErr({ key, error: toApiError(e), dismissed: false })
       },
     )
   }, [])
 
-  // Coach modes on and think: ask about every hero turn as it arrives (primitive deps:
-  // a refetched state for the same decision does not ask again).
+  // Coach modes on and think: ask about every hero turn as it arrives, once (primitive
+  // deps: a refetched state for the same decision does not ask again, and neither does
+  // switching between on and think-first, C5).
   useEffect(() => {
     if (coachMode === 'off' || !sessionId || !decisionKey) return
+    if (autoAsked.current === decisionKey) return
+    autoAsked.current = decisionKey
     fetchCoach(sessionId, decisionKey)
   }, [coachMode, sessionId, decisionKey, fetchCoach])
 
-  // Decision clock: starts when the hero becomes the actor, read when they act. Wall
-  // clock on purpose (it includes thinking and interruptions); only ever a median.
-  const decisionStart = useRef<number | null>(null)
+  // Decision clock: one per decision, from the frame it appears to the action. Wall clock
+  // on purpose (it includes thinking and interruptions); only ever a median.
   useEffect(() => {
-    if (session?.hero_to_act) {
-      if (decisionStart.current === null) decisionStart.current = performance.now()
-    } else {
-      decisionStart.current = null
-    }
-  }, [session?.hero_to_act, session?.hand_index])
+    clock.sync(decisionKey, performance.now())
+  }, [clock, decisionKey])
 
-  const answered = !!decisionKey && coach?.key === decisionKey
-  const coachError = decisionKey && coachErr?.key === decisionKey ? coachErr.error : undefined
+  const slot = coachSlot({ decisionKey, mode: coachMode, askedFor, answerFor: coach?.key ?? null, error: coachErr })
+  const coachError = slot.showError ? coachErr?.error : undefined
 
   const act = useCallback(
     async (type: ActionType, toAmount?: number) => {
       if (!session || acting) return
+      const alive = gen.current()
       lastAction.current = { type, toAmount }
       setActing(true)
       // an answer still on its way is for a spot that is about to be gone (B14)
-      const pendingCoach = !answered && !coachError
+      const pendingCoach = !slot.settled
       coachTicket.current++
-      const started = decisionStart.current
+      const taken = clock.take(performance.now())
       try {
-        const elapsedMs = started === null ? undefined : Math.round(performance.now() - started)
-        decisionStart.current = null
-        const s = await api.submitAction(session.session_id, type, toAmount, elapsedMs)
+        const s = await api.submitAction(session.session_id, type, toAmount, taken.elapsedMs)
+        if (!alive()) return
         setSession(s)
         refreshReads(s)
         dismissScoped('action')
       } catch (e) {
+        if (!alive()) return
         // still your decision: the clock keeps running from when the turn began (B23),
         // and the coach is asked again if it was cut off
-        if (decisionStart.current === null) decisionStart.current = started ?? performance.now()
+        clock.restore(taken, performance.now())
         setError('action', e)
         if (pendingCoach && decisionKey && (coachMode !== 'off' || askedFor === decisionKey)) fetchCoach(session.session_id, decisionKey)
       } finally {
         setActing(false)
       }
     },
-    [session, acting, answered, coachError, decisionKey, coachMode, askedFor, refreshReads, dismissScoped, setError, fetchCoach],
+    [session, acting, gen, slot.settled, clock, decisionKey, coachMode, askedFor, refreshReads, dismissScoped, setError, fetchCoach],
   )
 
   const nextHand = useCallback(async () => {
     if (!session || dealingRef.current) return
+    const alive = gen.current()
     dealingRef.current = true
     setDealing(true)
     coachTicket.current++
     try {
       const s = await api.nextHand(session.session_id)
+      if (!alive()) return
       setSession(s)
       refreshReads(s)
       dismissScoped('nextHand')
     } catch (e) {
-      setError('nextHand', e)
+      if (alive()) setError('nextHand', e)
     } finally {
       dealingRef.current = false
       setDealing(false)
     }
-  }, [session, refreshReads, dismissScoped, setError])
+  }, [session, gen, refreshReads, dismissScoped, setError])
 
   const askCoach = useCallback(() => {
     if (!session || !decisionKey) return
     setAskedFor(decisionKey)
-    // think-first already has (or is fetching) the answer; off asks now
-    const inFlight = coachMode !== 'off' && !answered && !coachError
-    if (!answered && !inFlight) fetchCoach(session.session_id, decisionKey)
-  }, [session, decisionKey, coachMode, answered, coachError, fetchCoach])
+    // think-first already has (or is fetching) the answer; off asks now; so does asking
+    // again after an error (dismissed or not)
+    const inFlight = coachMode !== 'off' && !slot.settled
+    if (slot.answered || inFlight) return
+    setCoachErr(null)
+    fetchCoach(session.session_id, decisionKey)
+  }, [session, decisionKey, coachMode, slot.answered, slot.settled, fetchCoach])
 
   const hideCoach = useCallback(() => {
     // think-first: the answer is put away again ("Show the coach")
@@ -296,6 +349,7 @@ export function useTableSession(): TableSession {
     if (coachMode === 'off') {
       // B25: cancel what is on its way and forget what was shown
       coachTicket.current++
+      autoAsked.current = null
       setCoach(null)
       setCoachErr(null)
     }
@@ -305,6 +359,7 @@ export function useTableSession(): TableSession {
     (mode: CoachMode) => {
       if (mode === 'off') {
         coachTicket.current++
+        autoAsked.current = null
         setCoach(null)
         setCoachErr(null)
       }
@@ -324,9 +379,17 @@ export function useTableSession(): TableSession {
     (scope: Exclude<SessionErrorScope, 'coach'>) => {
       dismissScoped(scope)
       if (!session) return
-      api.getState(session.session_id).then(setSession, (e: unknown) => setError(scope, e))
+      const alive = gen.current()
+      api.getState(session.session_id).then(
+        (s) => {
+          if (alive()) setSession(s)
+        },
+        (e: unknown) => {
+          if (alive()) setError(scope, e)
+        },
+      )
     },
-    [session, dismissScoped, setError],
+    [session, gen, dismissScoped, setError],
   )
 
   const retry = useCallback(
@@ -361,16 +424,7 @@ export function useTableSession(): TableSession {
     [errors, reload, newGame, nextHand, dismissScoped, fetchCoach, session, decisionKey, act],
   )
 
-  // The automatic answer (modes on / think) is on its way from the first frame of a turn.
-  const requested = heroTurn && (coachMode !== 'off' || askedFor === decisionKey)
-  const coachStatus = deriveCoachStatus({
-    heroToAct: heroTurn,
-    mode: coachMode,
-    asked: askedFor !== null && askedFor === decisionKey,
-    loading: requested && !answered && !coachError,
-    hasCoaching: answered,
-    hasError: !!coachError,
-  })
+  const coachStatus = slot.status
 
   const allErrors: SessionErrors = coachError ? { ...errors, coach: coachError } : errors
 
@@ -378,7 +432,7 @@ export function useTableSession(): TableSession {
     session,
     reads,
     booting: !session && !errors.boot,
-    busy: acting || dealing,
+    busy: acting || dealing || starting,
     heroTurn,
     decisionKey,
     coachMode,

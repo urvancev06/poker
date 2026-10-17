@@ -28,7 +28,7 @@ describe('cards', () => {
 describe('decks', () => {
   it('has five named decks', () => {
     expect(DECK_IDS).toHaveLength(5)
-    expect(DECK_IDS.map((id) => DECK_NAMES[id])).toEqual(['Standard', 'Four-colour', 'Large index', 'Minimal', 'Classic'])
+    expect(DECK_IDS.map((id) => DECK_NAMES[id])).toEqual(['Standard', 'Four-color', 'Large index', 'Minimal', 'Classic'])
   })
 
   it('migrates the old ids and falls back to Standard', () => {

@@ -14,6 +14,7 @@
 import { Activity, useState } from 'react'
 import { BP, useViewportSize } from '../../lib/breakpoints'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { PageHeader } from '../../ui/PageHeader'
 import { Segmented } from '../../ui/Segmented'
 import { BotLab } from './BotLab'
 import { CfrLab } from './CfrLab'
@@ -42,10 +43,7 @@ export function LabView() {
   return (
     <div className="lab mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-10">
       <SpaceColumn />
-      <div className="flex flex-wrap items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[18px]">
-        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">Lab</h1>
-        <Segmented className="lab-tools" label="Tool" value={tool} onChange={setTool} options={TOOLS} />
-      </div>
+      <PageHeader title="Lab" controls={<Segmented className="lab-tools" label="Tool" value={tool} onChange={setTool} options={TOOLS} />} />
       <Activity mode={tool === 'bots' ? 'visible' : 'hidden'}>
         <BotLab />
       </Activity>

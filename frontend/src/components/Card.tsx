@@ -4,13 +4,12 @@
 //   <Card card="Ah" width={64} />          a face (aria-label "Ace of hearts")
 //   <Card faceDown width={40} />           the back (aria-label "Face-down card")
 //   <Card card="Ks" deckId="four" />       a specific deck (the Preferences previews)
-//   <DealtCard card="Ah" />                mounts face down and turns over (the deal)
-//   <BoardCard card={board[i] ?? null} />  face down until its value arrives, then turns
+// (A card that turns over on the table is FlipCard, components/table/Felt.tsx.)
 //
 // Shadows belong to the context (felt, hero hand), via className: the element's radius
 // follows the card's corner.
 
-import { useEffect, useId, useState } from 'react'
+import { useId } from 'react'
 import { CARD_INSET, CARD_OUTLINE, deckById, type DeckDef } from '../lib/decks'
 import { cardLabel, parseCard, type ParsedCard } from '../lib/cards'
 import { useDeck } from '../lib/prefsContext'
@@ -94,52 +93,5 @@ export function Card({ card, faceDown = false, width = 64, deckId, className = '
     <svg viewBox="0 0 100 140" width={width} height={Math.round(width * RATIO)} className={`card ${className}`} focusable="false" {...a11y}>
       {parsed ? <CardFace card={parsed} deck={deck} uid={uid} /> : <CardBack uid={uid} />}
     </svg>
-  )
-}
-
-/**
- * Mounts face down and turns face up on the next frame: the deal reveal. Key it by card
- * value, so a new card remounts and turns while unchanged cards stay still. Reduced
- * motion: the global rule makes the turn instant.
- */
-export function DealtCard({ card, width = 64, className = '' }: { card: string; width?: number; className?: string }) {
-  const [up, setUp] = useState(false)
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setUp(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
-  return (
-    <div className={`card-flip ${up ? 'is-up' : ''} ${className}`} style={{ width, height: Math.round(width * RATIO) }}>
-      <div className="card-flip__inner">
-        <div className="card-flip__side">
-          <Card card={card} width={width} decorative={!up} />
-        </div>
-        <div className="card-flip__side card-flip__side--back">
-          <Card faceDown width={width} decorative />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * A community card that sits face down until its value arrives, then turns in place. Key
- * it by board POSITION, so the same element persists and animates when `card` goes from
- * null to a value. While face down it exposes no face to assistive tech.
- */
-export function BoardCard({ card, width = 72, className = '' }: { card: string | null; width?: number; className?: string }) {
-  const [last, setLast] = useState<string | null>(card)
-  // Adjusted during render: `last` is only read while `card` is null (a flip back down).
-  if (card && card !== last) setLast(card)
-  const front = card ?? last
-  return (
-    <div className={`card-flip ${card ? 'is-up' : ''} ${className}`} style={{ width, height: Math.round(width * RATIO) }}>
-      <div className="card-flip__inner">
-        <div className="card-flip__side">{front ? <Card card={front} width={width} decorative={!card} /> : <Card faceDown width={width} decorative />}</div>
-        <div className="card-flip__side card-flip__side--back">
-          <Card faceDown width={width} decorative={!!card} />
-        </div>
-      </div>
-    </div>
   )
 }

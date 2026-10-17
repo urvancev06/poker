@@ -4,7 +4,8 @@
 //   won-showdown     You won  +14   At showdown
 //   won-uncontested  You won  +3    Everyone folded
 //   lost-showdown    You lost −191  At showdown
-//   folded-cost      You folded −2  From the big blind   (or "On the flop" after more went in)
+//   folded-cost      You folded −2  From the big blind   (or "Before the flop" / "On the flop"
+//                                                         after more went in)
 //   folded-free      You folded     It cost nothing      (no grey 0)
 //   split            Split pot      At showdown
 
@@ -27,7 +28,8 @@ export interface HandOutcome {
 
 const BLIND_NAME: Record<string, string> = { SB: 'small blind', BB: 'big blind' }
 
-/** Where the hero folded: "From the big blind" for a blind given up, else "On the flop". */
+/** Where the hero folded: "From the big blind" for a blind given up, "Before the flop" for
+ * a later preflop fold, else "On the flop" / "On the turn" / "On the river". */
 function foldedWhere(s: SessionState): string {
   const hero = s.hero_seat
   const mine = s.state.history.filter((h) => h.seat === hero)
@@ -36,6 +38,7 @@ function foldedWhere(s: SessionState): string {
   const position = s.state.seats[hero]?.position ?? ''
   // the only chips in were a forced blind: the fold was the hero's first action, preflop
   if (street === 'preflop' && mine[0]?.action === 'fold' && BLIND_NAME[position]) return `From the ${BLIND_NAME[position]}`
+  if (street === 'preflop') return 'Before the flop'
   return `On the ${STREET_LABEL[street]?.toLowerCase() ?? street}`
 }
 

@@ -31,14 +31,13 @@ The look is the approved Stage prototype (`scratchpad/round2/stage/`); tokens li
 
 - `Space` - the void behind every view: deterministic starfield, the planet limb, the light
   source. Rendered once in App. `variant` stage|page, `dollyKey`, `intro`.
-- `Glass` - the glass material wrapper (fill, blur, hairline, top specular, blue lower rim,
-  shadow). `as`, `shape` capsule|sheet|none.
 - `Capsule` - the button. `variant` primary|secondary|quiet, `size` sm 34|md 44|lg 48.
 - `IconButton` - a circle holding one icon. `label` (required), `size`, `variant`.
 - `Segmented` - exclusive choice as a radiogroup with roving focus; selected segment >= 3:1.
 - `Sheet` - non-modal side panel (desk) / bottom sheet with grabber and medium/large detents
   (phone, tablet). Escape and Done close; focus to Done and back. `bottomInset` to end it
-  above the dock.
+  above the dock; `mediumTop` to stop the medium detent under something (the table's
+  phone sheets stop under your cards). A view coming back into sight replays nothing.
 - `Disclosure` - button with aria-expanded + chevron + the block it shows; controlled or not.
 - `Tooltip` - description on hover, focus and tap; `InfoButton` - a circled i that pins a
   note open on tap. (Internals: `useTip`, `TipBubble`.)
@@ -47,21 +46,30 @@ The look is the approved Stage prototype (`scratchpad/round2/stage/`); tokens li
 - `Icons` - `IconLog`, `IconMore`, `IconChevronRight`, `IconBack`, `IconAlert`, `IconInfo`,
   `IconClose`, `IconCoach`.
 - `ErrorNotice` - a scoped error: human headline by status code + context, the backend
-  detail visible, optional Dismiss / Try again. `layout` stack|row.
+  detail visible, optional Dismiss / Try again. `layout` stack|row; `compactDismiss`
+  (a close button, for the phone dock). Page views give it one 640 px measure.
+- `PageHeader` - the title row of every page view: the h1, optional `controls` bottom-aligned
+  with it, an optional `note` under them; the title sits at the same height on all five.
 - `LayerHost` - where a view's overlays portal (App wraps every view): a hidden view's open
   sheet hides with it.
 
-Cards: `components/Card.tsx` (`Card`, `DealtCard`, `BoardCard`) and `lib/decks.tsx`. Five
-decks: Standard (default), Four-colour, Large index, Minimal, Classic (ids `standard`,
+Cards: `components/Card.tsx` (`Card`: a face or the back) and `lib/decks.tsx`; the table's
+turning card is `FlipCard` in `components/table/Felt.tsx`. Five
+decks: Standard (default), Four-color, Large index, Minimal, Classic (ids `standard`,
 `four`, `large`, `minimal`, `classic`; old ids migrate, `lib/deckIds.ts`). One back for all.
 
-## Pure logic (src/lib/, each with *.test.ts)
+## Logic (src/lib/: pure modules with *.test.ts; the hooks in it wire them to React)
 
 - `apiError.ts` - `ApiError` {status, code, detail, path}; FastAPI string / 422 array
   detail -> readable text; `describeError(err, context)` -> {headline, detail, retryable,
   needsNewGame}. `api.ts` throws ApiError for every failure.
-- `useTableSession.ts` - the table session hook (see "Contracts").
-- `coachStatus.ts` - `deriveCoachStatus()`: off | idle | loading | ready | error.
+- `useTableSession.ts` - the table session hook (see "Contracts"); its bookkeeping lives in
+  `sessionGuards.ts` (`DecisionClock`: decision_ms per decision; `Generation`: a response
+  from before New game is dropped) and `coachStatus.ts`.
+- `coachStatus.ts` - `deriveCoachStatus()`: off | idle | loading | ready | error;
+  `coachSlot()`: that status and the answer/error bookkeeping for the decision on screen.
+- `sheetHeights.ts` - a bottom sheet's medium and large detents. `svgIds.ts` - give a
+  cloned SVG its own ids (the motion's ghosts).
 - `prefsSchema.ts` - stored prefs: deck, visibility (labeled|hud|live), coach mode
   (on|think|off); `usePrefs()` from `prefsContext.ts` exposes all three.
 - `motion.ts` - `EASE`, `DUR`, `play(el, keyframes, opts)` (spring, fill backwards, skipped

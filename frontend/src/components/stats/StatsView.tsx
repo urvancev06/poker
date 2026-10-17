@@ -21,6 +21,7 @@ import { BP, useViewportSize } from '../../lib/breakpoints'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { Capsule } from '../../ui/Capsule'
 import { ErrorNotice } from '../../ui/ErrorNotice'
+import { PageHeader } from '../../ui/PageHeader'
 import { Segmented } from '../../ui/Segmented'
 import { Facts } from './Facts'
 import { GateRing } from './GateRing'
@@ -72,18 +73,10 @@ export function StatsView({ onGoToTable }: StatsViewProps) {
   return (
     <div className="stats mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
       <SpaceColumn />
-      <div className="flex flex-wrap items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[18px]">
-        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">My stats</h1>
-        <div className="flex flex-col items-end gap-2 max-sm:items-stretch">
-          <Segmented className="stats-window" label="Window" value={win} onChange={setWin} options={WINDOW_OPTIONS} />
-          <p className="m-0 min-h-[18px] text-foot text-fog max-sm:text-center" aria-live="polite">
-            {note}
-          </p>
-        </div>
-      </div>
+      <PageHeader title="My stats" controls={<Segmented className="stats-window" label="Window" value={win} onChange={setWin} options={WINDOW_OPTIONS} />} note={note} />
 
       {showError ? (
-        <div className="material-sheet squircle mt-7 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+        <div className="material-sheet squircle mt-7 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
           <ErrorNotice
             error={error}
             context="stats"

@@ -51,7 +51,7 @@ export function CfrLab() {
       </div>
 
       {run.error ? (
-        <div className="material-sheet squircle mt-12 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+        <div className="material-sheet squircle mt-12 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
           <ErrorNotice
             error={run.error}
             context="cfr"

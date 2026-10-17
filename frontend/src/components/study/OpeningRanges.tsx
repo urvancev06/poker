@@ -47,7 +47,7 @@ export function OpeningRanges() {
         {range ? `${name} opens ${range.pct.toFixed(1)}%, ${count(range.combos)} of ${count(TOTAL_COMBOS)} combos.` : `${name}: no opening range.`}
       </p>
       <p className="m-0 mt-6 max-w-[62ch] text-callout text-fog">
-        Each width is counted from its list. Memorise the lists: the percentage only describes them.
+        Each width is counted from its list. Memorize the lists: the percentage only describes them.
       </p>
 
       <h3 className="m-0 mt-14 text-headline font-strong">Facing a raise</h3>

@@ -18,6 +18,7 @@ import { usePrefs } from '../../lib/prefsContext'
 import { canPersist, localStore } from '../../lib/prefsStorage'
 import { BP, useViewportSize } from '../../lib/breakpoints'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { PageHeader } from '../../ui/PageHeader'
 import { ChoiceList, type Choice } from './ChoiceList'
 import { DeckPicker } from './DeckPicker'
 import { SeatSample } from './SeatSample'
@@ -65,7 +66,7 @@ export function PreferencesView({ coachMode, onCoachMode }: PreferencesViewProps
   return (
     <div className="prefs mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
       <SpaceColumn />
-      <h1 className="m-0 text-display font-bold max-sm:text-[40px]">Preferences</h1>
+      <PageHeader title="Preferences" />
       <p className="m-0 mt-4 text-body text-fog">
         {persists ? 'Saved on this device.' : 'This browser is not keeping site data, so these last for this visit only.'}
       </p>

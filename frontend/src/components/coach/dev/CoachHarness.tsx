@@ -28,7 +28,7 @@ import { PrefsContext, usePrefs, type PrefsValue } from '../../../lib/prefsConte
 import { normalizeCoachMode, normalizeVisibility, type CoachMode, type VisibilityMode } from '../../../lib/prefsSchema'
 import { Card } from '../../Card'
 import { Capsule } from '../../../ui/Capsule'
-import { Glass } from '../../../ui/Glass'
+import { Glass } from './Glass'
 import { Space } from '../../../ui/Space'
 import { CoachGlance } from '../CoachGlance'
 import { MathsSheet } from '../MathsSheet'

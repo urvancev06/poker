@@ -75,7 +75,9 @@ export function Dock({ faceKey, contentKey, axis, bottom, phone, raised, busy, f
   useEffect(() => {
     if (!leaving) return
     const a = play(leavingEl.current, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 160, ease: 'ease-out', fill: 'forwards' })
-    const done = () => setLeaving(null)
+    // clears this leaving face only: a newer one that replaced it (its fade cancelled within
+    // 160 ms) clears itself when its own fade is done
+    const done = () => setLeaving((l) => (l === leaving ? null : l))
     if (!a) {
       const t = setTimeout(done, 0)
       return () => clearTimeout(t)

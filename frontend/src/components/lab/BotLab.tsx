@@ -56,7 +56,7 @@ export function BotLab() {
     <div aria-busy={!error}>
       {INTRO}
       {error ? (
-        <div className="material-sheet squircle mt-12 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+        <div className="material-sheet squircle mt-12 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
           <ErrorNotice error={error} context="lab" headline="The lab couldn’t load." onRetry={retry} busy={retrying} layout="row" className="max-sm:flex-col max-sm:items-start" />
         </div>
       ) : (
@@ -112,7 +112,7 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
       <Lineup info={info} lineup={lineup} onChange={setLineup} />
 
       {run.error ? (
-        <div className="material-sheet squircle mt-12 rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
+        <div className="material-sheet squircle mt-12 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">
           <ErrorNotice
             error={run.error}
             context="lab"

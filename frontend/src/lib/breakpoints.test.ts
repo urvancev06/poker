@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layoutKind } from './breakpoints'
+import { barHeight, layoutKind } from './breakpoints'
 
 describe('layoutKind', () => {
   it('splits at 600 and 1100', () => {
@@ -14,9 +14,11 @@ describe('layoutKind', () => {
 })
 
 describe('barHeight', () => {
-  it('matches --bar-h', async () => {
-    const { barHeight } = await import('./breakpoints')
+  // tokens.test.ts checks it against --bar-h in index.css
+  it('is 56 px on a phone and 64 px from 600 px', () => {
     expect(barHeight(390)).toBe(56)
+    expect(barHeight(599)).toBe(56)
+    expect(barHeight(600)).toBe(64)
     expect(barHeight(1440)).toBe(64)
   })
 })

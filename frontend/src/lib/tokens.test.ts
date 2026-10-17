@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { EASE } from './motion'
-import { BP } from './breakpoints'
+import { BP, barHeight } from './breakpoints'
 
 // Read from disk: Vitest hands CSS imports (even ?raw) to its CSS pipeline, which empties them.
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
@@ -24,6 +24,16 @@ describe('CSS and JS tokens agree', () => {
     for (const s of Object.values(EASE)) expect(s.endsWith(', 1)')).toBe(true)
     expect(peak(EASE.spring)).toBe(1)
     expect(peak(EASE.bouncy)).toBeCloseTo(1.046, 3)
+  })
+
+  it('the top bar height (--bar-h, and its phone value) is barHeight()', () => {
+    expect(token('--bar-h')).toBe(`${barHeight(BP.sm)}px`)
+    const phone = css.match(/@media \(max-width: ([\d.]+)px\) \{\s*:root \{\s*--bar-h:\s*([^;]+);/)
+    expect(phone).not.toBeNull()
+    const [, below, h] = phone!
+    expect(Number(below)).toBeLessThan(BP.sm)
+    expect(Number(below)).toBeGreaterThan(BP.sm - 1)
+    expect(h.trim()).toBe(`${barHeight(BP.sm - 1)}px`)
   })
 
   it('breakpoints', () => {

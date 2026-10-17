@@ -5,7 +5,7 @@
 // Every deck draws on the same 100 x 140 viewBox, so decks swap at any card size.
 //
 //   Standard     two-colour, rank + small suit top left, a large pip bottom right (default)
-//   Four-colour  the same face, each suit its own colour (spades ink, hearts red,
+//   Four-color   the same face, each suit its own colour (spades ink, hearts red,
 //                diamonds blue, clubs green): suits told apart at a glance
 //   Large index  an oversized rank and suit for small cards (phones, showdown reveals)
 //   Minimal      just the corner index on a flat face

@@ -101,7 +101,7 @@ export function MoreMenu({ open, onOpenChange, view, onNavigate, coachMode, onCo
         }}
         className="material-sheet squircle fixed top-[52px] right-2 left-2 z-40 max-h-[calc(100dvh-76px)] origin-[calc(100%-20px)_0] overflow-auto rounded-menu p-2 sm:top-[58px] sm:left-auto sm:right-4 sm:w-[300px]"
       >
-        <div className="px-2 pt-2 pb-2.5 lg:hidden">
+        <div className="pt-2 pb-2.5 lg:hidden">
           {PRIMARY_VIEWS.map((v) => (
             <button key={v} type="button" className={ITEM} aria-current={view === v ? 'page' : undefined} onClick={() => go(v)}>
               {VIEW_LABEL[v]}

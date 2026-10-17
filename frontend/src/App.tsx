@@ -7,8 +7,12 @@
 // hidden views keep their state, and their effects pause until they are shown again.
 // Each view has its own LayerHost, so its sheets and tooltips hide with it.
 // No router and no URL state: a reload lands on the table.
+//
+// The session re-renders App on every table snapshot (about every 650 ms while bots act),
+// so the page views are memoized and get stable props: they re-render only when what they
+// show changes.
 
-import { Activity, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Activity, memo, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { usePrefs } from './lib/prefsContext'
 import { useTableSession } from './lib/useTableSession'
 import type { View } from './lib/views'
@@ -22,6 +26,12 @@ import { HistoryView } from './components/history/HistoryView'
 import { LabView } from './components/lab/LabView'
 import { StudyView } from './components/study/StudyView'
 import { PreferencesView } from './components/prefs/PreferencesView'
+
+const Stats = memo(StatsView)
+const History = memo(HistoryView)
+const Study = memo(StudyView)
+const Lab = memo(LabView)
+const Preferences = memo(PreferencesView)
 
 function isTyping(t: EventTarget | null): boolean {
   return t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable]')
@@ -53,10 +63,12 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [])
 
+  const goToTable = useCallback(() => navigate('table'), [navigate])
+  const startNewGame = table.newGame
   const newGame = useCallback(() => {
     navigate('table')
-    void table.newGame()
-  }, [navigate, table])
+    void startNewGame()
+  }, [navigate, startNewGame])
 
   // L toggles the hand log on the table.
   const onTable = view === 'table'
@@ -104,27 +116,27 @@ export default function App() {
       </Activity>
       {visited.has('stats') && (
         <Page active={view === 'stats'}>
-          <StatsView onGoToTable={() => navigate('table')} />
+          <Stats onGoToTable={goToTable} />
         </Page>
       )}
       {visited.has('history') && (
         <Page active={view === 'history'}>
-          <HistoryView sessionId={table.session?.session_id} onGoToTable={() => navigate('table')} />
+          <History sessionId={table.session?.session_id} onGoToTable={goToTable} />
         </Page>
       )}
       {visited.has('study') && (
         <Page active={view === 'study'}>
-          <StudyView />
+          <Study />
         </Page>
       )}
       {visited.has('lab') && (
         <Page active={view === 'lab'}>
-          <LabView />
+          <Lab />
         </Page>
       )}
       {visited.has('prefs') && (
         <Page active={view === 'prefs'}>
-          <PreferencesView coachMode={table.coachMode} onCoachMode={table.setCoachMode} />
+          <Preferences coachMode={table.coachMode} onCoachMode={table.setCoachMode} />
         </Page>
       )}
     </div>

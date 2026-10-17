@@ -33,6 +33,24 @@ describe('classifyResult (B2)', () => {
     }
     expect(classifyResult(later)).toMatchObject({ kind: 'folded-cost', net: -11, sub: 'On the flop' })
   })
+  it('folded preflop after putting more in: "Before the flop", never "On the preflop"', () => {
+    const s = fixture('result_hero_folded_lost')
+    const hero = s.hero_seat
+    const raised: SessionState = {
+      ...s,
+      last_result: { ...s.last_result!, hero_net: -2 },
+      state: {
+        ...s.state,
+        seats: s.state.seats.map((seat, i) => (i === hero ? { ...seat, position: 'BTN' } : seat)),
+        history: [
+          { seat: hero, position: 'BTN', street: 'preflop', action: 'call', to_amount: 2 },
+          { seat: (hero + 1) % s.state.seats.length, position: 'SB', street: 'preflop', action: 'raise', to_amount: 10 },
+          { seat: hero, position: 'BTN', street: 'preflop', action: 'fold', to_amount: null },
+        ],
+      },
+    }
+    expect(classifyResult(raised)).toMatchObject({ kind: 'folded-cost', net: -2, sub: 'Before the flop' })
+  })
   it('folded for free: no 0, no "Chop"', () => {
     expect(classifyResult(fixture('result_hero_folded_net0'))).toEqual({ kind: 'folded-free', word: 'You folded', net: null, tone: 'neutral', sub: 'It cost nothing' })
   })

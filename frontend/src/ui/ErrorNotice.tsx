@@ -7,13 +7,15 @@
  *
  * Props: error (ApiError); context (ErrorContext: picks the copy, e.g. 'action' 409 ->
  * "Not your turn yet."); headline (override); onRetry + retryLabel ('Try again');
- * onDismiss + dismissLabel ('Dismiss'); busy (disables the buttons while a retry runs);
- * layout 'stack' (text over buttons, default) | 'row' (one line, e.g. in a capsule);
- * className. Copy: lib/apiError.ts describeError().
+ * onDismiss + dismissLabel ('Dismiss'); compactDismiss (Dismiss as a 44 px close button,
+ * where a second capsule leaves the text no room: the phone dock); busy (disables the
+ * buttons while a retry runs); layout 'stack' (text over buttons, default) | 'row' (one
+ * line, e.g. in a capsule); className. Copy: lib/apiError.ts describeError().
  */
 import { describeError, type ApiError, type ErrorContext } from '../lib/apiError'
 import { Capsule } from './Capsule'
-import { IconAlert } from './Icons'
+import { IconButton } from './IconButton'
+import { IconAlert, IconClose } from './Icons'
 
 export interface ErrorNoticeProps {
   error: ApiError
@@ -23,6 +25,7 @@ export interface ErrorNoticeProps {
   retryLabel?: string
   onDismiss?: () => void
   dismissLabel?: string
+  compactDismiss?: boolean
   busy?: boolean
   layout?: 'stack' | 'row'
   className?: string
@@ -36,6 +39,7 @@ export function ErrorNotice({
   retryLabel = 'Try again',
   onDismiss,
   dismissLabel = 'Dismiss',
+  compactDismiss = false,
   busy = false,
   layout = 'stack',
   className = '',
@@ -53,11 +57,16 @@ export function ErrorNotice({
       </div>
       {(onRetry || onDismiss) && (
         <div className={`flex shrink-0 gap-2 ${row ? 'ml-auto' : ''}`}>
-          {onDismiss && (
-            <Capsule variant="quiet" size="md" onClick={onDismiss} disabled={busy}>
-              {dismissLabel}
-            </Capsule>
-          )}
+          {onDismiss &&
+            (compactDismiss ? (
+              <IconButton label={dismissLabel} size="md" onClick={onDismiss} disabled={busy}>
+                <IconClose />
+              </IconButton>
+            ) : (
+              <Capsule variant="quiet" size="md" onClick={onDismiss} disabled={busy}>
+                {dismissLabel}
+              </Capsule>
+            ))}
           {onRetry && (
             <Capsule variant="primary" size="md" onClick={onRetry} disabled={busy}>
               {retryLabel}

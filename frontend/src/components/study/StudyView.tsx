@@ -15,6 +15,7 @@
 import type { ReactNode } from 'react'
 import { BP, useLayoutKind, useViewportSize } from '../../lib/breakpoints'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { PageHeader } from '../../ui/PageHeader'
 import { count, speakBand as speakTarget } from '../../lib/stats'
 import {
   ARCHETYPES,
@@ -73,7 +74,7 @@ export function StudyView() {
     <div className="study mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
       <SpaceColumn />
       <header className="study-head">
-        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">Study</h1>
+        <PageHeader title="Study" />
         <p className="m-0 mt-5 max-w-[60ch] text-body text-fog">
           The 100bb 6-max baseline the bots are built from and the coach teaches. It is a standard starting point, not solver
           truth: real GTO mixes its frequencies. For exact ranges and mixing,{' '}

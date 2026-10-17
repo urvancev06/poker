@@ -3,7 +3,8 @@
  * visibility mode), the dealer puck and the stack ("All-in" while all-in). In HUD mode the
  * read has its own line. The last line is the position, then what happened: this street's
  * action ("3-bet 15, bets 26"; a phone keeps only the latest), "Folded", or at hand end the
- * net (+197 in green, −5 in red) and a shown hand's label. A bot thinking has a pulsing dot.
+ * net (+197 in green, −5 in red) and a shown hand's label (on a line of its own when it
+ * does not fit beside them in the seat's width). A bot thinking has a pulsing dot.
  * Folded seats step back to the tertiary colour (and say "Folded": never colour alone).
  */
 import type { ReactNode, Ref } from 'react'
@@ -62,6 +63,11 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
     .filter(Boolean)
     .join(', ')
   const line2 = identity.pos || act
+  // a shown hand's label wraps under the position and net rather than truncating; the
+  // wrapped line keeps the seat's alignment
+  const wrap = !!(seat?.cards && seat.label)
+  const justify = place.side === 'top' ? 'justify-center' : place.side === 'left' || place.side === 'top-right' || place.side === 'corner-right' ? 'justify-end' : ''
+  const actRow = wrap ? `flex-wrap gap-y-0.5 ${justify}` : ''
   return (
     <div
       ref={labelRef}
@@ -96,7 +102,7 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
       )}
       {seat && line2 && (
         // proportional figures here: Inter's tabular set widens the hyphen in "3-bet 15"
-        <div data-seat-act="" className={`flex max-w-full font-medium ${phone ? 'gap-[5px] text-[12px]' : 'gap-[7px] text-foot'} ${ink || 'text-fog'}`}>
+        <div data-seat-act="" className={`flex max-w-full font-medium ${phone ? 'gap-x-[5px] text-[12px]' : 'gap-x-[7px] text-foot'} ${actRow} ${ink || 'text-fog'}`}>
           {identity.pos && <span className="flex-none font-semibold text-dust">{identity.pos}</span>}
           {act}
         </div>

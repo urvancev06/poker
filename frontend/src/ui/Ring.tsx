@@ -13,7 +13,8 @@
  * Props: realizedPct; needPct (number | null); rawPct?; tone (backend `tone`, anything
  * unknown is neutral); size (px; under 72 px uses the thick small-ring strokes);
  * reveal (draw in: the price arc, then the notch, then the fill sweeps past it, then the
- * dot; re-runs when the figures change; instant under reduced motion); revealDelay (ms);
+ * dot; re-runs when the figures change, not when a hidden view is shown again; instant
+ * under reduced motion); revealDelay (ms);
  * label; className.
  */
 import { useId, useLayoutEffect, useRef } from 'react'
@@ -42,9 +43,15 @@ export function Ring({ realizedPct, needPct, rawPct = null, tone, size, reveal =
   const n = priced ? notch(needPct, variant) : null
   const g = fillGradient(realizedPct)
 
+  // The reveal runs again when the figures change, not when the ring comes back into sight
+  // (Activity re-runs layout effects; the ref survives it).
+  const drawn = useRef<{ figures: string; anims: (Animation | null)[] } | null>(null)
   useLayoutEffect(() => {
     const el = svg.current
     if (!reveal || !el) return
+    const figures = `${revealDelay}|${priced}|${needPct}|${realizedPct}`
+    if (drawn.current?.figures === figures) return
+    drawn.current?.anims.forEach((a) => a?.cancel())
     const q = (s: string) => el.querySelector(s)
     const t0 = revealDelay
     const anims = [
@@ -56,7 +63,7 @@ export function Ring({ realizedPct, needPct, rawPct = null, tone, size, reveal =
       }),
       play(q('.coach-ring__raw'), [{ opacity: 0 }, { opacity: 1 }], { delay: t0 + 640, duration: 240, ease: 'ease-out' }),
     ]
-    return () => anims.forEach((a) => a?.cancel())
+    drawn.current = { figures, anims }
   }, [reveal, revealDelay, priced, needPct, realizedPct])
 
   return (

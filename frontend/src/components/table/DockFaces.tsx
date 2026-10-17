@@ -102,7 +102,6 @@ export function ActionsFace({ actions, busy, pressed, onPick }: { actions: DockA
         data-act={id}
         data-pressed={pressed === id ? '' : undefined}
         aria-label={name}
-        aria-haspopup={a.kind === 'size' ? 'true' : undefined}
         aria-keyshortcuts={KEYS[a.kind]}
         disabled={busy}
         onClick={() => onPick(a)}
@@ -217,16 +216,19 @@ export function ResultFace({ outcome, busy, onNext }: { outcome: HandOutcome; bu
 /* ---------- error ---------- */
 
 export function ErrorFace({ error, context, phone, onRetry, onDismiss, onNewGame }: { error: ApiError; context: ErrorContext; phone: boolean; onRetry: () => void; onDismiss?: () => void; onNewGame: () => void }) {
-  // the server lost this session (a backend restart): only a new game recovers
-  const lost = describeError(error, context).needsNewGame
+  const d = describeError(error, context)
+  // the server lost this session (a backend restart), or nothing else gets you out of an
+  // error that asking again cannot fix: a new game. Try again only where it can succeed.
+  const newGame = d.needsNewGame || (!d.retryable && !onDismiss)
   return (
     <ErrorNotice
       error={error}
       context={context}
       layout="row"
-      onRetry={lost ? onNewGame : onRetry}
-      retryLabel={lost ? 'New game' : 'Try again'}
-      onDismiss={phone ? undefined : onDismiss}
+      onRetry={newGame ? onNewGame : d.retryable ? onRetry : undefined}
+      retryLabel={newGame ? 'New game' : 'Try again'}
+      onDismiss={onDismiss}
+      compactDismiss={phone && !!onDismiss && !!(newGame || d.retryable)}
       className={phone ? 'w-full min-w-0' : 'max-w-[min(640px,calc(100vw-32px))]'}
     />
   )
