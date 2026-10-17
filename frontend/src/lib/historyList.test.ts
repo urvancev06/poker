@@ -8,7 +8,6 @@ import {
   dayLabel,
   elapsedLabel,
   firstPassNote,
-  flagCount,
   groupBySession,
   handNumber,
   handsCount,
@@ -163,9 +162,7 @@ describe('the leak report', () => {
     expect(rows[1].share).toBeCloseTo(69 / 242)
     expect(rows[0].rule).not.toBe('')
   })
-  it('counts every flag', () => {
-    expect(flagCount(report)).toBe(242 + 69 + 14 + 8 + 3)
-    expect(flagCount(fixture<LeakSummary>('stats_leaks_empty'))).toBe(0)
+  it('has no rows for an empty report', () => {
     expect(leakRows(fixture<LeakSummary>('stats_leaks_empty'))).toEqual([])
   })
   it('says what the window covers, and when it is bigger than the data', () => {

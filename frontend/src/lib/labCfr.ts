@@ -15,7 +15,6 @@ import { count } from './stats'
 
 export const ITER_MIN = 1_000
 export const ITER_MAX = 500_000
-export const ITER_STEP = 1_000
 export const ITER_DEFAULT = 50_000
 /** Exploitability under this reads as converged. */
 export const EXPLOIT_PASS = 0.02
@@ -241,7 +240,6 @@ export function axisEnds(trend: readonly CfrCheckpoint[]): [string, string] {
 
 /* ---------- the learned strategy ---------- */
 
-export type KuhnCard = 'J' | 'Q' | 'K'
 export type KuhnHistory = '' | 'pb' | 'b' | 'p'
 
 export interface KuhnSpot {
@@ -351,10 +349,4 @@ export function strategyGroups(strategy: readonly CfrStrategyRow[]): StrategyPla
       .map(groupFor)
       .filter((g) => g.rows.length > 0),
   }))
-}
-
-/** "J, opens: bets 23% of the time. Textbook: any of 0 to ⅓." */
-export function strategySpeech(spot: KuhnSpot, row: StrategyRowView): string {
-  const target = row.target ? ` Textbook: ${row.target.text.toLowerCase()}.` : ''
-  return `${row.card}, ${spot.title.toLowerCase()}: ${spot.action} ${row.text} of the time.${target}`
 }

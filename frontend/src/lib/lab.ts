@@ -331,7 +331,6 @@ export function metaLine(result: Pick<LabResult, 'hands' | 'seed' | 'elapsed_ms'
 /* ---------- run length ---------- */
 
 export const HANDS_MIN = 100
-export const HANDS_STEP = 500
 /** About 2.9 ms per simulated hand (14.6 s for 5,000 on the reference machine). */
 export const MS_PER_HAND = 2.9
 

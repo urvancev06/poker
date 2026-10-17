@@ -95,7 +95,8 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
         </div>
       )}
       {seat && line2 && (
-        <div data-seat-act="" className={`flex max-w-full font-medium tabular-nums ${phone ? 'gap-[5px] text-[12px]' : 'gap-[7px] text-foot'} ${ink || 'text-fog'}`}>
+        // proportional figures here: Inter's tabular set widens the hyphen in "3-bet 15"
+        <div data-seat-act="" className={`flex max-w-full font-medium ${phone ? 'gap-[5px] text-[12px]' : 'gap-[7px] text-foot'} ${ink || 'text-fog'}`}>
           {identity.pos && <span className="flex-none font-semibold text-dust">{identity.pos}</span>}
           {act}
         </div>

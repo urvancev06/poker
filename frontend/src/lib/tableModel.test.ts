@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Reads, SessionState } from '../api'
-import { buildTableModel, heroFoldedLive, identityOf, replayHand, statusLine, streetOfBoard, streetVerb } from './tableModel'
+import { buildTableModel, identityOf, replayHand, statusLine, streetOfBoard, streetVerb } from './tableModel'
 
 const fixture = (name: string): SessionState => JSON.parse(readFileSync(new URL(`./__fixtures__/table/${name}.json`, import.meta.url), 'utf8')) as SessionState
 
@@ -72,7 +72,7 @@ describe('buildTableModel', () => {
     const live = buildTableModel(fixture('state_hero_folded_hand_continues'), undefined, 'labeled')
     expect(live.hero.cards).toBeNull()
     expect(live.hero.folded).toBe(true)
-    expect(heroFoldedLive(live)).toBe(true)
+    expect(live.handOver).toBe(false)
   })
   it('B20: no all-in tag once the hand is over', () => {
     const s = fixture('result_hero_busted')

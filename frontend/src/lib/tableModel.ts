@@ -300,11 +300,6 @@ export function statusLine(m: Pick<TableModel, 'history' | 'replay' | 'street' |
   return `${you ? 'You' : m.nameOfSeat(last.seat)} ${streetVerb(last, m.replay.amounts[i] ?? null, you)}`
 }
 
-/** The hero folded and the bots are still playing the hand out (B17: offer a skip). */
-export function heroFoldedLive(m: Pick<TableModel, 'handOver' | 'hero'>): boolean {
-  return !m.handOver && m.hero.folded
-}
-
 /** "Board: 2 of diamonds, 7 of spades, Queen of diamonds" for assistive tech. */
 export function boardSpeech(board: readonly string[], label: (c: string) => string): string {
   return board.length ? `Board: ${board.map(label).join(', ')}` : 'Board: no cards yet'

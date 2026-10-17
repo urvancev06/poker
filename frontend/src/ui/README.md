@@ -23,9 +23,9 @@ The look is the approved Stage prototype (`scratchpad/round2/stage/`); tokens li
 - Shell: `--bar-h` (64, 56 on a phone), `--sab` (safe-area bottom).
 - Layers (z): space 0, views 1, coach 8, dock 10, top bar 20, scrim 29, sheet 30, dock over a
   bottom sheet's scrim 31, menu 40, tooltip 50.
-- Legacy aliases (`bg-bg2`, `text-muted`, `text-faint`, `border-line`, `accent`, `felt`,
-  `animate-rise`, `font-mono` ...) exist only so the pre-Stage views still render. Do not use
-  them in new code; delete them when the last old view is rewritten.
+- There are no other colour, font or animation names: the pre-Stage aliases (`bg-bg2`,
+  `text-muted`, `accent`, `felt`, `font-mono`, `animate-rise` ...) were removed once every
+  view was rebuilt. An unknown utility simply generates no CSS, so check the rendered page.
 
 ## Primitives (src/ui/)
 
@@ -86,9 +86,10 @@ decks: Standard (default), Four-colour, Large index, Minimal, Classic (ids `stan
 - `components/coach/CoachGlance.tsx` - `{ coaching, status, error?, layout: 'side'|'row',
   onAsk, onRetry, onDismissError, onOpenMaths }`. Coach builder owns `components/coach/`.
 - `components/coach/MathsSheet.tsx` - `{ coaching, open, onClose, bottomInset? }`.
-- `components/stats/StatsView.tsx` `StatsView()`, `components/history/HistoryView.tsx`
-  `HistoryView({ sessionId? })`, `components/lab/LabView.tsx` `LabView()`,
+- The page views, each owning its folder: `components/stats/StatsView.tsx`
+  `StatsView({ onGoToTable? })`, `components/history/HistoryView.tsx`
+  `HistoryView({ sessionId?, onGoToTable? })`, `components/lab/LabView.tsx` `LabView()`,
   `components/study/StudyView.tsx` `StudyView()`, `components/prefs/PreferencesView.tsx`
-  `PreferencesView()` - moved unchanged (plus page gutters); each builder rewrites its own.
+  `PreferencesView({ coachMode?, onCoachMode? })` (App passes the table's own coach setter).
 - Shell (App.tsx, `components/shell/`): renders every view inside `<Activity>` + `LayerHost`
   under a `<main class="pt-[var(--bar-h)] pb-40">` (the table renders its own fixed main).

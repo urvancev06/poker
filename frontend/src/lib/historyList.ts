@@ -212,13 +212,6 @@ export function leakRows(s: LeakSummary): LeakRow[] {
   return s.by_type.map((t) => ({ type: t.type, label: leakLabel(t.type), rule: leakRule(t.type), count: t.count, share: max > 0 ? t.count / max : 0 }))
 }
 
-/** Every flag in the window (one decision can carry more than one). */
-export function flagCount(s: LeakSummary): number {
-  let n = 0
-  for (const t of s.by_type) n += t.count
-  return n
-}
-
 /** What the window covers: "Your last 500 hands", or "All 239 hands you have played"
  *  when the window is bigger than the data. Empty for no hands. */
 export function reportScope(hands: number, window: number, scope: Scope): string {

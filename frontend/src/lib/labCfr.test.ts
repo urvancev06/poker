@@ -16,7 +16,6 @@ import {
   slotAt,
   slotCenter,
   strategyGroups,
-  strategySpeech,
   trainEstimate,
   valueChart,
   valueY,
@@ -149,10 +148,5 @@ describe('the learned strategy', () => {
     // alpha is clamped into the equilibrium family's range
     expect(kuhnAlpha([{ ...STRATEGY[0], bet: 0.9 }])).toBeCloseTo(1 / 3, 5)
     expect(kuhnAlpha([])).toBe(0)
-  })
-
-  it('speaks a row with its action and target', () => {
-    const p1 = strategyGroups(STRATEGY)[0].groups[0]
-    expect(strategySpeech(p1.spot, p1.rows[1])).toBe('Q, opens: bets 1% of the time. Textbook: never.')
   })
 })

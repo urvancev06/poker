@@ -183,27 +183,6 @@
 
   --shadow-glass: var(--glass-shadow);
   --shadow-sheet: var(--sheet-shadow);
-
-  /* ---- legacy aliases (the pre-Stage views, until each builder rewrites its view).
-     Delete this block, `felt` and `animate-rise` below once nothing uses them. ---- */
-  --color-bg: var(--void);
-  --color-bg2: var(--sheet-fill);
-  --color-felt-core: #0b0c10;
-  --color-felt-edge: #050608;
-  --color-muted: var(--fog);
-  --color-faint: var(--dust);
-  --color-line: rgba(255, 255, 255, 0.18);
-  --color-hair: var(--sheet-line);
-  --color-accent: var(--signal);
-  --color-accent-soft: rgba(41, 151, 255, 0.12);
-  --color-accent-ink: #000;
-  --color-card: #fff;
-  --color-card-ink: #1d1d1f;
-  --color-card-red: #d70015;
-  --color-warning: var(--close);
-  --font-display: var(--font);
-  --font-ui: var(--font);
-  --font-mono: var(--font);
 }
 
 @layer base {
@@ -293,24 +272,6 @@
    elsewhere. Never on a capsule: a squircle at radius 999 squares a pill off. */
 @utility squircle {
   corner-shape: squircle;
-}
-
-/* ---------- legacy (see the alias block above) ---------- */
-@utility felt {
-  background: var(--color-felt-core);
-}
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.animate-rise {
-  animation: rise-in 0.28s var(--ease-spring) both;
 }
 
 /* Reduced motion: every CSS transition and animation is instant. element.animate() goes
