@@ -1,0 +1,227 @@
+/* Preferences: what utilities do not say well. The two columns on a desk, the choice rows
+   on their reading sheet (hairlines between rows, the check on the chosen one), and the
+   deck previews, whose chosen hand lifts on the bouncy spring like your hand on your turn.
+   Contrast on the sheet (#1c1c1e): ink 15.6:1, fog 6.6:1, dust-sheet 5.9:1, the check
+   (signal) 5.6:1; on a hovered row fog is 5.8:1. Reduced motion: the global rule makes the
+   lift instant. */
+
+.prefs-body {
+  display: grid;
+  gap: 72px;
+  margin-top: 64px;
+}
+@media (min-width: 1100px) {
+  .prefs-body {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    column-gap: 80px;
+    align-items: start;
+  }
+}
+@media (max-width: 599.98px) {
+  .prefs-body {
+    gap: 56px;
+    margin-top: 44px;
+  }
+}
+.prefs-col {
+  display: grid;
+  gap: 56px;
+  align-content: start;
+}
+
+/* ---------- a choice list on its sheet ---------- */
+.choice-list {
+  display: grid;
+  padding: 6px;
+  border-radius: var(--r-menu);
+}
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 14px 14px 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--dur-quick) ease;
+}
+/* hairlines between rows, inset to the text */
+.choice + .choice::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 16px;
+  left: 16px;
+  height: 1px;
+  background: var(--sheet-line);
+}
+.choice:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.choice:focus-visible {
+  outline-offset: -2px;
+}
+.choice__text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 3px;
+}
+.choice__label {
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+.choice[aria-checked="true"] .choice__label {
+  font-weight: 650;
+}
+.choice__desc {
+  color: var(--fog);
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+}
+.choice__aside {
+  flex: none;
+}
+.choice__check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--signal);
+  opacity: 0;
+  transition: opacity var(--dur-quick) ease;
+}
+.choice[aria-checked="true"] .choice__check {
+  opacity: 1;
+}
+@media (max-width: 599.98px) {
+  .choice {
+    gap: 14px;
+    padding: 12px 12px 12px 14px;
+  }
+  .choice__aside {
+    display: none;
+  }
+}
+
+/* one opponent in the table's floating type, right-aligned like a seat on the right */
+.seat-sample {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 120px;
+  white-space: nowrap;
+}
+
+/* ---------- the decks ---------- */
+.deck-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 16px -12px 0;
+}
+@media (min-width: 600px) and (max-width: 1099.98px) {
+  .deck-picker {
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  }
+}
+.deck {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  margin: 0;
+  padding: 20px 12px 12px;
+  border: 0;
+  border-radius: var(--r-button);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--dur-quick) ease;
+}
+.deck:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.deck__hand {
+  display: flex;
+  gap: 5px;
+}
+.deck__card {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+  transition: transform var(--dur-base) var(--ease-bouncy);
+}
+.deck[aria-checked="true"] .deck__card {
+  transform: translateY(-8px);
+}
+.deck[aria-checked="true"] .deck__card:nth-child(2) {
+  transition-delay: 30ms;
+}
+.deck[aria-checked="true"] .deck__card:nth-child(3) {
+  transition-delay: 60ms;
+}
+.deck[aria-checked="true"] .deck__card:nth-child(4) {
+  transition-delay: 90ms;
+}
+.deck__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  color: var(--fog);
+  font-size: var(--fs-callout);
+  font-weight: 500;
+}
+.deck[aria-checked="true"] .deck__name {
+  color: var(--ink);
+  font-weight: 650;
+}
+.deck__check {
+  display: none;
+  width: 17px;
+  height: 17px;
+  color: var(--signal);
+}
+.deck[aria-checked="true"] .deck__check {
+  display: block;
+}
+@media (max-width: 599.98px) {
+  .deck-picker {
+    margin: 12px -8px 0;
+    gap: 4px 8px;
+  }
+  .deck {
+    min-width: 0;
+    padding: 18px 8px 10px;
+  }
+  /* four cards that shrink with the column (36 px each at 390, less on a 320 phone) */
+  .deck__hand {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 36px));
+    gap: 4px;
+    width: 100%;
+  }
+  .deck__card {
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* desk: one deck per row beside the coach and opponent lists, the name after the hand */
+@media (min-width: 1100px) {
+  .deck-picker {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .deck {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 16px 12px 12px;
+  }
+}

@@ -1,0 +1,369 @@
+/* Study: what utilities do not say well. The two-column body with its sticky nav, the range
+   grid (sized by its own width, so its labels scale with it), the reading rhythm between
+   sections, and the definition rows that change shape on a phone. Contrast is measured on
+   the void: ink 19.3:1, fog 8.2:1, dust 5.8:1; a lit range cell's label is black on the
+   signal blue, 6.96:1, an unlit cell's label 5.3:1, and the lit fill against an unlit cell
+   is 6.4:1. */
+
+.study {
+  --range-on: var(--signal);
+  --range-off: rgba(255, 255, 255, 0.055);
+}
+
+/* ---------- page rhythm ---------- */
+.study-body {
+  margin-top: 88px;
+}
+@media (min-width: 1100px) {
+  .study-body {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    column-gap: 72px;
+  }
+}
+@media (max-width: 599.98px) {
+  .study-body {
+    margin-top: 56px;
+  }
+}
+.study-column {
+  container: study-column / inline-size;
+  min-width: 0;
+}
+.study-section {
+  scroll-margin-top: calc(var(--bar-h) + 32px);
+}
+.study-section + .study-section {
+  margin-top: 120px;
+}
+@media (max-width: 599.98px) {
+  .study-section + .study-section {
+    margin-top: 88px;
+  }
+}
+/* the heading takes focus after a nav jump; it is not a control, so no ring */
+.study-section > h2:focus-visible {
+  outline: none;
+}
+.study-lead {
+  max-width: 62ch;
+  margin: 12px 0 0;
+  color: var(--fog);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+}
+.study-column p,
+.study-column dd {
+  line-height: 1.5;
+}
+
+.study-link {
+  color: var(--signal);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-radius: 4px;
+}
+.study-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- the in-page nav (desk) ---------- */
+.study-nav {
+  position: sticky;
+  top: calc(var(--bar-h) + 40px);
+  align-self: start;
+  margin-left: -14px;
+}
+.study-nav__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px 0 14px;
+  border-radius: 10px;
+  color: var(--dust);
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--dur-quick) ease;
+}
+.study-nav__link:hover {
+  color: var(--ink);
+}
+.study-nav__link[aria-current="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+/* the reading mark: a short rule, so the current section is not told by colour alone */
+.study-nav__link[aria-current="true"]::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ink);
+}
+
+/* ---------- positions ---------- */
+.study-positions {
+  display: grid;
+  gap: 24px;
+  max-width: 64ch;
+  margin-top: 28px;
+}
+.study-positions__row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  column-gap: 20px;
+  align-items: baseline;
+}
+@media (max-width: 599.98px) {
+  .study-positions__row {
+    grid-template-columns: 56px minmax(0, 1fr);
+    column-gap: 12px;
+  }
+}
+
+/* ---------- opening ranges ---------- */
+.seg.study-seats {
+  width: 440px;
+}
+@media (max-width: 599.98px) {
+  .seg.study-seats {
+    width: auto;
+  }
+  .seg.study-seats .seg__opt {
+    padding: 0 4px;
+  }
+}
+/* facts first in reading order; beside the grid once the column has room */
+.study-range {
+  display: grid;
+  gap: 28px;
+}
+@container study-column (min-width: 760px) {
+  .study-range {
+    grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+  .study-range > .range-grid {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .study-range__facts {
+    grid-column: 2;
+    grid-row: 1;
+    padding-top: 4px;
+  }
+}
+
+.range-grid {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  max-width: 520px;
+}
+.range-grid__row {
+  display: grid;
+  grid-template-columns: repeat(13, minmax(0, 1fr));
+  gap: 3px;
+}
+.range-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--range-off);
+  color: var(--dust);
+  font-size: clamp(9px, 2.35cqi, 12.5px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--dur-quick) ease, color var(--dur-quick) ease;
+}
+.range-cell.is-in {
+  background: var(--range-on);
+  color: #000;
+  font-weight: 650;
+}
+@media (max-width: 599.98px) {
+  .range-grid,
+  .range-grid__row {
+    gap: 2px;
+  }
+  .range-cell {
+    border-radius: 4px;
+    letter-spacing: -0.04em;
+  }
+}
+
+/* ---------- term lists (follow-on, sizing, pot odds rules, bankroll) ---------- */
+.study-terms {
+  display: grid;
+  gap: 18px;
+  max-width: 72ch;
+}
+.study-terms__row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  column-gap: 32px;
+  align-items: baseline;
+}
+@media (max-width: 599.98px) {
+  .study-terms__row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+}
+
+/* ---------- the postflop framework ---------- */
+.study-framework {
+  display: grid;
+  gap: 36px;
+  max-width: 64ch;
+  margin-top: 32px;
+}
+
+/* ---------- figures with small labels (the worked example, archetype bands) ---------- */
+.study-figures,
+.study-bands {
+  display: flex;
+  flex-wrap: wrap;
+}
+.study-figures > div,
+.study-bands > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.study-figures {
+  gap: 20px 48px;
+}
+.study-figures dt {
+  color: var(--fog);
+  font-size: var(--fs-foot);
+  font-weight: 500;
+}
+.study-figures dd {
+  margin: 0;
+  font-size: var(--fs-verdict);
+  font-weight: 650;
+  letter-spacing: -0.028em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.study-bands {
+  gap: 12px 32px;
+}
+@media (max-width: 599.98px) {
+  .study-bands {
+    gap: 10px 20px;
+  }
+}
+.study-bands dt {
+  color: var(--dust);
+  font-size: var(--fs-foot);
+  font-weight: 500;
+}
+.study-bands dd {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the draws table ---------- */
+.study-table {
+  width: 100%;
+  max-width: 600px;
+  border-collapse: collapse;
+}
+/* figures only: Inter's tabular set also widens the hyphen in "Open-ender" */
+.study-table td {
+  font-variant-numeric: tabular-nums;
+}
+.study-table th,
+.study-table td {
+  padding: 9px 0;
+  text-align: right;
+  font-weight: 500;
+}
+.study-table :is(th, td):not(:first-child) {
+  width: 104px;
+}
+.study-table th:first-child {
+  text-align: left;
+}
+.study-table thead th {
+  padding-top: 0;
+  color: var(--fog);
+  font-size: var(--fs-foot);
+  font-weight: 600;
+}
+.study-table tbody th {
+  color: var(--ink);
+  font-weight: 600;
+}
+@media (max-width: 599.98px) {
+  .study-table :is(th, td):not(:first-child) {
+    width: 72px;
+    padding-left: 8px;
+  }
+  .study-table tbody th {
+    padding-right: 8px;
+    font-size: var(--fs-callout);
+  }
+}
+
+/* ---------- player types ---------- */
+.study-types {
+  display: grid;
+  gap: 56px;
+  max-width: 64ch;
+  margin-top: 36px;
+}
+
+/* ---------- stat definitions ---------- */
+.study-stat-groups {
+  display: grid;
+  gap: 52px;
+  margin-top: 36px;
+}
+.study-stats {
+  display: grid;
+  gap: 16px;
+  max-width: 76ch;
+}
+.study-stats__row {
+  display: grid;
+  grid-template-columns: 80px 92px minmax(0, 1fr);
+  column-gap: 24px;
+  align-items: baseline;
+}
+.study-stats__target {
+  color: var(--ink);
+  text-align: right;
+}
+@media (max-width: 599.98px) {
+  .study-stats__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name target" "def def";
+    row-gap: 2px;
+  }
+  .study-stats__row > dt {
+    grid-area: name;
+  }
+  .study-stats__target {
+    grid-area: target;
+  }
+  .study-stats__row > dd:last-child {
+    grid-area: def;
+  }
+}

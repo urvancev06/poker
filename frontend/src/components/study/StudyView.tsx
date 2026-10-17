@@ -1,301 +1,284 @@
-// The Study panel: a candid, scannable reference built from STRATEGY.md. These
-// ranges are a solid 100bb 6-max baseline, NOT solver truth — exact frequencies
-// and mixing always defer to GTO Wizard (mirrors the project's honesty rules).
+/**
+ * Study: the static reference for the 100bb 6-max baseline the bots are built from and the
+ * coach teaches, framed honestly as a starting point and not solver truth. Long-form
+ * reading on the void: prose held under 64ch, the Stage type scale, and from 1100 px a
+ * quiet in-page nav that sticks beside the column.
+ *
+ *   <StudyView />
+ *
+ * Eight sections (inventory §16): positions; opening ranges as 13 x 13 grids; the postflop
+ * framework; pot odds; the draws table and sizing; the five archetypes and how to beat
+ * each; stat definitions, grouped by the same sample gates My stats reads them at; and
+ * bankroll, variance and tilt. No fetches and no loading, error or empty states: the
+ * content is in lib/study.ts, where tests hold it to the backend.
+ */
+import type { ReactNode } from 'react'
+import { BP, useLayoutKind, useViewportSize } from '../../lib/breakpoints'
+import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { count, speakBand as speakTarget } from '../../lib/stats'
+import {
+  ARCHETYPES,
+  ARCHETYPE_STATS,
+  BANKROLL,
+  DRAWS,
+  FRAMEWORK,
+  GTO_WIZARD_URL,
+  POSITIONS,
+  PRICE_EXAMPLE,
+  SECTIONS,
+  SIZING,
+  bandText,
+  drawEquity,
+  priceToCall,
+  speakBand,
+  sectionDomId,
+  statGroups,
+  targetText,
+  type SectionId,
+} from '../../lib/study'
+import { OpeningRanges } from './OpeningRanges'
+import { StudyNav } from './StudyNav'
+import { Terms } from './Terms'
+import './StudyView.css'
 
-// The hand lists are the source of truth. The width shown beside each row is computed
-// from the list at render time (rangeCombos below), never written next to it, so the
-// two cannot drift apart.
-const RFI: Array<[string, string]> = [
-  ['UTG', '22+, ATs+, A5s, A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo'],
-  ['MP / HJ', '22+, A9s+, A5s–A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+'],
-  ['CO', '22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, A9o+, KTo+, QTo+, JTo'],
-  ['BTN', '22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 86s+, 75s+, 65s, 54s, A2o+, K9o+, Q9o+, J9o+, T9o, 98o'],
-  ['SB', '22+, A2s+, K5s+, Q7s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, A2o+, K9o+, QTo+, JTo'],
-  ['BB', 'No RFI — defend vs opens: wide vs BTN/CO/SB, tighter vs UTG/MP; mix flats with a polarized 3-bet.'],
-]
+const TITLE = Object.fromEntries(SECTIONS.map((s) => [s.id, s.title])) as Record<SectionId, string>
+const STAT_GROUPS = statGroups()
 
-/** Combos a range string expands to, out of 1326. Mirrors backend poker/math/ranges.py -
- *  the two must agree, or the study page and the bots describe different ranges. */
-function rangeCombos(text: string): number {
-  const R = '23456789TJQKA'
-  const idx = (c: string) => R.indexOf(c.toUpperCase())
-  const expand = (hi: number, lo: number, suited: boolean | null) =>
-    hi === lo ? 6 : suited === null ? 16 : suited ? 4 : 12
-  const endpoint = (core: string): [number, number, boolean | null] => {
-    let c = core.trim().toUpperCase()
-    let suited: boolean | null = null
-    if (c.endsWith('S') || c.endsWith('O')) {
-      suited = c.endsWith('S')
-      c = c.slice(0, -1)
-    }
-    const a = idx(c[0]), b = idx(c[1])
-    return [Math.max(a, b), Math.min(a, b), suited]
-  }
-  let total = 0
-  for (const raw of text.split(',')) {
-    const t = raw.trim().replace(/–|—/g, '-')
-    if (!t || t.includes(' ')) continue
-    try {
-      if (t.includes('-')) {
-        const [a, b] = t.split('-')
-        const [hi1, lo1, s1] = endpoint(a)
-        const [hi2, lo2] = endpoint(b)
-        if (hi1 === lo1 && hi2 === lo2) {
-          for (let i = Math.min(hi1, hi2); i <= Math.max(hi1, hi2); i++) total += 6
-        } else {
-          for (let l = Math.min(lo1, lo2); l <= Math.max(lo1, lo2); l++) total += expand(hi1, l, s1)
-        }
-      } else if (t.endsWith('+')) {
-        const [hi, lo, s] = endpoint(t.slice(0, -1))
-        if (hi === lo) for (let i = lo; i < 13; i++) total += 6
-        else for (let l = lo; l < hi; l++) total += expand(hi, l, s)
-      } else {
-        const [hi, lo, s] = endpoint(t)
-        total += expand(hi, lo, s)
-      }
-    } catch {
-      /* prose row (BB) — no combos */
-    }
-  }
-  return total
+/** Keeps stars out from under the column. Its own component so a resize re-renders only this. */
+function SpaceColumn() {
+  const { w, h } = useViewportSize()
+  const phone = w < BP.sm
+  const col = Math.min(w, 1120) - (phone ? 0 : 56)
+  const rect = w > 0 ? (phone ? { x: 0, y: 120, w, h: h - 120 } : { x: (w - col) / 2, y: 0, w: col, h }) : null
+  useSpaceAvoid('study', [rect])
+  return null
 }
 
-const FRAMEWORK: Array<[string, string]> = [
-  ['Strong made hand', 'Top pair good kicker+, two pair, sets, straights, flushes — bet for value ½–¾ pot, keep betting, size up with the nuts.'],
-  ['Draw', 'Flush draw / open-ended / strong combo draws — semi-bluff ½–⅔ pot, or call if the price is right. Give up if you miss with no fold equity.'],
-  ['Air', 'No pair, no draw — as the preflop raiser c-bet once (⅓–½) on good boards, then give up if called. Not the aggressor → check-fold.'],
-  ['Facing a bet', 'Raise monsters; call one street with marginal made hands; fold to sustained aggression with weak holdings; with draws, compare equity to the price.'],
-]
-
-// Exact hypergeometric values, not the rule of 2 and 4: one card = outs/47;
-// two cards = 1 - C(47-outs,2)/C(47,2).
-const DRAWS: Array<[string, string, string, string]> = [
-  ['Flush draw', '9', '19%', '35%'],
-  ['Open-ender', '8', '17%', '31%'],
-  ['Gutshot', '4', '9%', '16%'],
-  ['Combo (FD+OESD)', '~15', '32%', '54%'],
-]
-
-const ARCHETYPES: Array<{ name: string; stats: string; identity: string; beat: string }> = [
-  {
-    name: 'Nit',
-    stats: 'VPIP 10–15 · PFR 8–12 · 3-bet 1–3 · AF 1–2 · WTSD 26–32',
-    identity: 'Premiums only, folds constantly.',
-    beat: 'Steal relentlessly and fold to its aggression — when a nit puts in money, believe it. Don’t pay off the rare big bet.',
-  },
-  {
-    name: 'TAG',
-    stats: 'VPIP 20–24 · PFR 17–21 · 3-bet 6–9 · AF 2.5–3.5 · WTSD 25–30',
-    identity: 'Solid, balanced — the §2 baseline, the benchmark.',
-    beat: 'No free lunch. Play solid, avoid marginal spots out of position, and pick your bluffs where your range is credible.',
-  },
-  {
-    name: 'LAG',
-    stats: 'VPIP 27–33 · PFR 22–28 · 3-bet 9–13 · AF 3–4.5 · WTSD 27–33',
-    identity: 'Wide + aggressive, narrow VPIP–PFR gap; hard to read.',
-    beat: 'Tighten up and let it barrel into your strong range; call down lighter than vs a nit, and 3-bet to deny its position.',
-  },
-  {
-    name: 'Calling Station',
-    stats: 'VPIP 40–55 · PFR 6–13 · 3-bet 1–3 · AF <1.5 · WTSD 38–50',
-    identity: 'Passive fish — calls everything, never folds to value, almost never bluffs.',
-    beat: 'Value bet relentlessly and thin; never bluff (it won’t fold). If it suddenly raises, it has it — fold your bluff-catchers.',
-  },
-  {
-    name: 'Maniac',
-    stats: 'VPIP 50–65 · PFR 38–50 · 3-bet 14–22 · AF >4 · WTSD —',
-    identity: 'Aggressive spew — raises/bluffs constantly, barrels air.',
-    beat: 'Punish with value, not bluffs. Let it bet into you, trap with strong hands, and call down wider — don’t try to out-bluff it.',
-  },
-]
-
-const STATS: Array<[string, string, string]> = [
-  ['VPIP', '22–26', 'Voluntarily put money in preflop. The VPIP–PFR gap shows passivity.'],
-  ['PFR', '18–22', 'Raised preflop. Small gap to VPIP = aggressive/competent.'],
-  ['3-bet%', '7–10', 'Re-raised preflop.'],
-  ['ATS', '30–40', 'Attempt to steal (open CO/BTN/SB when folded to).'],
-  ['AF', '2.5–3.5', '(bets + raises) ÷ calls postflop. ≫3 maniac, ≪3 too passive.'],
-  ['WTSD', '25–30', 'Went to showdown — measured per FLOP SEEN, not per hand, so it settles slowly.'],
-  ['WSD', '52–58', 'Won at showdown.'],
-  ['WWSF', '48–54', 'Won when saw the flop.'],
-  ['C-bet%', '55–70', 'Continuation-bet the flop as preflop raiser (board-dependent).'],
-]
-
-const POSITIONS: Array<[string, string, string]> = [
-  ['UTG', 'Under the Gun', 'First to act preflop — the earliest, worst seat. Everyone acts after you, so play the tightest range.'],
-  ['MP / HJ', 'Middle / Hijack', 'Still early-ish. Open a little wider than UTG, but respect the players left to act behind you.'],
-  ['CO', 'Cutoff', 'Late position. Open wide and attack the blinds when it folds to you.'],
-  ['BTN', 'Button', 'The best seat — you act LAST on every postflop street. Widest opening range, most profitable position.'],
-  ['SB', 'Small Blind', 'Posts half a blind and is out of position postflop. Tricky — lean toward raise-or-fold.'],
-  ['BB', 'Big Blind', 'Posts the full blind and closes the preflop action, so you get a price to defend wide — but you’re out of position after the flop.'],
-]
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, lead, children }: { id: SectionId; lead?: string; children: ReactNode }) {
+  const dom = sectionDomId(id)
   return (
-    <section className="rounded-xl border border-line bg-bg2/60 p-5">
-      <h3 className="mb-3 font-display text-lg text-ink">{title}</h3>
+    <section id={dom} aria-labelledby={`${dom}-h`} className="study-section">
+      <h2 id={`${dom}-h`} tabIndex={-1} className="m-0 text-title font-strong">
+        {TITLE[id]}
+      </h2>
+      {lead ? <p className="study-lead">{lead}</p> : null}
       {children}
     </section>
   )
 }
 
 export function StudyView() {
+  const desk = useLayoutKind() === 'desk'
   return (
-    <div className="mx-auto max-w-4xl space-y-5 px-4 pt-6 pb-10 sm:px-8">
-      <div>
-        <h2 className="font-display text-2xl text-ink">Study</h2>
-        <p className="mt-1 text-sm text-muted">
-          A solid 100bb 6-max baseline (from STRATEGY.md). These are a <em>standard starting point</em>,
-          not solver truth — real GTO mixes frequencies. For exact ranges and mixing,{' '}
-          <a
-            href="https://gtowizard.com"
-            target="_blank"
-            rel="noreferrer"
-            className="text-accent underline-offset-4 hover:underline"
-          >
-            confirm in GTO Wizard
+    <div className="study mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
+      <SpaceColumn />
+      <header className="study-head">
+        <h1 className="m-0 text-display font-bold max-sm:text-[40px]">Study</h1>
+        <p className="m-0 mt-5 max-w-[60ch] text-body text-fog">
+          The 100bb 6-max baseline the bots are built from and the coach teaches. It is a standard starting point, not solver
+          truth: real GTO mixes its frequencies. For exact ranges and mixing,{' '}
+          <a href={GTO_WIZARD_URL} target="_blank" rel="noreferrer" className="study-link">
+            check in GTO Wizard<span className="sr-only"> (opens in a new tab)</span>
           </a>
           .
         </p>
-      </div>
+      </header>
 
-      <Card title="Positions (worst → best preflop)">
-        <p className="mb-3 text-sm text-muted">
-          Acting later means more information, which means more profit — so play tighter early and
-          wider late. Worst to best: UTG → MP → CO → BTN; the blinds (SB, BB) post forced bets and
-          play out of position after the flop.
-        </p>
-        <div className="space-y-2">
-          {POSITIONS.map(([abbr, name, desc]) => (
-            <div key={abbr} className="grid grid-cols-[64px_1fr] gap-2 text-sm">
-              <span className="font-semibold text-accent">{abbr}</span>
-              <span className="text-muted">
-                <span className="text-ink">{name}.</span> {desc}
-              </span>
-            </div>
-          ))}
+      <div className="study-body">
+        {desk ? <StudyNav /> : null}
+        <div className="study-column">
+          <Section id="positions" lead="Acting later means more information and more profit, so play tighter early and wider late. In the order they act before the flop:">
+            <ol className="study-positions m-0 list-none p-0">
+              {POSITIONS.map((p) => (
+                <li key={p.pos} className="study-positions__row">
+                  <span className="text-headline font-strong">{p.pos}</span>
+                  <div>
+                    <p className="m-0 font-semibold text-ink">{p.name}</p>
+                    <p className="m-0 mt-1 text-fog">{p.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Section>
+
+          <Section id="opening" lead="Raise first in: everyone before you has folded. History grades your opens against exactly these lists.">
+            <OpeningRanges />
+          </Section>
+
+          <Section id="postflop" lead="The decision framework the bots play and the coach teaches.">
+            <dl className="study-framework m-0">
+              {FRAMEWORK.map((f) => (
+                <div key={f.term} className="study-framework__row">
+                  <dt className="text-headline font-strong">{f.term}</dt>
+                  <dd className="m-0 mt-2">
+                    <p className="m-0 text-callout text-fog">{f.counts}</p>
+                    <p className="m-0 mt-1.5 text-ink">{f.play}</p>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+
+          <Section id="pot-odds" lead="The coach computes these exactly. The price is what calling costs as a share of the pot you would win.">
+            <PotOdds />
+          </Section>
+
+          <Section id="draws" lead="The exact chance of hitting, not the rule of thumb. Two cards only counts when you are all-in; otherwise you pay again on the turn.">
+            <Draws />
+          </Section>
+
+          <Section id="player-types" lead="The five bots at the table, the bands the Lab holds them to, and how to beat each.">
+            <PlayerTypes />
+          </Section>
+
+          <Section id="stats" lead="Your targets, the ranges My stats holds you to. Each stat is read only once the sample can carry it, so they are grouped by when that is.">
+            <StatDefinitions />
+          </Section>
+
+          <Section id="bankroll">
+            <Terms items={BANKROLL} className="mt-8" />
+          </Section>
         </div>
-      </Card>
-
-      <Card title="Preflop — Raise First In (folded to you)">
-        <div className="space-y-2">
-          {RFI.map(([pos, range]) => {
-            const combos = rangeCombos(range)
-            return (
-              <div key={pos} className="grid grid-cols-[64px_74px_1fr] items-baseline gap-2 text-sm">
-                <span className="font-semibold text-ink">{pos}</span>
-                <span className="tabular-nums text-accent">
-                  {combos ? `${((combos / 1326) * 100).toFixed(1)}%` : '—'}
-                </span>
-                <span className="text-muted">{range}</span>
-              </div>
-            )
-          })}
-        </div>
-        <p className="mt-3 text-[11px] text-faint">
-          Widths are computed from the lists above, not written beside them. Memorise the
-          lists — the percentage is only a description of them.
-        </p>
-        <div className="mt-4 space-y-1 border-t border-line/60 pt-3 text-sm text-muted">
-          <p><span className="text-ink">3-bet value:</span> QQ+, AK always; add JJ, AQs vs CO/BTN/SB. <span className="text-ink">Bluff:</span> A5s–A4s, suited blockers.</p>
-          <p><span className="text-ink">Flat (in position):</span> 99–22 set-mining, suited broadways/connectors when cheap. OOP → lean 3-bet-or-fold.</p>
-          <p><span className="text-ink">Facing a 3-bet:</span> 4-bet QQ+/AK; call JJ–TT, AQs by price &amp; opponent. Don’t stack off light preflop.</p>
-        </div>
-      </Card>
-
-      <Card title="Postflop — the decision framework">
-        <div className="space-y-2.5">
-          {FRAMEWORK.map(([k, v]) => (
-            <div key={k} className="text-sm">
-              <span className="font-semibold text-ink">{k}. </span>
-              <span className="text-muted">{v}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Card title="Pot odds &amp; equity (computed exactly)">
-          <ul className="space-y-2 text-sm text-muted">
-            <li><span className="text-ink">Price to call:</span> call ÷ (pot-after-bet + call). E.g. pot 24 after a 10 bet, call 10 → 10/34 = <span className="tabular-nums text-accent">29%</span> needed.</li>
-            <li><span className="text-ink">Rule of 2 &amp; 4:</span> one card ≈ outs×2%; two cards all-in ≈ outs×4%. Otherwise count one card at a time.</li>
-            <li><span className="text-ink">Call if equity &gt; price.</span> The coach uses Monte Carlo equity vs the modelled range, not just outs.</li>
-            <li><span className="text-ink">Dirty outs:</span> an out that also helps villain isn’t clean — discount it.</li>
-          </ul>
-        </Card>
-        <Card title="Common draws (outs → equity)">
-          <div className="grid grid-cols-[1fr_44px_56px_64px] gap-x-2 gap-y-1.5 text-sm">
-            <span className="text-[11px] uppercase tracking-wider text-muted">Draw</span>
-            <span className="text-[11px] uppercase tracking-wider text-muted">Outs</span>
-            <span className="text-[11px] uppercase tracking-wider text-muted">1 card</span>
-            <span className="text-[11px] uppercase tracking-wider text-muted">2 cards</span>
-            {DRAWS.map(([d, o, a, b]) => (
-              <Row key={d} cells={[d, o, a, b]} />
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted">
-            Sizing: c-bet ⅓–½ · value/semi-bluff ½–¾ · nutted ¾–pot · check-raise ~3×.
-          </p>
-        </Card>
-      </div>
-
-      <Card title="Player types — the five archetypes, and how to beat each">
-        <div className="space-y-3">
-          {ARCHETYPES.map((a) => (
-            <div key={a.name} className="rounded-lg border border-line/60 p-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span className="font-display text-base text-ink">{a.name}</span>
-                <span className="text-[11px] tabular-nums text-muted">{a.stats}</span>
-              </div>
-              <p className="mt-1 text-sm text-muted">{a.identity}</p>
-              <p className="mt-1 text-sm">
-                <span className="text-[11px] uppercase tracking-wider text-accent/80">Exploit · </span>
-                <span className="text-ink">{a.beat}</span>
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-muted">
-          Exploits are heuristic reads (general poker knowledge), not solver lines. The fish play badly
-          on purpose — that’s the point.
-        </p>
-      </Card>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Card title="Stat definitions (reg targets)">
-          <div className="space-y-1.5 text-sm">
-            {STATS.map(([k, t, d]) => (
-              <div key={k} className="flex items-baseline gap-2">
-                <span className="w-16 shrink-0 font-semibold text-ink">{k}</span>
-                <span className="w-14 shrink-0 tabular-nums text-accent">{t}</span>
-                <span className="text-muted">{d}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted">
-            Sample size: VPIP/PFR ~100+ hands, 3-bet ~500, turn stats ~1,000+. Don’t over-read small samples.
-          </p>
-        </Card>
-        <Card title="Bankroll · variance · tilt">
-          <ul className="space-y-2 text-sm text-muted">
-            <li><span className="text-ink">Bankroll:</span> ≥20 buy-ins for your stake; move down when you drop below.</li>
-            <li><span className="text-ink">Stop-loss:</span> a fixed per-session limit (e.g. 3 buy-ins) → stop, don’t reload.</li>
-            <li><span className="text-ink">Variance is real:</span> judge decisions, not results. A good line that lost is still correct; a spew that won is still a spew.</li>
-            <li><span className="text-ink">Tilt:</span> watch for chasing losses and playing too long — volume isn’t virtue.</li>
-          </ul>
-        </Card>
       </div>
     </div>
   )
 }
 
-function Row({ cells }: { cells: string[] }) {
+function PotOdds() {
+  const need = Math.round(priceToCall(PRICE_EXAMPLE.call, PRICE_EXAMPLE.pot))
+  const after = PRICE_EXAMPLE.pot + PRICE_EXAMPLE.call
   return (
     <>
-      <span className="text-ink">{cells[0]}</span>
-      <span className="tabular-nums text-muted">{cells[1]}</span>
-      <span className="tabular-nums text-muted">{cells[2]}</span>
-      <span className="tabular-nums text-muted">{cells[3]}</span>
+      <p className="m-0 mt-8 text-headline font-strong tabular-nums">Need = call ÷ (pot + call)</p>
+      <p className="m-0 mt-3 max-w-[62ch] text-fog">
+        The pot already counts their bet. A {PRICE_EXAMPLE.call} bet makes the pot {PRICE_EXAMPLE.pot}; calling {PRICE_EXAMPLE.call} makes it{' '}
+        {after}, so you need {PRICE_EXAMPLE.call} ÷ {after}:
+      </p>
+      <dl className="study-figures m-0 mt-6">
+        <div>
+          <dt>Pot</dt>
+          <dd>{PRICE_EXAMPLE.pot}</dd>
+        </div>
+        <div>
+          <dt>To call</dt>
+          <dd>{PRICE_EXAMPLE.call}</dd>
+        </div>
+        <div>
+          <dt>Need</dt>
+          <dd>{need}%</dd>
+        </div>
+      </dl>
+      <Terms
+        className="mt-12"
+        items={[
+          {
+            term: 'Rule of 2 and 4',
+            text: 'With one card to come, equity is about outs × 2%. With two to come, and only when you are all-in, about outs × 4%.',
+          },
+          { term: 'Call when equity beats the price', text: 'The coach uses Monte Carlo equity against the modelled range, not just your outs.' },
+          { term: 'Dirty outs', text: 'An out that also improves the hand you are up against is not clean. Discount it.' },
+        ]}
+      />
     </>
+  )
+}
+
+function Draws() {
+  return (
+    <>
+      <table className="study-table mt-8">
+        <thead>
+          <tr>
+            <th scope="col">Draw</th>
+            <th scope="col">Outs</th>
+            <th scope="col">One card</th>
+            <th scope="col">Two cards</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DRAWS.map((d) => (
+            <tr key={d.draw}>
+              <th scope="row">{d.draw}</th>
+              <td>
+                {d.approx ? (
+                  <>
+                    <span aria-hidden="true">~</span>
+                    <span className="sr-only">about </span>
+                    {d.outs}
+                  </>
+                ) : (
+                  d.outs
+                )}
+              </td>
+              <td>{Math.round(drawEquity(d.outs, 1))}%</td>
+              <td>{Math.round(drawEquity(d.outs, 2))}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3 className="m-0 mt-14 text-headline font-strong">Bet sizing after the flop</h3>
+      <p className="study-lead">As a share of the pot.</p>
+      <Terms className="mt-5" items={SIZING.map((s) => ({ term: s.spot, text: s.size }))} />
+    </>
+  )
+}
+
+function PlayerTypes() {
+  return (
+    <>
+      <div className="study-types">
+        {ARCHETYPES.map((a) => (
+          <article key={a.name} className="study-type" aria-labelledby={`study-type-${a.name}`}>
+            <h3 id={`study-type-${a.name}`} className="m-0 text-headline font-strong">
+              {a.name}
+            </h3>
+            <p className="m-0 mt-1.5 text-fog">{a.identity}</p>
+            <dl className="study-bands m-0 mt-4">
+              {ARCHETYPE_STATS.map((s) => {
+                const band = a.bands[s.key]
+                return band ? (
+                  <div key={s.key}>
+                    <dt>{s.label}</dt>
+                    <dd>
+                      <span aria-hidden="true">{bandText(band)}</span>
+                      <span className="sr-only">{speakBand(band, s.ratio)}</span>
+                    </dd>
+                  </div>
+                ) : null
+              })}
+            </dl>
+            <p className="m-0 mt-4 text-ink">{a.exploit}</p>
+          </article>
+        ))}
+      </div>
+      <p className="m-0 mt-12 max-w-[62ch] text-callout text-fog">
+        The exploits are reads from general poker knowledge, not solver lines. The Station and the Maniac play badly on purpose: that is
+        the point.
+      </p>
+    </>
+  )
+}
+
+function StatDefinitions() {
+  return (
+    <div className="study-stat-groups">
+      {STAT_GROUPS.map((g) => (
+        <div key={g.gate}>
+          <h3 className="m-0 text-headline font-strong">Readable at {count(g.gate)} hands</h3>
+          <dl className="study-stats m-0 mt-4">
+            {g.stats.map((s) => (
+              <div key={s.key} className="study-stats__row">
+                <dt className="font-strong text-ink">{s.name}</dt>
+                <dd className="study-stats__target m-0 tabular-nums">
+                  <span aria-hidden="true">{targetText(s)}</span>
+                  <span className="sr-only">{speakTarget(s, s.target)}</span>
+                </dd>
+                <dd className="m-0 text-fog">{s.definition}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </div>
   )
 }

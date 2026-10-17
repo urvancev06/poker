@@ -1,63 +1,103 @@
-import { Card } from '../Card'
-import { DECKS } from '../../lib/decks'
+/**
+ * Preferences: the coach mode, what you can see about the opponents, and the deck. All
+ * three persist on this device (localStorage, via the prefs provider) and apply at once.
+ *
+ *   <PreferencesView coachMode={table.coachMode} onCoachMode={table.setCoachMode} />
+ *
+ * Props (optional): coachMode + onCoachMode, the table session's own setter, so a change
+ * here also cancels or reveals the coach for the decision on the table (the same path the
+ * "..." menu uses). Without them it reads and writes the stored preference directly.
+ *
+ * States: each selection; and storage refused (private window, blocked site data), where
+ * the choices still apply for this visit and the page says so instead of "Saved on this
+ * device".
+ */
+import { useId, useState } from 'react'
+import type { CoachMode, VisibilityMode } from '../../lib/prefsSchema'
 import { usePrefs } from '../../lib/prefsContext'
+import { canPersist, localStore } from '../../lib/prefsStorage'
+import { BP, useViewportSize } from '../../lib/breakpoints'
+import { useSpaceAvoid } from '../../lib/spaceAvoid'
+import { ChoiceList, type Choice } from './ChoiceList'
+import { DeckPicker } from './DeckPicker'
+import { SeatSample } from './SeatSample'
+import './PreferencesView.css'
 
-export function PreferencesView() {
-  const { deckId, setDeckId, visibility, setVisibility } = usePrefs()
+export interface PreferencesViewProps {
+  coachMode?: CoachMode
+  onCoachMode?: (mode: CoachMode) => void
+}
+
+const COACH: readonly Choice<CoachMode>[] = [
+  { value: 'on', label: 'On', description: 'The coach shows its read on every one of your turns.' },
+  { value: 'think', label: 'Think first', description: 'The coach works it out while you think. Decide, then show it to check yourself.' },
+  { value: 'off', label: 'Off', description: 'Nothing until you ask the coach.' },
+]
+
+const OPPONENTS: readonly Choice<VisibilityMode>[] = [
+  { value: 'labeled', label: 'Labeled', description: 'Each seat shows its archetype name. Easiest.', aside: <SeatSample mode="labeled" /> },
+  {
+    value: 'hud',
+    label: 'HUD',
+    description: 'Shows the VPIP, PFR and AF you have observed, once the sample is big enough. Read the player, not the label.',
+    aside: <SeatSample mode="hud" />,
+  },
+  { value: 'live', label: 'Live', description: 'Nothing but the action. Closest to a real table.', aside: <SeatSample mode="live" /> },
+]
+
+function SpaceColumn() {
+  const { w, h } = useViewportSize()
+  const phone = w < BP.sm
+  const col = Math.min(w, 1120) - (phone ? 0 : 56)
+  const rect = w > 0 ? (phone ? { x: 0, y: 120, w, h: h - 120 } : { x: (w - col) / 2, y: 0, w: col, h }) : null
+  useSpaceAvoid('prefs', [rect])
+  return null
+}
+
+export function PreferencesView({ coachMode, onCoachMode }: PreferencesViewProps) {
+  const prefs = usePrefs()
+  const mode = coachMode ?? prefs.coachMode
+  const setMode = onCoachMode ?? prefs.setCoachMode
+  // Read once per visit: whether the browser will keep these.
+  const [persists] = useState(() => canPersist(localStore()))
+  const uid = useId()
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 pt-6 pb-10 sm:px-8">
-      <div>
-        <h2 className="font-display text-2xl text-ink">Preferences</h2>
-        <p className="mt-1 text-sm text-muted">Customise your board — saved on this device.</p>
+    <div className="prefs mx-auto max-w-[1120px] px-10 pt-[100px] pb-[60px] max-sm:px-4 max-sm:pt-[76px] max-sm:pb-0">
+      <SpaceColumn />
+      <h1 className="m-0 text-display font-bold max-sm:text-[40px]">Preferences</h1>
+      <p className="m-0 mt-4 text-body text-fog">
+        {persists ? 'Saved on this device.' : 'This browser is not keeping site data, so these last for this visit only.'}
+      </p>
+
+      <div className="prefs-body">
+        <div className="prefs-col">
+          <section aria-labelledby={`${uid}-coach`}>
+            <h2 id={`${uid}-coach`} className="m-0 text-headline font-strong">
+              Coach
+            </h2>
+            <ChoiceList className="mt-4" labelledBy={`${uid}-coach`} options={COACH} value={mode} onChange={setMode} />
+          </section>
+
+          <section aria-labelledby={`${uid}-opp`}>
+            <h2 id={`${uid}-opp`} className="m-0 text-headline font-strong">
+              Opponents
+            </h2>
+            <p id={`${uid}-opp-note`} className="m-0 mt-2 max-w-[60ch] text-callout text-fog">
+              Display only: it never changes how the bots play or what the coach computes. Work down the list as you stop needing the
+              training wheels.
+            </p>
+            <ChoiceList className="mt-4" labelledBy={`${uid}-opp`} describedBy={`${uid}-opp-note`} options={OPPONENTS} value={prefs.visibility} onChange={prefs.setVisibility} />
+          </section>
+        </div>
+
+        <section aria-labelledby={`${uid}-deck`} className="prefs-deck">
+          <h2 id={`${uid}-deck`} className="m-0 text-headline font-strong">
+            Cards
+          </h2>
+          <DeckPicker labelledBy={`${uid}-deck`} value={prefs.deckId} onChange={prefs.setDeckId} />
+        </section>
       </div>
-
-      <section>
-        <h3 className="mb-1 font-display text-lg text-ink">Opponent visibility</h3>
-        <p className="mb-3 text-sm text-muted">
-          Display only — it never changes how the bots play or what the coach computes.
-          Work down the list as you stop needing the training wheels.
-        </p>
-        <div className="space-y-2">
-          {([
-            ['labeled', 'Labeled', 'Each seat shows its archetype name. Easiest.'],
-            ['hud', 'HUD', 'Shows observed VPIP/PFR once there is a big enough sample — read the player, not the label.'],
-            ['live', 'Live', 'Nothing but the action. Closest to a real table.'],
-          ] as const).map(([id, label, hint]) => (
-            <button
-              key={id}
-              onClick={() => setVisibility(id)}
-              className={`flex w-full items-baseline gap-3 rounded-lg border px-3 py-2 text-left ${
-                visibility === id ? 'border-accent bg-accent/10' : 'border-line'
-              }`}
-            >
-              <span className="w-16 shrink-0 text-sm text-ink">{label}</span>
-              <span className="text-[11px] text-muted">{hint}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h3 className="mb-3 font-display text-lg text-ink">Card deck</h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {DECKS.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setDeckId(d.id)}
-              className={`flex flex-col items-center gap-3 rounded-lg border p-4 transition ${
-                deckId === d.id ? 'border-accent ring-1 ring-accent/40' : 'border-line hover:border-faint'
-              }`}
-            >
-              <div className="flex items-end gap-1">
-                <Card card="As" deckId={d.id} width={46} />
-                <Card card="Kh" deckId={d.id} width={46} />
-              </div>
-              <span className={`text-xs ${deckId === d.id ? 'text-accent' : 'text-muted'}`}>{d.name}</span>
-            </button>
-          ))}
-        </div>
-      </section>
     </div>
   )
 }
