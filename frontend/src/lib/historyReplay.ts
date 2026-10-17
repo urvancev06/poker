@@ -15,30 +15,17 @@
 // action); the decisions are attached to the hero's rows, or listed on their own when the
 // two ever disagree.
 
-import type { HandRecord, HandReview, ReviewDecision } from '../api'
+import type { ActionType, HandRecord, HandReview, ReviewDecision } from '../api'
 import { cardLabel, splitCards } from './cards'
 import { chips, pct } from './format'
 import { leakLabel } from './historyList'
+import { STREET_LABEL, capitalize, streetVerb, type Street } from './tableModel'
 
-export type Street = 'preflop' | 'flop' | 'turn' | 'river'
 const STREETS: readonly Street[] = ['preflop', 'flop', 'turn', 'river']
-export const STREET_LABEL: Record<Street, string> = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River' }
 const BOARD_LEN: Record<Street, number> = { preflop: 0, flop: 3, turn: 4, river: 5 }
 
-/** Street from the number of board cards (B12: never from a stale `street` field). */
-export function streetOfBoard(n: number): Street {
-  if (n >= 5) return 'river'
-  if (n === 4) return 'turn'
-  if (n >= 3) return 'flop'
-  return 'preflop'
-}
-
 function streetLabel(s: string): string {
-  return STREET_LABEL[s as Street] ?? s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-export function capitalize(s: string): string {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+  return STREET_LABEL[s as Street] ?? capitalize(s)
 }
 
 /* ---------- the stored hand (GET /hands/{id}), read defensively ---------- */
@@ -86,20 +73,34 @@ export interface DecisionView {
   action: string
   /** "A pair + backdoor flush draw". */
   handLabel: string
-  /** "48 to call into 95", or "Pot 21" with nothing to call. */
+  /** "48 to call into 95", or "Nothing to call, pot 21". */
   price: string
-  /** The bar: realized equity when the review has it, else raw equity. Null preflop. */
+  /** The headline figure: realized equity when the review has it, else raw equity. Null
+   *  preflop (the review scores equity only postflop, against live villains). */
   eq: { label: 'Realized' | 'Equity'; value: number } | null
   /** Raw equity, shown beside realized. */
   raw: number | null
-  /** The price the call was judged against (after any adjustment). */
+  /** The price a call or fold was judged against (after any adjustment). Null for a bet,
+   *  raise or check, and preflop (no equity to hold it against). */
   need: number | null
-  /** Pot odds alone, when the adjustment moved the price away from it. */
+  /** Pot odds alone, when the adjustment moved the price away from them. */
   direct: number | null
   /** Which way the adjustment moved the price. */
   adjust: 'dearer' | 'cheaper' | null
   leaks: DecisionLeak[]
+  /** Any leak on this decision. */
+  flagged: boolean
+  /** A leak about the price itself (called without odds, folded with them): the realized
+   *  figure is the one that was judged, so it carries the leak's tone. */
+  priceFlag: boolean
 }
+
+/** The leaks judged on realized equity against the price (review.py:123-153). */
+const PRICE_LEAKS: ReadonlySet<string> = new Set(['call_no_odds', 'fold_with_odds'])
+
+/** The decisions a call price applies to: a call or a fold. A bet, raise or check is not
+ *  judged on what calling would have cost. */
+const PRICED_ACTIONS: ReadonlySet<string> = new Set(['call', 'fold'])
 
 function actionWord(d: Pick<ReviewDecision, 'action' | 'to_amount' | 'street'>): string {
   const n = d.to_amount != null ? ` ${chips(d.to_amount)}` : ''
@@ -117,35 +118,42 @@ function actionWord(d: Pick<ReviewDecision, 'action' | 'to_amount' | 'street'>):
 export function decisionView(d: ReviewDecision, key: string): DecisionView {
   const realized = d.realized_pct ?? null
   const raw = d.equity_pct
-  const need = raw != null ? d.required_pct : null
+  // the price only beside an equity to hold it against (postflop: the review scores no
+  // preflop equity, and a price alone judges nothing)
+  const need = (realized ?? raw) != null && d.to_call > 0 && PRICED_ACTIONS.has(d.action) ? (d.required_pct ?? null) : null
   const directRaw = d.required_direct_pct ?? null
   const moved = need != null && directRaw != null && Math.abs(need - directRaw) >= 0.05
+  const leaks = d.leaks.map((l) => ({ type: l.type, label: leakLabel(l.type), note: l.note }))
   return {
     key,
     street: streetLabel(d.street),
     action: actionWord(d),
     handLabel: capitalize(d.hand_label),
-    price: d.to_call > 0 ? `${chips(d.to_call)} to call into ${chips(d.pot)}` : `Pot ${chips(d.pot)}`,
+    price: d.to_call > 0 ? `${chips(d.to_call)} to call into ${chips(d.pot)}` : `Nothing to call, pot ${chips(d.pot)}`,
     eq: realized != null ? { label: 'Realized', value: realized } : raw != null ? { label: 'Equity', value: raw } : null,
     raw: realized != null ? raw : null,
     need,
     direct: moved ? directRaw : null,
     adjust: moved ? (need > directRaw ? 'dearer' : 'cheaper') : null,
-    leaks: d.leaks.map((l) => ({ type: l.type, label: leakLabel(l.type), note: l.note })),
+    leaks,
+    flagged: leaks.length > 0,
+    priceFlag: leaks.some((l) => PRICE_LEAKS.has(l.type)),
   }
 }
 
-/** The plain-words note under the bars, or "" when there is nothing to add. */
-export function priceNote(v: Pick<DecisionView, 'direct' | 'adjust'>): string {
-  if (v.direct == null || !v.adjust) return ''
-  const why = v.adjust === 'dearer' ? 'Dearer: you may lose more later when you are behind.' : 'Cheaper: you should win more later when you hit.'
-  return `Pot odds alone ${pct(v.direct, 1)}. ${why}`
+/** The plain-words note on the price, or "" when there is nothing to add: the direct price
+ *  (pot odds) against the one the call was judged at (adjusted for what comes later). */
+export function priceNote(v: Pick<DecisionView, 'direct' | 'adjust' | 'need'>): string {
+  if (v.need == null || v.direct == null || !v.adjust) return ''
+  return v.adjust === 'dearer'
+    ? `Pot odds alone ask ${pct(v.direct, 1)}. The price is raised to ${pct(v.need, 1)} for what you may lose on later streets when you are behind.`
+    : `Pot odds alone ask ${pct(v.direct, 1)}. The price is lowered to ${pct(v.need, 1)} for what you can win on later streets when you hit.`
 }
 
 /** One sentence for assistive tech: "Realized 7.8%, need 45.7%, raw equity 8.4%". */
-export function barsLabel(v: Pick<DecisionView, 'eq' | 'need' | 'raw'>): string {
-  if (!v.eq) return ''
-  const parts = [`${v.eq.label} ${pct(v.eq.value, 1)}`]
+export function figuresLabel(v: Pick<DecisionView, 'eq' | 'need' | 'raw'>): string {
+  const parts: string[] = []
+  if (v.eq) parts.push(`${v.eq.label} ${pct(v.eq.value, 1)}`)
   if (v.need != null) parts.push(`need ${pct(v.need, 1)}`)
   if (v.raw != null) parts.push(`raw equity ${pct(v.raw, 1)}`)
   return parts.join(', ')
@@ -186,25 +194,6 @@ export interface Timeline {
   heroFolded: boolean
 }
 
-function verb(action: string, street: string, amount: number | null, you: boolean): string {
-  const n = amount != null ? ` ${chips(amount)}` : ''
-  switch (action) {
-    case 'fold':
-      return you ? 'fold' : 'folds'
-    case 'check':
-      return you ? 'check' : 'checks'
-    case 'call':
-      return (you ? 'call' : 'calls') + n
-    case 'bet':
-      if (street === 'preflop') return (you ? 'raise to' : 'raises to') + n // B26
-      return (you ? 'bet' : 'bets') + n
-    case 'raise':
-      return (you ? 'raise to' : 'raises to') + n
-    default:
-      return action
-  }
-}
-
 export function buildTimeline(review: HandReview, detail?: HandRecord | null): Timeline {
   const data = detail?.data
   const blinds = Array.isArray(data?.blinds) && data.blinds.length === 2 ? data.blinds : [1, 2]
@@ -240,8 +229,7 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
     const rows = s.actions.map((a, ai): TimelineRow => {
       let amount: number | null = null
       if (a.action === 'call') {
-        const owed = Math.max(0, level - (bet.get(a.position) ?? 0))
-        put(a.position, owed)
+        put(a.position, Math.max(0, level - (bet.get(a.position) ?? 0)))
         amount = bet.get(a.position) ?? null
       } else if ((a.action === 'bet' || a.action === 'raise') && a.to_amount != null) {
         put(a.position, Math.max(0, a.to_amount - (bet.get(a.position) ?? 0)))
@@ -253,7 +241,7 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
       return {
         key: `${s.street}-${ai}`,
         who: a.is_hero ? 'You' : a.position,
-        what: verb(a.action, s.street, amount, a.is_hero),
+        what: streetVerb({ action: a.action as ActionType, street: s.street, to_amount: a.to_amount }, amount, a.is_hero),
         you: a.is_hero,
         fold: a.action === 'fold',
         allIn: known && moved && left.get(a.position) === 0,
@@ -264,17 +252,23 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
   })
 
   // An all-in runout: the streets dealt after the betting stopped.
-  const last = streets.length ? (STREETS.indexOf(streets[streets.length - 1].street as Street) ?? -1) : -1
+  const last = streets.length ? STREETS.indexOf(streets[streets.length - 1].street as Street) : -1
   for (let i = Math.max(1, last + 1); i < STREETS.length; i++) {
     const st = STREETS[i]
     if (review.board.length < BOARD_LEN[st]) break
-    const board = review.board.slice(0, BOARD_LEN[st])
-    streets.push({ street: st, label: STREET_LABEL[st], board, newFrom: BOARD_LEN[STREETS[i - 1]], rows: [], dealtOnly: true })
+    streets.push({ street: st, label: STREET_LABEL[st], board: review.board.slice(0, BOARD_LEN[st]), newFrom: BOARD_LEN[STREETS[i - 1]], rows: [], dealtOnly: true })
   }
 
   let flagged = 0
-  for (const d of decisions) if (d.leaks.length > 0) flagged++
+  for (const d of decisions) if (d.flagged) flagged++
   return { streets, loose: inline ? [] : decisions, decisionCount: decisions.length, flagged, heroFolded }
+}
+
+/** "4 decisions, 1 flagged", "1 decision, none flagged", "No decisions to score". */
+export function decisionsLine(t: Pick<Timeline, 'decisionCount' | 'flagged'>): string {
+  if (t.decisionCount === 0) return 'No decisions to score'
+  const n = `${t.decisionCount} ${t.decisionCount === 1 ? 'decision' : 'decisions'}`
+  return `${n}, ${t.flagged === 0 ? 'none' : t.flagged} flagged`
 }
 
 /** "Board 10 of spades, 8 of clubs, Queen of clubs; dealt now: Queen of hearts". */
@@ -298,13 +292,14 @@ export interface ShownHand {
   net: number | null
 }
 
+const SEAT_POSITION = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN'] // the 6-max convention, a fallback only
+
 /** The opponents' cards turned up at showdown (never the hero's), winners first. */
 export function shownHands(detail: HandRecord | null | undefined, opts: { labeled: boolean }): ShownHand[] {
   const data = detail?.data
   const shown = data?.shown_cards
   if (!shown || typeof shown !== 'object') return []
   const { position, player } = seatMaps(detail)
-  const SEAT_POSITION = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN'] // the 6-max convention, a fallback only
   const out: ShownHand[] = []
   for (const [k, joined] of Object.entries(shown)) {
     const seat = Number(k)

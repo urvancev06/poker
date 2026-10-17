@@ -1,0 +1,226 @@
+/* History: what utilities do not say well. The controls' widths, the row grids, the
+   selected rim, the slow pass's sweep, the replay panel's sticky geometry and its fade,
+   and the decision rail (fill, price notch, raw-equity dot). */
+
+/* The rails are white 12%; the selected rim is white 42% (5.2:1 on the sheet, 6.9:1 on the
+   void, as Segmented.css). Written out per rule: the phone's replay sheet portals out of
+   .history, so custom properties set there would not reach it. */
+
+/* the two selectors: capsules at 32 px; full width on a phone */
+.seg.history-scope {
+  width: 240px;
+}
+.seg.history-window {
+  width: 290px;
+}
+.seg.history-scope .seg__opt,
+.seg.history-window .seg__opt {
+  height: 32px;
+  font-size: 14px;
+}
+@media (max-width: 599.98px) {
+  .seg.history-scope,
+  .seg.history-window {
+    width: auto;
+  }
+}
+
+/* nothing to show for the first moment: a fast answer never flashes a loading line */
+.history-wait {
+  animation: history-wait-in var(--dur-quick) ease 400ms both;
+}
+@keyframes history-wait-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- the leak report ---------- */
+.leak-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 112px;
+  align-items: center;
+  column-gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--dur-quick) ease;
+}
+.leak-row > :nth-child(2) {
+  text-align: right;
+}
+.leak-row:disabled {
+  cursor: default;
+}
+.leak-row:hover:not(:disabled),
+.leak-row[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.04);
+}
+.leak-row__rail {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.leak-row__rail > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--fog); /* 8.2:1 on the void, 6.6:1 on its rail */
+}
+
+/* the slow first pass: a segment that sweeps the rail (still under reduced motion; the
+   elapsed time still counts) */
+.leak-progress {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.leak-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 32%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--signal) 40%, #64d2ff 60%, transparent);
+  animation: leak-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes leak-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .leak-progress::after {
+    animation: none;
+    transform: translateX(110%);
+  }
+}
+
+/* ---------- the hand list ---------- */
+.hand-row__item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+.hand-row {
+  display: grid;
+  grid-template-columns: 40px 40px 56px minmax(0, 1fr) 64px;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  transition: background-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease;
+}
+.hand-row > :first-child {
+  text-align: right;
+}
+.hand-row:hover:not([aria-current="true"]) {
+  background: rgba(255, 255, 255, 0.05);
+}
+.hand-row[aria-current="true"] {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+.hand-row__card {
+  border-radius: 3px;
+}
+
+/* ---------- the replay ---------- */
+.replay-panel {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--bar-h) - 32px); /* refined in JS to fit the viewport */
+  min-height: 0;
+  padding: 26px 26px 6px;
+}
+.replay-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0 -6px;
+  padding: 0 6px 20px;
+}
+/* more below: the last 28 px fade out, so it reads as scrollable, never as clipped */
+.replay-panel__body.has-more {
+  -webkit-mask: linear-gradient(#000 calc(100% - 28px), transparent);
+  mask: linear-gradient(#000 calc(100% - 28px), transparent);
+}
+.replay-card {
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* Measured on the band (white 5% over the sheet): ink 13.7:1, fog 5.8:1, dust-sheet 5.2:1,
+   the leak red (--tone-fold-b) 5.3:1 (--loss would be 4.4:1, so text there uses the lighter
+   red); the neutral fill's start 3.1:1 and the flat flagged fill 3.6:1 on the rail track;
+   the price notch 9.4:1 on the track, with a sheet halo 5.2:1 against the fill. */
+/* your actions sit on a raised band (with "You" and the heavier line, never colour alone).
+   The band bleeds 12 px each side into the timeline's own inset, so it never widens the
+   scrolling sheet it sits in. */
+.replay-you {
+  margin-inline: -12px;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.replay-leak {
+  padding-left: 12px;
+  border-left: 2px solid var(--loss);
+  line-height: 1.4;
+}
+
+/* the decision rail, the coach ring laid flat: the fill is realized equity, the notch the
+   price, the dot raw equity */
+.replay-rail {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.replay-rail__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--tone-neutral-a), var(--tone-neutral-b));
+}
+.replay-rail.is-flagged .replay-rail__fill {
+  background: var(--tone-fold-b); /* flat: its darkest point must still clear the track */
+}
+.replay-rail__need {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--sheet-fill);
+}
+.replay-rail__raw {
+  position: absolute;
+  top: -11px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--ink);
+}
