@@ -17,36 +17,51 @@ solver and does not claim to be.
 
 ![The table with the coach open](docs/screenshots/table-coach.png)
 
-The table with the live coach open. Holding 2♣9♣ on a 7♣ 8♣ Q♣ flop - a made flush -
-against a Calling Station and a Maniac who have both bet, with one player still to act
-behind. The coach discounts 75% raw equity to 67% realised, prices the call exactly, and
-says to raise for value rather than just call. Underneath is the action-conditioned range
-each number was computed against.
+The table with the coach's maths open. Holding A♠ J♦ on the button, facing a 34-chip turn
+bet from the TAG, who 3-bet preflop from the big blind: 34 to call into 90 on 8♠ 6♦ K♦ 8♦.
+The coach reads a pair (the board's eights) plus a flush draw and calls it close: 23% raw
+equity, about 22% realised in position, against a 27.4% price that the flush draw's implied
+odds lower to a 20.1% need. The range it priced against is conditioned on the line the TAG
+took ("3-bet pre, barreled turn"), which leaves the top 3.4%, 45 combos. Under Show working,
+each row says whether it is Exact, Computed or an Estimate.
 
 ![The bot lab](docs/screenshots/lab.png)
 
-The bot lab. A 25,000-hand run with all five archetypes measured against their
-STRATEGY.md §4 bands. The statistics are outputs, so the loop is: move a knob, re-run,
-see where the measured numbers land. The in-browser run is capped at 25,000 hands - the
-≥100,000-hand gate described below runs offline.
+The bot lab after a 5,000-hand run of the default lineup (seed 0, 11 seconds), all five
+archetypes measured against their STRATEGY.md §4 bands. At that sample it fails the gate:
+five of the 19 gated stats sit just outside their bands - the Nit's AF at 2.14 (+0.14), the
+TAG's VPIP, PFR and WTSD (−0.6, −0.3, +0.6, its two seats read together over 10,000 hands)
+and the LAG's AF at 4.86 (+0.36) - and the lab labels the result indicative, not the gate.
+The Maniac's WTSD reads "No target". The statistics are outputs, so the loop is: move a
+knob, re-run, see where the measured numbers land. The in-browser run is capped at 25,000
+hands - the ≥100,000-hand gate described below runs offline.
 
 ![CFR on Kuhn poker](docs/screenshots/cfr.png)
 
-CFR on Kuhn poker after 50,000 iterations: a learned game value of −0.0555 against the
-exact −1/18 ≈ −0.0556, exploitability down to 0.0061, and the learned strategy for every
-information set.
+CFR on Kuhn poker after 50,000 iterations (seed 0): exploitability 0.0061, under the 0.02
+pass line, and a learned game value of −0.0555 against the exact −1/18 ≈ −0.0556. Below
+them are the 20 training checkpoints on fixed scales: exploitability on a log scale, where
+only the first checkpoint (2,500 iterations) sits above the 0.02 line, and the game value,
+on the −1/18 line from the start. The learned strategy for all twelve information sets is
+further down the page.
 
 ![Hand review](docs/screenshots/history.png)
 
 Hand review. Every stored hand replays street by street, and each decision is re-scored
-against the equity it actually needed. The flagged line here is an ATo open from UTG,
-which is not in the UTG opening range; the leak report counts the ones that recur.
+against the equity it actually needed. The flagged line here is a fold: A♥ J♣ in the small
+blind, a pair of aces folded to a bet of 11 into 28 on 3♣ 9♠ A♠ while realising 64.4%
+against the 28.2% a call needed. On the left, the leak report counts the ones that recur
+over all 311 stored hands: 248 calls without the odds, 78 limps first in, 14 missed value
+bets, and so on.
 
 ![Your own statistics](docs/screenshots/stats.png)
 
-The statistics view - your own play held to target bands, shown here over a 700-hand demo
-session. A stat stays grey and unjudged until the sample is large enough to read it -
-VPIP needs roughly 500 hands, 3-bet roughly 3,000.
+The statistics view - your own play held to target bands, over the same 311 hands. A stat
+stays hollow and unjudged until the sample is large enough to read it: VPIP and PFR at 500
+hands (189 to go here), ATS, AF, WTSD, WWSF and C-bet at 2,000, 3-bet and W$SD at 3,000,
+so nothing on this page is judged yet. The facts are 5.6 seconds per decision and −843.1
+bb/100. These hands were played while testing the app and taking these screenshots, most
+of them by calling far too much, which is why VPIP reads 74.3% and WTSD 87.9%.
 
 ## The strategy model
 
@@ -166,8 +181,12 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 - **Backend** - Python 3.11+, [PokerKit](https://github.com/uoftcprg/pokerkit) (game state
   and hand evaluation), [treys](https://github.com/ihendley/treys) (fast Monte Carlo),
   FastAPI + uvicorn, SQLite via SQLAlchemy. Chips are integers throughout.
-- **Frontend** - React + Vite + TypeScript + Tailwind v4. Cards are inline SVG, so there
-  are no image assets and no per-card requests.
+- **Frontend** - React 19 + Vite + TypeScript + Tailwind v4, in the Stage design. One type
+  family: SF Pro on Apple devices and Inter Variable everywhere else, self-hosted (no font
+  CDN), with tabular figures for every number. The table is a CSS 3D object whose camera is
+  also written as a pure function, so type, your hand and the bet labels sit upright at
+  projected points and are never skewed by the 3D. Cards are inline SVG, so there are no image assets and no per-card requests.
+  The pure logic in `frontend/src/lib` has 371 vitest tests, run with `npm test`.
 
 ## Running it
 
@@ -182,8 +201,12 @@ python3 -m venv .venv
 ```bash
 cd frontend
 npm install
+npm test                                          # 371 tests (vitest)
 npm run dev                                       # http://localhost:5173
 ```
+
+The frontend expects the API at `http://localhost:8000`; point it elsewhere with
+`VITE_API_URL`, which Vite bakes in when it builds or starts rather than reading at runtime.
 
 Sessions are held in process memory, so the API must run with **exactly one worker**; it
 refuses to start otherwise. The database path is set with `POKER_DB_URL` and defaults to
