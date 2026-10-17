@@ -91,7 +91,13 @@ function Group({ group: g, rows, selectedId, stop, onSelect }: GroupProps) {
       <div className="mb-1 flex items-baseline justify-between gap-3">
         <h3 id={id} className="m-0 text-callout font-semibold">
           {g.title}
-          {g.range ? <span className="ml-2.5 font-normal text-fog tabular-nums">{g.range}</span> : null}
+          {g.range ? (
+            <>
+              {/* a real space, so it is heard as "Oct 10 4:12", not "Oct 104:12" (the margin
+                  makes up the rest of the 10 px gap) */}{' '}
+              <span className="ml-1.5 font-normal text-fog tabular-nums">{g.range}</span>
+            </>
+          ) : null}
         </h3>
         <span className="text-foot text-fog tabular-nums">{handsCount(g.hands.length)}</span>
       </div>

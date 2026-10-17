@@ -198,8 +198,11 @@
   .range-grid__row {
     gap: 2px;
   }
+  /* 11 px in the 26 px cells of a 390 phone (the desk's slope would give 8.4, held at 9);
+     only the narrowest phones (320) still go down to 9 */
   .range-cell {
     border-radius: 4px;
+    font-size: clamp(9px, 3.08cqi, 11px);
     letter-spacing: -0.04em;
   }
 }

@@ -442,12 +442,27 @@ function decimals(step: number): number {
   return i < 0 ? 0 : s.length - i - 1
 }
 
-/** A slider value on its knob's grid: clamped, snapped to the step, without float dust. */
-export function snapKnob(v: number, meta: Pick<LabKnob, 'min' | 'max' | 'step'>): number {
+type KnobGrid = Pick<LabKnob, 'min' | 'max' | 'step'>
+
+const onGrid = (n: number, meta: KnobGrid): number =>
+  Number(Math.min(meta.max, Math.max(meta.min, meta.min + n * meta.step)).toFixed(decimals(meta.step) + 1))
+
+/** A slider value on its knob's grid: clamped, snapped to the step, without float dust.
+ *  With `def`, the default is a stop too: the backend's defaults need not sit on the step
+ *  (TAG's c-bet 0.68 on a 0.05 grid), and the value nearer to it than to the grid is it. */
+export function snapKnob(v: number, meta: KnobGrid, def?: number): number {
   const clamped = Math.min(Math.max(v, meta.min), meta.max)
-  const steps = Math.round((clamped - meta.min) / meta.step)
-  const d = decimals(meta.step) + 1
-  return Number(Math.min(meta.max, meta.min + steps * meta.step).toFixed(d))
+  const grid = onGrid(Math.round((clamped - meta.min) / meta.step), meta)
+  return def !== undefined && Math.abs(clamped - def) < Math.abs(clamped - grid) ? def : grid
+}
+
+/** One arrow-key step: the next stop past `v` in `dir`, a grid point or the default
+ *  between, so 0.65 -> 0.68 -> 0.70 when the default is 0.68. Clamped at the ends. */
+export function stepKnob(v: number, meta: KnobGrid, dir: 1 | -1, def?: number): number {
+  const k = (v - meta.min) / meta.step
+  const next = onGrid(dir > 0 ? Math.floor(k + EPS) + 1 : Math.ceil(k - EPS) - 1, meta)
+  const between = def !== undefined && (def - v) * dir > EPS && (next - def) * dir > EPS
+  return between ? def : next
 }
 
 /** A knob's value as a share: 0.055 -> "5.5%", 0.68 -> "68%" (one decimal when the step is under 1%). */

@@ -1,7 +1,8 @@
 /**
  * CFR on Kuhn: train a real solver on a game small enough that its answer is known, and
- * check it. The intro, then (after a run) the three figures with their pass states, the
- * two convergence charts on fixed scales, and the learned strategy against the textbook
+ * check it. The intro (what the figures mean behind "How to read this"), then (after a
+ * run) the three figures with their pass states in words (never colour alone), the two
+ * convergence charts on fixed scales, and the learned strategy against the textbook
  * equilibrium, grouped by the player who acts. Iterations and Train sit in the dock, as
  * Hands and Run do in the Bot lab.
  *
@@ -16,6 +17,7 @@ import { describeError } from '../../lib/apiError'
 import { ITER_DEFAULT, ITER_MAX, ITER_MIN, cfrFigures, cfrSummary, clampIterations, trainEstimate, type CfrFigure } from '../../lib/labCfr'
 import { count } from '../../lib/stats'
 import { Capsule } from '../../ui/Capsule'
+import { Disclosure } from '../../ui/Disclosure'
 import { ErrorNotice } from '../../ui/ErrorNotice'
 import { CfrChart } from './CfrChart'
 import { CfrStrategy } from './CfrStrategy'
@@ -37,18 +39,20 @@ export function CfrLab() {
 
   return (
     <>
-      <div className="mt-5 grid max-w-[62ch] gap-4 text-body text-fog max-sm:text-callout">
+      <p className="m-0 mt-5 max-w-[62ch] text-body text-fog max-sm:text-callout">
+        Counterfactual regret minimization (CFR) teaches itself an equilibrium strategy by playing against itself and, after every hand,
+        regretting the choices that would have done better. Here it plays Kuhn poker: three cards, J, Q and K, one card each and one bet allowed.
+      </p>
+      <Disclosure summary="How to read this" className="mt-6 max-w-[62ch]" panelClassName="grid gap-4 pt-1 pb-3 text-callout text-fog">
         <p className="m-0">
-          Counterfactual regret minimization (CFR) teaches itself an equilibrium strategy by playing against itself and, after every hand,
-          regretting the choices that would have done better. Here it plays Kuhn poker: three cards, J, Q and K, one card each and one bet
-          allowed. The game is small enough that its equilibrium is known in closed form, so this is not a made-up solver output: it is a real
-          solver, checked against the exact answer.
+          The game is small enough that its equilibrium is known in closed form, so this is not a made-up solver output: it is a real solver,
+          checked against the exact answer.
         </p>
         <p className="m-0">
           Acting first is a disadvantage: the game is worth −1/18, about −0.056, to the first player. Exploitability is how much a perfect
           counter-strategy would win against the learned one. It should fall toward 0 as training runs.
         </p>
-      </div>
+      </Disclosure>
 
       {run.error ? (
         <div className="material-sheet squircle mt-12 max-w-[640px] rounded-[20px] py-3.5 pr-3.5 pl-[18px]">

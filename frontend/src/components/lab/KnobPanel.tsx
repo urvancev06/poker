@@ -106,7 +106,7 @@ export function KnobPanel({ info, lineup, overrides, onOverrides, picked, onPick
               def={def}
               changed={isChanged(overrides, tune, meta.key, def)}
               help={KNOB_HELP[meta.key] ?? ''}
-              onChange={(v) => onOverrides((o) => withKnob(o, tune, meta.key, snapKnob(v, meta), def))}
+              onChange={(v) => onOverrides((o) => withKnob(o, tune, meta.key, snapKnob(v, meta, def), def))}
               onReset={() => onOverrides((o) => withKnob(o, tune, meta.key, def, def))}
             />
           )
@@ -118,9 +118,6 @@ export function KnobPanel({ info, lineup, overrides, onOverrides, picked, onPick
           used while {kept.length === 1 ? 'it sits' : 'they sit'} out.
         </p>
       ) : null}
-      <p className="m-0 mt-3 text-foot text-dust">
-        Values are shares: of hands for the 3-bet value, flat-call and defend ranges, of the time for the frequencies, of the pot for the bet size.
-      </p>
     </section>
   )
 }

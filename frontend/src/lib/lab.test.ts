@@ -35,6 +35,7 @@ import {
   seatedOverrides,
   seatsOf,
   snapKnob,
+  stepKnob,
   targetsText,
   tuneTarget,
   unseatedChanged,
@@ -281,6 +282,38 @@ describe('tuning', () => {
     expect(snapKnob(0.07000000001, tb)).toBe(0.07)
     expect(snapKnob(2, tb)).toBe(0.15)
     expect(snapKnob(0.31, INFO.knob_meta[2])).toBe(0.3)
+  })
+
+  it('keeps a default that is off the step grid reachable (TAG c-bet 0.68 on a 0.05 grid)', () => {
+    const cbet = INFO.knob_meta[1]
+    // a drag lands on the default within half a step of it, on the grid elsewhere
+    expect(snapKnob(0.675, cbet, 0.68)).toBe(0.68)
+    expect(snapKnob(0.689, cbet, 0.68)).toBe(0.68)
+    expect(snapKnob(0.7, cbet, 0.68)).toBe(0.7)
+    expect(snapKnob(0.651, cbet, 0.68)).toBe(0.65)
+    expect(snapKnob(0.4, cbet, 0.68)).toBe(0.4)
+  })
+
+  it('steps a knob to the next stop, the default among them', () => {
+    const cbet = INFO.knob_meta[1]
+    expect(stepKnob(0.68, cbet, 1, 0.68)).toBe(0.7)
+    expect(stepKnob(0.68, cbet, -1, 0.68)).toBe(0.65)
+    expect(stepKnob(0.65, cbet, 1, 0.68)).toBe(0.68)
+    expect(stepKnob(0.7, cbet, -1, 0.68)).toBe(0.68)
+    expect(stepKnob(0.7, cbet, 1, 0.68)).toBe(0.75)
+    expect(stepKnob(0.6, cbet, 1, 0.6)).toBe(0.65)
+    // float dust never skips or repeats a stop
+    expect(stepKnob(0.35000000000000003, cbet, 1, 0.68)).toBe(0.4)
+    expect(stepKnob(0.35000000000000003, cbet, -1, 0.68)).toBe(0.3)
+    // clamped at the ends, and a max that is off the grid (BB defend: 0.95 on 0.02) is a stop
+    expect(stepKnob(1, cbet, 1, 0.68)).toBe(1)
+    expect(stepKnob(0, cbet, -1, 0.68)).toBe(0)
+    const bb = { min: 0, max: 0.95, step: 0.02 }
+    expect(stepKnob(0.94, bb, 1, 0.32)).toBe(0.95)
+    expect(stepKnob(0.95, bb, -1, 0.32)).toBe(0.94)
+    // a 0.005 step, from a value off its grid
+    expect(stepKnob(0.0551, INFO.knob_meta[0], 1, 0.055)).toBe(0.06)
+    expect(stepKnob(0.0551, INFO.knob_meta[0], -1, 0.055)).toBe(0.055)
   })
 
   it('shows knobs as shares', () => {

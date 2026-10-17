@@ -108,9 +108,15 @@
 }
 
 /* ---------- the hand list ---------- */
+/* Off-screen rows skip rendering and keep their last rendered size, width included
+   (content-visibility: auto always remembers it). After a rotate or resize that old width
+   is a group's min-content; min-width 0 keeps it from holding the column wide. */
 .hand-row__item {
   content-visibility: auto;
   contain-intrinsic-size: auto 52px;
+}
+.hand-group {
+  min-width: 0;
 }
 .hand-row {
   display: grid;
@@ -130,6 +136,10 @@
 }
 .hand-row > :first-child {
   text-align: right;
+}
+/* the ring sits inside the row: the item's paint containment clips anything outside it */
+.hand-row:focus-visible {
+  outline-offset: -2px;
 }
 .hand-row:hover:not([aria-current="true"]) {
   background: rgba(255, 255, 255, 0.05);

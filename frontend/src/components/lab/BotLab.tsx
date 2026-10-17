@@ -1,8 +1,8 @@
 /**
  * Bot lab: you never set a bot's VPIP; you set a strategy and measure what comes out.
  * Lineup, then where each archetype landed (the gate verdict with its caveat, one row per
- * archetype against its bands), then the knobs, then how to read it. The run controls sit
- * in the dock, in reach from anywhere on the page.
+ * archetype against its bands), then the knobs, then how to read it (a disclosure). The
+ * run controls sit in the dock, in reach from anywhere on the page.
  *
  *   <BotLab />
  *
@@ -30,6 +30,7 @@ import { describeError } from '../../lib/apiError'
 import { prefersReducedMotion } from '../../lib/motion'
 import { count } from '../../lib/stats'
 import { Capsule } from '../../ui/Capsule'
+import { Disclosure } from '../../ui/Disclosure'
 import { ErrorNotice } from '../../ui/ErrorNotice'
 import { Tooltip } from '../../ui/Tooltip'
 import { BotResults } from './BotResults'
@@ -179,19 +180,25 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
   )
 }
 
+/** How to read the rails and the knobs, and why the verdict is indicative: one disclosure,
+ *  so the page leads with the figures (as Stats keeps its bb/100 caveat behind an i). */
 function Footnote() {
   return (
-    <div className="mt-24 grid max-w-[68ch] gap-4 text-callout text-fog max-sm:mt-16">
+    <Disclosure summary="How to read this" className="mt-20 max-w-[68ch] max-sm:mt-14" panelClassName="grid gap-4 pt-1 pb-3 text-callout text-fog">
       <p className="m-0">
         A dot inside its band is in range; outside it, the figure beside the value says by how much. The gate is VPIP, PFR, AF and WTSD in band
         for every archetype seated. 3-bet is shown against its band but not gated. The Maniac has no WTSD target, so that reading is not judged
         here, although the server’s gate counts it as a pass.
       </p>
       <p className="m-0">
+        The knobs are shares: of hands for the 3-bet value, flat-call and defend ranges, of the time for the frequencies, of the pot for the bet
+        size.
+      </p>
+      <p className="m-0">
         The result here is indicative, not the gate. WTSD is counted per flop seen, so even at 25,000 hands a Nit sees only about 1,850 flops:
         enough noise to flip the result on its own. The real gate is 100,000 hands, run offline with backend/scripts/simulate.py, and even there
         the Nit’s WTSD sits about 1.2 standard deviations from its bound.
       </p>
-    </div>
+    </Disclosure>
   )
 }
