@@ -195,6 +195,7 @@ class Hand:
                 state.deal_hole(1)
             hand._capture_holes()
             hand._deal_pending()
+            hand._settle_ledger()
         return hand
 
     def _deal_pending(self) -> None:
@@ -223,11 +224,27 @@ class Hand:
         self._state.deal_hole(cards)
         self._version += 1
         self._capture_holes()
+        self._settle_ledger()
 
     def deal_board(self, cards: str) -> None:
         """Deal board cards for the current street (manual-deal hands)."""
         self._state.deal_board(cards)
         self._version += 1
+        self._settle_ledger()
+
+    def _settle_ledger(self) -> None:
+        """Ledger bookkeeping that follows a deal or an action.
+
+        The blinds alone can end the betting: every seat but one is all-in by
+        posting and the last one's blind already covers them. PokerKit then moves
+        past preflop with nobody acting, so ``apply`` never closes the street;
+        close it here, which hands back the uncalled part of the blind. And once
+        the hand is over, record the rake."""
+        s = self._state
+        if not self._history and any(self.ledger.street_bets) and (self.is_over or s.street_index != 0):
+            self.ledger.close_street("preflop")
+        if self.is_over:
+            self.ledger.rake = -sum(self.results())
 
     # ---- queries ----------------------------------------------------------
 
@@ -396,8 +413,7 @@ class Hand:
         # (which can end the hand).
         self._deal_pending()
         self._version += 1
-        if self.is_over:
-            self.ledger.rake = -sum(self.results())
+        self._settle_ledger()
 
     # ---- decision facts ---------------------------------------------------
 

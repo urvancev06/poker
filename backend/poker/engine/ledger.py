@@ -15,9 +15,14 @@ log to recover an amount:
 * ``payouts(results)``: chips each seat collects at the end
   (``results[i] + contributed[i]``); they sum to ``pot - rake``.
 
-Return rule (it matches ``pokerkit.State.collect_bets``): when a street closes,
-the top street bet minus the second-highest street bet, over every seat
-including folded ones, goes back to the top bettor.
+Return rule: when a street closes, the top street bet minus the second-highest
+street bet, over every seat including folded ones, goes back to the top bettor.
+A street closes after its last action, or with no action at all when the blinds
+alone end the betting (``Hand`` closes preflop then). This matches PokerKit's
+bet collection (``pokerkit.State.collect_bets``) in every hand that reaches a
+showdown. In a hand everyone folds to, PokerKit never collects the winner's last
+bet and hands it back whole; the ledger still returns only the uncalled part, so
+its pot is the standard one: the winner's matched chips plus everyone else's.
 
 Storage: ``as_dict()`` is what a persisted hand keeps in ``hands.data.ledger``
 (``version`` 1). ``from_dict`` reads it back.

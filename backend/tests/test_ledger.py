@@ -12,7 +12,11 @@ from __future__ import annotations
 import json
 import random
 
+import pytest
+from pokerkit import BetCollection, ChipsPushing
+
 from poker.engine import Action, ActionType, Hand, Ledger
+from poker.engine.ledger import RakeConfig
 from poker.rng import shuffled_deck, stream
 
 F, X, C, B, R = (ActionType.FOLD, ActionType.CHECK, ActionType.CALL, ActionType.BET, ActionType.RAISE)
@@ -156,6 +160,93 @@ def test_ledger_conservation_random_short_stacks():
             mine = [e for e in led.entries if e.seat == i]
             assert mine, f"seat {i} has no ledger entry"
             assert mine[-1].stack_after == start[i] - led.contributed[i]
+
+
+def _pokerkit_books(h: Hand) -> tuple[list[int], list[int]]:
+    """Per seat, the chips PokerKit's own operation log collected into the pot
+    (net of the uncalled bets it handed back) and pushed out of it."""
+    n = h.table_size
+    collected, pushed = [0] * n, [0] * n
+    for op in h._state.operations:
+        if isinstance(op, BetCollection):
+            collected = [c + b for c, b in zip(collected, op.bets)]
+        elif isinstance(op, ChipsPushing):
+            pushed = [p + a for p, a in zip(pushed, op.amounts)]
+    return collected, pushed
+
+
+@pytest.mark.parametrize("rake", [None, RakeConfig(no_flop_no_drop=False)], ids=["no-rake", "rake"])
+def test_ledger_matches_pokerkit_collections_and_payouts(rake):
+    """The ledger against PokerKit's own record of each hand rather than against
+    itself: per seat, what went into the pot (BetCollection) and what came out
+    (ChipsPushing), and the rake between them. Stacks from 1 chip to 300 bb, so
+    some hands end on the blinds alone, with nobody acting.
+
+    A hand everyone folds to is different: PokerKit never collects the winner's
+    last bet (it hands it back whole), so there the losers' chips must match, and
+    the winner's matched chips equal the most any other seat put in."""
+    no_action = 0
+    for h_idx in range(500):
+        srng = stream(11, "t", h_idx)
+        n = srng.randint(2, 6)
+        bb = srng.choice([2, 10])
+        start = [
+            srng.choice([srng.randint(1, bb), srng.randint(bb, 3 * bb), srng.randint(bb, 300 * bb)])
+            for _ in range(n)
+        ]
+        h = Hand.new(table_size=n, blinds=(bb // 2, bb), starting_stacks=start, deck=_deck(h_idx), rake=rake)
+        no_action += h.is_over
+        arng = stream(11, "a", h_idx)
+        while not h.is_over:
+            h.apply(_random_action(h.legal_actions(), arng))
+        led, results = h.ledger, h.results()
+        collected, pushed = _pokerkit_books(h)
+        assert led.rake == -sum(results)
+        folded = {e.seat for e in led.entries if e.action == "fold"}
+        if len(folded) == n - 1:
+            (winner,) = set(range(n)) - folded
+            others = [i for i in range(n) if i != winner]
+            assert [led.contributed[i] for i in others] == [collected[i] for i in others], h_idx
+            assert led.contributed[winner] == max(led.contributed[i] for i in others), h_idx
+        else:
+            assert led.contributed == collected, (h_idx, start, led.contributed, collected)
+            assert led.payouts(results) == pushed, (h_idx, start)
+            assert led.rake == sum(collected) - sum(pushed), h_idx
+    assert no_action > 0  # the sample reaches hands the blinds alone settle
+
+
+@pytest.mark.parametrize("manual", [False, True], ids=["dealt", "manual-deal"])
+def test_blinds_alone_ending_the_betting_return_the_uncalled_blind(manual):
+    """Heads-up 5/10, the small blind holds 2 chips: it is all-in for 2, the big
+    blind's 10 covers it, and nobody acts. The 8 nobody can call go back, so the
+    pot is 4, as PokerKit plays it."""
+    if manual:
+        h = Hand.new(table_size=2, blinds=(5, 10), starting_stacks=(1712, 2), manual_deal=True)
+        h.deal_hole("AsAd")
+        h.deal_hole("7c2d")
+        for cards in ("Kh9s4c", "3d", "8h"):
+            h.deal_board(cards)
+    else:
+        h = Hand.new(table_size=2, blinds=(5, 10), starting_stacks=(1712, 2), deck=_deck())
+    assert h.is_over
+    led = h.ledger
+    back = [e for e in led.entries if e.kind == "return"]
+    assert [(e.seat, e.added, e.stack_after) for e in back] == [(0, -8, 1710)]
+    assert led.contributed == [2, 2] and led.pot == 4
+    collected, pushed = _pokerkit_books(h)
+    assert led.contributed == collected
+    assert led.payouts(h.results()) == pushed and sum(pushed) == 4
+    assert h.snapshot().ledger["pot"] == 4
+
+
+def test_blinds_alone_settle_the_rake():
+    """A hand the blinds alone play out is raked like any other once it is over."""
+    h = Hand.new(table_size=2, blinds=(5, 10), starting_stacks=(1712, 4), deck=_deck(),
+                 rake=RakeConfig(no_flop_no_drop=False, percentage=0.5))
+    assert h.is_over
+    collected, pushed = _pokerkit_books(h)
+    assert h.ledger.rake == sum(collected) - sum(pushed) > 0
+    assert h.ledger.rake == -sum(h.results())
 
 
 def test_ledger_round_trips_through_a_dict():
