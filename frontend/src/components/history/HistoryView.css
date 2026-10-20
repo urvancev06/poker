@@ -118,9 +118,11 @@
 .hand-group {
   min-width: 0;
 }
+/* The net column grows with its figure ("−152.4 bb" is wider than 64px) and the outcome
+   word gives way; a fixed width let a long net run into the item's paint clip. */
 .hand-row {
   display: grid;
-  grid-template-columns: 40px 40px 56px minmax(0, 1fr) 64px;
+  grid-template-columns: 40px 40px 56px minmax(0, 1fr) minmax(64px, max-content);
   align-items: center;
   column-gap: 12px;
   width: 100%;
