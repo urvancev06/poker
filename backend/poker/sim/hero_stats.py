@@ -4,6 +4,7 @@ the healthy 6-max reg target bands from STRATEGY.md §5."""
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 
 from .stats import StatLine, StatsAccumulator
 from .table import PlayerHandSummary
@@ -75,17 +76,36 @@ def decision_seconds(records: list[dict]) -> dict:
     return {"median_s": round(med / 1000.0, 1), "n": len(ms)}
 
 
-def hero_report(summary_dicts: list[dict], buckets: int = 8, big_blind: int = 2) -> dict:
+def _line(summary_dicts: list[dict], big_blind: int, big_blinds: Sequence[int] | None) -> dict:
+    out = line_to_dict(_aggregate(summary_dicts, big_blind))
+    if big_blinds is not None and summary_dicts:
+        # Each hand in its own big blinds: 100 * sum(net_i / bb_i) / n.
+        total = sum(d.get("net", 0) / bb for d, bb in zip(summary_dicts, big_blinds, strict=True))
+        out["net_bb_per_100"] = _r(100.0 * total / len(summary_dicts))
+    return out
+
+
+def hero_report(
+    summary_dicts: list[dict],
+    buckets: int = 8,
+    big_blind: int = 2,
+    big_blinds: Sequence[int] | None = None,
+) -> dict:
     """Overall hero stats + a coarse trend (chronological order assumed).
 
     ``big_blind`` must be the session's real big blind - bb/100 divides net chips by
-    it, so a hardcoded value silently rescales every result."""
-    overall = line_to_dict(_aggregate(summary_dicts, big_blind))
+    it, so a hardcoded value silently rescales every result. ``big_blinds`` gives
+    each hand its own big blind instead (hands at several levels), and then
+    ``net_bb_per_100`` is ``100 * sum(net_i / bb_i) / n``, overall and per bucket."""
+    if big_blinds is not None and len(big_blinds) != len(summary_dicts):
+        raise ValueError("big_blinds must give one big blind per hand")
+    overall = _line(summary_dicts, big_blind, big_blinds)
     trend: list[dict] = []
     n = len(summary_dicts)
     if n >= buckets * 5:  # only show a trend once there's enough sample
         size = n // buckets
         for i in range(buckets):
-            chunk = summary_dicts[i * size : (i + 1) * size if i < buckets - 1 else n]
-            trend.append(line_to_dict(_aggregate(chunk, big_blind)))
+            lo, hi = i * size, ((i + 1) * size if i < buckets - 1 else n)
+            chunk_bbs = None if big_blinds is None else big_blinds[lo:hi]
+            trend.append(_line(summary_dicts[lo:hi], big_blind, chunk_bbs))
     return {"overall": overall, "trend": trend, "targets": HERO_TARGETS}

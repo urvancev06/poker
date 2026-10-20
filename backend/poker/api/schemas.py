@@ -7,11 +7,16 @@ from pydantic import BaseModel, Field
 DEFAULT_VILLAINS = ["nit", "tag", "lag", "station", "maniac"]
 
 
+# Decision 1: 5/10 blinds and 1,000-chip (100bb) buy-ins; the UI shows big blinds.
+DEFAULT_BLINDS = (5, 10)
+DEFAULT_BUY_IN = 1000
+
+
 class CreateSessionRequest(BaseModel):
     villains: list[str] = Field(default_factory=lambda: list(DEFAULT_VILLAINS))
-    small_blind: int = 1
-    big_blind: int = 2
-    buy_in: int = 200
+    small_blind: int = DEFAULT_BLINDS[0]
+    big_blind: int = DEFAULT_BLINDS[1]
+    buy_in: int = DEFAULT_BUY_IN
     seed: int | None = None
     # The UI passes False to step bots one action at a time (watch the hand);
     # default True keeps the simple "bots already acted" behaviour for API use.
@@ -33,9 +38,9 @@ class LabSimulateRequest(BaseModel):
     lineup: list[str] = Field(default_factory=lambda: list(DEFAULT_VILLAINS) + ["tag"])
     hands: int = 5_000
     seed: int = 0
-    small_blind: int = 1
-    big_blind: int = 2
-    starting_stack: int = 200
+    small_blind: int = DEFAULT_BLINDS[0]
+    big_blind: int = DEFAULT_BLINDS[1]
+    starting_stack: int = DEFAULT_BUY_IN
     # {archetype_key: {knob: value}}; sanitized server-side against the allowlist.
     overrides: dict[str, dict[str, float]] = Field(default_factory=dict)
 

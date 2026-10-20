@@ -28,7 +28,7 @@ def _hero_policy(gs: GameSession) -> Action:
     la = gs.state().legal_actions
     if la.can_check:
         return Action(ActionType.CHECK)
-    if la.can_call and la.call_amount <= 10:
+    if la.can_call and la.call_amount <= 50:
         return Action(ActionType.CALL)
     return Action(ActionType.FOLD)
 

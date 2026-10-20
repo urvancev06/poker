@@ -28,7 +28,7 @@ def _hero_action(state: dict) -> dict:
     legal = state["state"]["legal_actions"]
     if legal["can_check"]:
         return {"type": "check"}
-    if legal["can_call"] and legal["call_amount"] <= 10:
+    if legal["can_call"] and legal["call_amount"] <= 50:
         return {"type": "call"}
     return {"type": "fold"}
 
@@ -42,7 +42,7 @@ def test_health(client: TestClient):
 def test_play_full_hand_via_api(client: TestClient):
     sess = _new_session(client)
     sid = sess["session_id"]
-    assert sess["state"]["pot"] >= 3  # blinds posted
+    assert sess["state"]["pot"] >= 15  # blinds posted (5/10)
 
     guard = 0
     while not sess["hand_over"] and guard < 50:

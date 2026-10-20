@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from poker import __version__
 from poker.coach import build_coaching, leak_summary, review_hand_cached
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
+from poker.db.models import LEGACY_BLINDS, blinds_of
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
 from poker.game.session import public_result
@@ -158,50 +159,61 @@ def create_app(db_url: str | None = None) -> FastAPI:
         """Step a single pending bot action (for watch-the-hand pacing). No-op
         when it's the hero's turn or the hand is over."""
         gs = _session(session_id)
-        gs.advance_one()
-        _persist_if_finished(gs, db)
-        return session_to_dict(gs)
+        with gs.lock:
+            gs.advance_one()
+            _persist_if_finished(gs, db)
+            return session_to_dict(gs)
 
     @app.get("/session/{session_id}")
     def get_state(session_id: str) -> dict:
-        return session_to_dict(_session(session_id))
+        gs = _session(session_id)
+        with gs.lock:
+            return session_to_dict(gs)
 
     @app.post("/session/{session_id}/action")
     def submit_action(session_id: str, req: ActionRequest, db: Session = Depends(get_db)) -> dict:
         gs = _session(session_id)
-        if not gs.hero_to_act:
-            raise HTTPException(status_code=409, detail="it is not the hero's turn")
         atype = _ACTION_TYPES.get(req.type.lower())
         if atype is None:
             raise HTTPException(status_code=400, detail=f"unknown action type: {req.type}")
-        try:
-            gs.submit_hero_action(Action(atype, req.to_amount), decision_ms=req.decision_ms)
-        except IllegalAction as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        _persist_if_finished(gs, db)
-        return session_to_dict(gs)
+        # One lock across check-act-persist: a double-click's second request sees
+        # the first one's result, never a half-applied action.
+        with gs.lock:
+            if not gs.hero_to_act:
+                raise HTTPException(status_code=409, detail="it is not the hero's turn")
+            try:
+                gs.submit_hero_action(Action(atype, req.to_amount), decision_ms=req.decision_ms)
+            except IllegalAction as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            _persist_if_finished(gs, db)
+            return session_to_dict(gs)
 
     @app.post("/session/{session_id}/next-hand")
     def next_hand(session_id: str, db: Session = Depends(get_db)) -> dict:
         gs = _session(session_id)
-        if not gs.hand_over:
-            raise HTTPException(status_code=409, detail="the current hand is still in progress")
-        gs.start_hand()
-        _persist_if_finished(gs, db)
-        return session_to_dict(gs)
+        with gs.lock:
+            if not gs.hand_over:
+                raise HTTPException(status_code=409, detail="the current hand is still in progress")
+            gs.start_hand()
+            _persist_if_finished(gs, db)
+            return session_to_dict(gs)
 
     @app.get("/session/{session_id}/coach")
     def coach(session_id: str) -> dict:
         gs = _session(session_id)
-        if not gs.hero_to_act:
-            raise HTTPException(status_code=409, detail="coaching is only available on the hero's turn")
-        return build_coaching(gs).as_dict()
+        # Held for the whole computation: the coach reads the hand several times,
+        # and an /advance landing in between would mix two spots in one answer.
+        with gs.lock:
+            if not gs.hero_to_act:
+                raise HTTPException(status_code=409, detail="coaching is only available on the hero's turn")
+            return build_coaching(gs).as_dict()
 
     @app.get("/session/{session_id}/reads")
     def reads(session_id: str) -> dict:
         """Per-bot observed read for the HUD (revealed past the sample threshold)."""
         gs = _session(session_id)
-        return {str(p): r for p, r in gs.reads().items()}
+        with gs.lock:
+            return {str(p): r for p, r in gs.reads().items()}
 
     @app.get("/stats/me")
     def my_stats(
@@ -217,28 +229,25 @@ def create_app(db_url: str | None = None) -> FastAPI:
         limit = last if last and last > 0 else 100_000
         records = list_hands(db, session_id=session_id, limit=limit)
         # list_hands is newest-first; reverse to chronological for the trend.
-        summaries = [
-            r.data["hero_summary"]
+        rows = [
+            r.data
             for r in reversed(records)
             if isinstance(r.data, dict) and "hero_summary" in r.data
         ]
-        # bb/100 is only meaningful at one blind level. Mixing 1/2 and 5/10 hands into
-        # a single figure is nonsense, so use the most recent level and say how many
-        # hands actually match it.
-        blinds = [
-            tuple(r.data.get("blinds", (1, 2)))
-            for r in reversed(records)
-            if isinstance(r.data, dict)
-        ]
-        big_blind = int(blinds[-1][1]) if blinds else 2
-        matching = sum(1 for b in blinds if int(b[1]) == big_blind)
-        report = hero_report(summaries, big_blind=big_blind)
+        summaries = [d["hero_summary"] for d in rows]
+        # bb/100 divides each hand's net by that hand's own big blind (D13): the
+        # live database holds 1/2 hands and new sessions play 5/10, and every hand
+        # counts. Rows from before blinds were stored were all at 1/2.
+        levels = [blinds_of(d) for d in rows]
+        report = hero_report(summaries, big_blinds=[bb for _, bb in levels])
         report["window"] = {
             "last": last,
             "session_id": session_id,
             "hands": len(summaries),
-            "big_blind": big_blind,
-            "hands_at_this_blind": matching,
+            # The most recent level (kept for old clients); every hand counts now.
+            "big_blind": levels[-1][1] if levels else LEGACY_BLINDS[1],
+            "hands_at_this_blind": len(summaries),
+            "blind_levels": [list(b) for b in sorted(set(levels))],
         }
         report["decision_time"] = decision_seconds(
             [r.data for r in reversed(records) if isinstance(r.data, dict)]

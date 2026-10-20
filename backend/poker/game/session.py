@@ -14,10 +14,20 @@ Randomness comes from seeded streams (``poker.rng``): hand h is dealt from
 replay the session exactly, and a different hero line never changes a later
 deal. The seed reveals every future deck, so it is kept server-side: it is
 stored in the hand record's ``truth`` and never sent to the client.
+
+Chips: new sessions play 5/10 with 1,000-chip (100bb) buy-ins; every amount the
+UI shows is in big blinds. Stored hands carry their own ``blinds`` (the live
+database holds hands at 1/2), so readers must never assume a level.
+
+Concurrency: the API serves requests on a thread pool, so two requests for one
+session (a double-click, a coach fetch during ``/advance``) can arrive together.
+``lock`` (re-entrant) serialises them: every public mutator takes it, and the API
+holds it across each route's read-check-act-persist sequence.
 """
 
 from __future__ import annotations
 
+import threading
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 
@@ -47,8 +57,8 @@ def public_result(result: dict | None) -> dict | None:
 class GameSession:
     session_id: str
     villains: list[str]              # archetype names for players 1..n-1
-    blinds: tuple[int, int] = (1, 2)
-    buy_in: int = 200
+    blinds: tuple[int, int] = (5, 10)
+    buy_in: int = 1000
     # The session's master seed; a fresh 63-bit one when not given.
     seed: int | None = None
     # When False, bots do NOT auto-act to the hero's turn; the caller steps them
@@ -61,6 +71,8 @@ class GameSession:
     hand_index: int = field(init=False, default=0)
     # Which bot engine plays the villains (the v2 bots arrive behind "v2").
     engine: str = field(init=False, default="v1")
+    # Serialises every read and mutation of this session (see the module docstring).
+    lock: threading.RLock = field(init=False, repr=False, compare=False, default_factory=threading.RLock)
 
     def __post_init__(self) -> None:
         if self.seed is None:
@@ -83,7 +95,8 @@ class GameSession:
         self._decision_ms: list[int] = []
         self._hero_hole: list[str] = []  # captured at deal (folding clears it later)
         self._dealt_holes: list[list[str]] = []  # all seats' cards, captured at deal
-        self._reads = StatsAccumulator()  # per-player observed stats (keyed by player index)
+        # Per-player observed stats (keyed by player index).
+        self._reads = StatsAccumulator(big_blind=self.blinds[1])
 
     # ------------------------------------------------------------------ #
     @property
@@ -121,6 +134,10 @@ class GameSession:
     def start_hand(self) -> None:
         """Deal a new hand: rotate the button, rebuy busted players, then let the
         bots act up to the hero's first decision."""
+        with self.lock:
+            self._start_hand()
+
+    def _start_hand(self) -> None:
         bb = self.blinds[1]
         for p in range(self.n):
             if self.stacks[p] < bb:  # busted -> rebuy to the buy-in
@@ -171,6 +188,10 @@ class GameSession:
     def advance_one(self) -> bool:
         """Step a single bot action. Returns True if one was applied, False when
         it's the hero's turn or the hand is over (the UI stops stepping then)."""
+        with self.lock:
+            return self._advance_one()
+
+    def _advance_one(self) -> bool:
         h = self._hand
         if h is None or h.is_over or h.actor is None:
             return False
@@ -182,6 +203,10 @@ class GameSession:
         return True
 
     def submit_hero_action(self, action: Action, decision_ms: int | None = None) -> None:
+        with self.lock:
+            self._submit_hero_action(action, decision_ms)
+
+    def _submit_hero_action(self, action: Action, decision_ms: int | None) -> None:
         if not self.hero_to_act:
             raise RuntimeError("it is not the hero's turn to act")
         if decision_ms is not None and decision_ms >= 0:

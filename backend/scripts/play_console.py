@@ -115,8 +115,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Play one NLHE hand in the console.")
     parser.add_argument("--seed", type=int, default=None, help="reproducible deal")
     parser.add_argument("--table-size", type=int, default=6)
-    parser.add_argument("--stack", type=int, default=200, help="starting stack (chips)")
-    parser.add_argument("--blinds", type=int, nargs=2, default=(1, 2), metavar=("SB", "BB"))
+    parser.add_argument("--stack", type=int, default=1000, help="starting stack (chips, 100bb at 5/10)")
+    parser.add_argument("--blinds", type=int, nargs=2, default=(5, 10), metavar=("SB", "BB"))
     args = parser.parse_args(argv)
 
     hand = Hand.new(

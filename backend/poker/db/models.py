@@ -16,6 +16,21 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# Every hand stored before the 5/10 chip unit was at 1/2, and the oldest rows do
+# not record their blinds at all.
+LEGACY_BLINDS = (1, 2)
+
+
+def blinds_of(data: dict | None) -> tuple[int, int]:
+    """A stored hand's ``(small, big)`` blinds, falling back to the legacy 1/2."""
+    raw = data.get("blinds") if isinstance(data, dict) else None
+    try:
+        sb, bb = (int(x) for x in raw)  # type: ignore[union-attr]
+    except (TypeError, ValueError):
+        return LEGACY_BLINDS
+    return (sb, bb) if bb > 0 else LEGACY_BLINDS
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -54,4 +69,6 @@ class HandRecord(Base):
             "pot": self.pot,
             "hero_net": self.hero_net,
             "went_to_showdown": self.went_to_showdown,
+            # Amounts above are chips at this hand's own level (the UI shows bb).
+            "big_blind": blinds_of(self.data)[1],
         }
