@@ -98,7 +98,7 @@ def test_stored_pot_counts_only_called_chips_b5():
     called off: 4. As the BB the villain folds its small blind: the pot is 1 + 1
     (the BB's uncalled 1 comes back): 2. The old action-log replay said 7 and 3:
     it counted uncalled chips and had the heads-up blinds on the wrong seats."""
-    gs = GameSession("hu", villains=["nit"], seed=3)
+    gs = GameSession("hu", villains=["nit"], blinds=(1, 2), buy_in=200, seed=3)
     gs._bots[1] = _CheckFold()
     seen = []
     for _ in range(4):
