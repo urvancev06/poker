@@ -107,13 +107,18 @@ class Coaching:
     pot_odds: str | None
     call_ev: float | None
     in_position: bool
-    action_closed: bool           # river / all-in -> raw equity = realized, pure price spot
-    players_behind: int           # live opponents yet to act behind the hero
+    action_closed: bool           # calling ends the betting -> raw equity = realized, pure price spot
+    players_behind: int           # opponents who still act after the hero calls or checks
     villains: list[VillainModel]
     verdict: str
     rationale: str
     tone: str = "neutral"          # good | neutral | close | fold (display only)
     basis: list[str] = field(default_factory=list)
+    # What a call can win: the hero's chips plus each opponent's up to the hero's
+    # total (side pots). None when the spot carries no engine facts.
+    winnable: int | None = None
+    big_blind: int = 2
+    closes_on_call: bool | None = None  # nobody acts after a call (betting may go on)
 
     def as_dict(self) -> dict:
         return {
@@ -141,6 +146,9 @@ class Coaching:
             "rationale": self.rationale,
             "tone": self.tone,
             "basis": self.basis,
+            "winnable": self.winnable,
+            "big_blind": self.big_blind,
+            "closes_on_call": self.closes_on_call,
         }
 
 
@@ -360,8 +368,14 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     # committed chips to contest this pot (the aggressor + callers whose street bet
     # matches the level the hero faces). Yet-to-act players aren't in the pot yet, and
     # treating them as live ranges systematically under-rates calls. We do still count
-    # how many are behind, so the verdict can flag that calling doesn't close the
+    # how many act behind, so the verdict can flag that calling doesn't close the
     # action.
+    #
+    # The engine's decision facts (``state.facts``) say who acts after a call and
+    # whether a call ends the betting, and the ledger says what a call can win
+    # (side pots included). Spots built without an engine (the scripted coach
+    # battery) carry no facts and fall back to deriving the same from the seats.
+    facts = getattr(state, "facts", None)
     all_live = session.live_villain_seats()
     villain_seats = all_live
     players_behind = 0
@@ -371,6 +385,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         players_behind = sum(1 for s in all_live if state.seats[s].bet < level)
         if contesting:
             villain_seats = contesting
+    if facts is not None:
+        players_behind = facts.to_act_after_call
 
     villain_models: list[VillainModel] = []
     ranges = []
@@ -396,8 +412,10 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     else:  # no live villains (shouldn't happen when hero is to act) -> trivially ahead
         equity_frac, win, tie, lose = 1.0, 1.0, 0.0, 0.0
 
-    to_call = legal.call_amount
+    to_call = facts.to_call if facts is not None else legal.call_amount
     can_check = legal.can_check
+    # What calling can win (pot after the call, capped by side pots).
+    winnable = facts.winnable_if_call if facts is not None else state.total_pot + to_call
 
     # Position (for the rest of the hand, i.e. postflop order: lower seat acts
     # first). Hero is in position if it acts after every modelled opponent.
@@ -407,9 +425,14 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     # hero (or every contesting villain) is all-in there is no more betting — in
     # all of these, raw equity is fully realized (R = 1).
     hero_stack = state.seats[hero_seat].stack
-    is_river = len(board) == 5
-    all_villains_allin = bool(villain_seats) and all(state.seats[s].stack == 0 for s in villain_seats)
-    action_closed = to_call > 0 and (is_river or to_call >= hero_stack or all_villains_allin)
+    if facts is not None:
+        # A fact, not a guess: nobody acts after the call and no later street has
+        # betting (the river, or at most one player left with chips).
+        action_closed = to_call > 0 and facts.betting_over_after_call
+    else:
+        is_river = len(board) == 5
+        all_villains_allin = bool(villain_seats) and all(state.seats[s].stack == 0 for s in villain_seats)
+        action_closed = to_call > 0 and (is_river or to_call >= hero_stack or all_villains_allin)
 
     street = _STREET_OF.get(len(board), "flop")
     r = _realization_factor(
@@ -427,18 +450,23 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     if to_call > 0:
         # Implied / reverse-implied odds adjust the PRICE, not the range or realized
         # equity. Capped at the stack behind, and 0 once the action closes.
+        # The pot the call plays for: everything it can win except its own chips.
+        # Equal to the pot unless a side pot caps it (a short stack can only win
+        # each opponent's chips up to its own total).
+        pot_for_call = winnable - to_call
         effective_behind = min(hero_stack, max((state.seats[s].stack for s in villain_seats), default=0))
         implied_adj, implied_note = _implied_adjustment(
             street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
-            made_tier=hc.made, pair_str=pair_str, pot=state.total_pot,
+            made_tier=hc.made, pair_str=pair_str, pot=pot_for_call,
             behind=effective_behind, action_closed=action_closed,
         )
-        required_direct = required_equity(to_call, state.total_pot)
-        required = implied_required_equity(to_call, state.total_pot, implied_adj)  # decision-relevant
-        # Call EV is the immediate pot-odds EV on the CURRENT pot (exact arithmetic);
-        # implied odds show up in `required`/the verdict, explained by implied_note.
-        call_ev = round(analyze_call(call=to_call, pot=state.total_pot, equity=realized).call_ev, 1)
-        pot_odds = f"{state.total_pot / to_call:.1f} : 1"
+        required_direct = required_equity(to_call, pot_for_call)
+        required = implied_required_equity(to_call, pot_for_call, implied_adj)  # decision-relevant
+        # Call EV is the immediate pot-odds EV on what the call can win (exact
+        # arithmetic); implied odds show up in `required`/the verdict, explained by
+        # implied_note.
+        call_ev = round(analyze_call(call=to_call, pot=pot_for_call, equity=realized).call_ev, 1)
+        pot_odds = f"{pot_for_call / to_call:.1f} : 1"
         required_pct: float | None = round(required * 100, 1)
         required_direct_pct: float | None = round(required_direct * 100, 1)
     else:
@@ -505,4 +533,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
             realization_applied=abs(r - 1.0) > 1e-9,
             measured_ranges=all(v.archetype in BET_COMPOSITION for v in villain_models),
         ),
+        winnable=winnable if facts is not None else None,
+        big_blind=int(state.blinds[1]),
+        closes_on_call=facts.closes_on_call if facts is not None else None,
     )

@@ -74,10 +74,12 @@ def test_coaching_matches_the_math_module(client: TestClient):
 
     coach = client.get(f"/session/{sid}/coach").json()
     assert 0.0 <= coach["equity_pct"] <= 100.0
-    # required equity must equal the exact pot-odds computation
+    # The raw price is exact pot-odds arithmetic on what a call can win (the pot
+    # plus the call, unless a side pot caps it).
     if coach["to_call"] > 0:
-        expected = round(required_equity(coach["to_call"], coach["pot"]) * 100, 1)
-        assert coach["required_equity_pct"] == expected
+        assert coach["winnable"] <= coach["pot"] + coach["to_call"]
+        expected = round(required_equity(coach["to_call"], coach["winnable"] - coach["to_call"]) * 100, 1)
+        assert coach["required_direct_pct"] == expected
     # honesty: the basis is labelled and defers to GTO Wizard
     assert any("GTO Wizard" in note for note in coach["basis"])
     assert coach["verdict"]

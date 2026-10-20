@@ -1,0 +1,4558 @@
+{
+ "TRUE POSITIVE: hero calls nit pot river bet": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 6
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": 8
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "turn",
+     "to_amount": 20
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "river",
+     "to_amount": 69
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "Ks Qd 7h 3c 2s",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "5h5d",
+   "hero_net": 0,
+   "hero_seat": 1,
+   "lineup": [
+    "Nit",
+    "Nit",
+    "hero",
+    "Nit",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": true
+  },
+  "review": {
+   "board": [
+    "Ks",
+    "Qd",
+    "7h",
+    "3c",
+    "2s"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "pocket 5s",
+     "leaks": [],
+     "pot": 9,
+     "realized_pct": null,
+     "required_direct_pct": 30.8,
+     "required_pct": 30.8,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 4
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "equity_pct": 22.4,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 13,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "equity_pct": 13.0,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~28% but only realizing ~13% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 21,
+     "realized_pct": 13.0,
+     "required_direct_pct": 27.6,
+     "required_pct": 27.6,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 8
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "equity_pct": 11.3,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 29,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "equity_pct": 6.2,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~29% but only realizing ~6% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 49,
+     "realized_pct": 6.2,
+     "required_direct_pct": 29.0,
+     "required_pct": 29.0,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 20
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "equity_pct": 3.7,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 69,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "equity_pct": 1.2,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~33% but only realizing ~1% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 138,
+     "realized_pct": 1.2,
+     "required_direct_pct": 33.3,
+     "required_pct": 33.3,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 69
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "5h",
+    "5d"
+   ],
+   "hero_net": 0,
+   "leaks": [
+    {
+     "hand_index": 0,
+     "note": "Called needing ~28% but only realizing ~13% vs their conditioned range \u2014 a call without the price.",
+     "street": "flop",
+     "type": "call_no_odds"
+    },
+    {
+     "hand_index": 0,
+     "note": "Called needing ~29% but only realizing ~6% vs their conditioned range \u2014 a call without the price.",
+     "street": "turn",
+     "type": "call_no_odds"
+    },
+    {
+     "hand_index": 0,
+     "note": "Called needing ~33% but only realizing ~1% vs their conditioned range \u2014 a call without the price.",
+     "street": "river",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 8
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 20
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 69
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": true
+  }
+ },
+ "TRUE POSITIVE: loose RFI open 96o (no limper)": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": 8
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "9d6c",
+   "hero_net": 0,
+   "hero_seat": 5,
+   "lineup": [
+    "hero",
+    "Nit",
+    "Nit",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [],
+   "decisions": [
+    {
+     "action": "raise",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [
+      {
+       "note": "Opened 96o from BTN \u2014 it isn't in the BTN opening range (STRATEGY.md \u00a72, 538 combos). Tighten or have a plan.",
+       "type": "loose_open"
+      }
+     ],
+     "pot": 3,
+     "realized_pct": null,
+     "required_direct_pct": 40.0,
+     "required_pct": 40.0,
+     "street": "preflop",
+     "to_amount": 8,
+     "to_call": 2
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "9d",
+    "6c"
+   ],
+   "hero_net": 0,
+   "leaks": [
+    {
+     "hand_index": 0,
+     "note": "Opened 96o from BTN \u2014 it isn't in the BTN opening range (STRATEGY.md \u00a72, 538 combos). Tighten or have a plan.",
+     "street": "preflop",
+     "type": "loose_open"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": true,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": 8
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "correct calldown vs maniac (small river bet)": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 6
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": 8
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "turn",
+     "to_amount": 20
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "river",
+     "to_amount": 6
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "Ks Qd 7h 3c 2s",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "5h5d",
+   "hero_net": 0,
+   "hero_seat": 1,
+   "lineup": [
+    "Nit",
+    "Nit",
+    "hero",
+    "Maniac",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": true
+  },
+  "review": {
+   "board": [
+    "Ks",
+    "Qd",
+    "7h",
+    "3c",
+    "2s"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "pocket 5s",
+     "leaks": [],
+     "pot": 9,
+     "realized_pct": null,
+     "required_direct_pct": 30.8,
+     "required_pct": 30.8,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 4
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "equity_pct": 37.8,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 13,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "equity_pct": 32.2,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 21,
+     "realized_pct": 32.2,
+     "required_direct_pct": 27.6,
+     "required_pct": 27.6,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 8
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "equity_pct": 34.7,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 29,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "equity_pct": 19.5,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~29% but only realizing ~20% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 49,
+     "realized_pct": 19.5,
+     "required_direct_pct": 29.0,
+     "required_pct": 29.0,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 20
+    },
+    {
+     "action": "check",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "equity_pct": 21.5,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 69,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "equity_pct": 11.3,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 75,
+     "realized_pct": 11.3,
+     "required_direct_pct": 7.4,
+     "required_pct": 7.4,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 6
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "5h",
+    "5d"
+   ],
+   "hero_net": 0,
+   "leaks": [
+    {
+     "hand_index": 0,
+     "note": "Called needing ~29% but only realizing ~20% vs their conditioned range \u2014 a call without the price.",
+     "street": "turn",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 8
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 20
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Ks",
+      "Qd",
+      "7h",
+      "3c",
+      "2s"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": true
+  }
+ },
+ "disciplined fold vs value double-barrel": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 6
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": 8
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "turn",
+     "to_amount": 20
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "Kc 7h 2d 5s",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "Ah9c",
+   "hero_net": 0,
+   "hero_seat": 1,
+   "lineup": [
+    "Nit",
+    "Nit",
+    "hero",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "Kc",
+    "7h",
+    "2d",
+    "5s"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 9,
+     "realized_pct": null,
+     "required_direct_pct": 30.8,
+     "required_pct": 30.8,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 4
+    },
+    {
+     "action": "check",
+     "board": [
+      "Kc",
+      "7h",
+      "2d"
+     ],
+     "equity_pct": 29.2,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 13,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Kc",
+      "7h",
+      "2d"
+     ],
+     "equity_pct": 19.2,
+     "hand_label": "high card",
+     "leaks": [
+      {
+       "note": "Called needing ~28% but only realizing ~19% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 21,
+     "realized_pct": 19.2,
+     "required_direct_pct": 27.6,
+     "required_pct": 27.6,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 8
+    },
+    {
+     "action": "check",
+     "board": [
+      "Kc",
+      "7h",
+      "2d",
+      "5s"
+     ],
+     "equity_pct": 15.2,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 29,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Kc",
+      "7h",
+      "2d",
+      "5s"
+     ],
+     "equity_pct": 9.2,
+     "hand_label": "high card",
+     "leaks": [
+      {
+       "note": "Called needing ~29% but only realizing ~9% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 49,
+     "realized_pct": 9.2,
+     "required_direct_pct": 29.0,
+     "required_pct": 29.0,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 20
+    },
+    {
+     "action": "fold",
+     "board": [
+      "Kc",
+      "7h",
+      "2d",
+      "5s"
+     ],
+     "equity_pct": 9.2,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 69,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 0
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "Ah",
+    "9c"
+   ],
+   "hero_net": 0,
+   "leaks": [
+    {
+     "hand_index": 0,
+     "note": "Called needing ~28% but only realizing ~19% vs their conditioned range \u2014 a call without the price.",
+     "street": "flop",
+     "type": "call_no_odds"
+    },
+    {
+     "hand_index": 0,
+     "note": "Called needing ~29% but only realizing ~9% vs their conditioned range \u2014 a call without the price.",
+     "street": "turn",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 8
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Kc",
+      "7h",
+      "2d"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 20
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Kc",
+      "7h",
+      "2d",
+      "5s"
+     ],
+     "street": "turn"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "iso-raise 98o over a limper (BTN)": {
+  "data": {
+   "actions": [
+    {
+     "action": "call",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": 8
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "9d8c",
+   "hero_net": 0,
+   "hero_seat": 5,
+   "lineup": [
+    "hero",
+    "Nit",
+    "Nit",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [],
+   "decisions": [
+    {
+     "action": "raise",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 5,
+     "realized_pct": null,
+     "required_direct_pct": 28.6,
+     "required_pct": 28.6,
+     "street": "preflop",
+     "to_amount": 8,
+     "to_call": 2
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "9d",
+    "8c"
+   ],
+   "hero_net": 0,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": true,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": 8
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "session row 0": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 3,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 5
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 5,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 3,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": 15
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "MP",
+     "seat": 3,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "CO",
+     "seat": 4,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "BTN",
+     "seat": 5,
+     "street": "flop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "7d 6s Qh",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "6hKd",
+   "hero_decision_ms": [],
+   "hero_net": -5,
+   "hero_position": "BTN",
+   "hero_seat": 5,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": false,
+    "folded_to_steal": false,
+    "net": -5,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 0,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": true,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": false
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 23,
+   "results_by_player": {
+    "0": -5,
+    "1": -1,
+    "2": -2,
+    "3": 18,
+    "4": -5,
+    "5": -5
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {},
+   "start_stacks": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "7d",
+    "6s",
+    "Qh"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 18,
+     "realized_pct": null,
+     "required_direct_pct": 21.7,
+     "required_pct": 21.7,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 5
+    },
+    {
+     "action": "fold",
+     "board": [
+      "7d",
+      "6s",
+      "Qh"
+     ],
+     "equity_pct": 43.3,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 38,
+     "realized_pct": 40.3,
+     "required_direct_pct": 28.3,
+     "required_pct": 39.5,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 15
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "6h",
+    "Kd"
+   ],
+   "hero_net": -5,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 3,
+       "position": "UTG",
+       "to_amount": 5
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 5,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 3,
+       "position": "UTG",
+       "to_amount": 15
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": true,
+       "player": 0,
+       "position": "BTN",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "7d",
+      "6s",
+      "Qh"
+     ],
+     "street": "flop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "session row 1": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": 5
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 5,
+     "position": "MP",
+     "seat": 3,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "CO",
+     "seat": 4,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 5,
+     "position": "MP",
+     "seat": 3,
+     "street": "turn",
+     "to_amount": 10
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "CO",
+     "seat": 4,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 5,
+     "position": "MP",
+     "seat": 3,
+     "street": "river",
+     "to_amount": 25
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "CO",
+     "seat": 4,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "4h Js Qc Qh Ks",
+   "button_player": 1,
+   "hand_index": 1,
+   "hero_cards": "5s7s",
+   "hero_decision_ms": [],
+   "hero_net": -15,
+   "hero_position": "CO",
+   "hero_seat": 4,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": false,
+    "folded_to_steal": false,
+    "net": -15,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 1,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": true,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": false
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 33,
+   "results_by_player": {
+    "0": -15,
+    "1": 0,
+    "2": -1,
+    "3": -2,
+    "4": 0,
+    "5": 18
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {},
+   "start_stacks": [
+    198,
+    218,
+    195,
+    195,
+    195,
+    199
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "4h",
+    "Js",
+    "Qc",
+    "Qh",
+    "Ks"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 8,
+     "realized_pct": null,
+     "required_direct_pct": 38.5,
+     "required_pct": 38.5,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 5
+    },
+    {
+     "action": "check",
+     "board": [
+      "4h",
+      "Js",
+      "Qc"
+     ],
+     "equity_pct": 17.7,
+     "hand_label": "backdoor flush draw",
+     "leaks": [],
+     "pot": 13,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "4h",
+      "Js",
+      "Qc",
+      "Qh"
+     ],
+     "equity_pct": 9.6,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~30% but only realizing ~9% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 23,
+     "realized_pct": 9.2,
+     "required_direct_pct": 30.3,
+     "required_pct": 30.3,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 10
+    },
+    {
+     "action": "fold",
+     "board": [
+      "4h",
+      "Js",
+      "Qc",
+      "Qh",
+      "Ks"
+     ],
+     "equity_pct": 0.2,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 58,
+     "realized_pct": 0.2,
+     "required_direct_pct": 30.1,
+     "required_pct": 30.1,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 25
+    }
+   ],
+   "hand_index": 1,
+   "hero_cards": [
+    "5s",
+    "7s"
+   ],
+   "hero_net": -15,
+   "leaks": [
+    {
+     "hand_index": 1,
+     "note": "Called needing ~30% but only realizing ~9% vs their conditioned range \u2014 a call without the price.",
+     "street": "turn",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 5,
+       "position": "MP",
+       "to_amount": 5
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 5,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "CO",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "4h",
+      "Js",
+      "Qc"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 5,
+       "position": "MP",
+       "to_amount": 10
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "CO",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "4h",
+      "Js",
+      "Qc",
+      "Qh"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 5,
+       "position": "MP",
+       "to_amount": 25
+      },
+      {
+       "action": "fold",
+       "is_hero": true,
+       "player": 0,
+       "position": "CO",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "4h",
+      "Js",
+      "Qc",
+      "Qh",
+      "Ks"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "session row 2": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": 7
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "MP",
+     "seat": 3,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 2,
+     "position": "BTN",
+     "seat": 5,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 4,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": 12
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "MP",
+     "seat": 3,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "BTN",
+     "seat": 5,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "MP",
+     "seat": 3,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "5h 6c Ah 7c Qc",
+   "button_player": 2,
+   "hand_index": 2,
+   "hero_cards": "6s2h",
+   "hero_decision_ms": [],
+   "hero_net": -19,
+   "hero_position": "MP",
+   "hero_seat": 3,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": false,
+    "folded_to_steal": false,
+    "net": -19,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 1,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": true,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": true
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 46,
+   "results_by_player": {
+    "0": -19,
+    "1": 0,
+    "2": -7,
+    "3": -1,
+    "4": 27,
+    "5": 0
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {
+    "1": "9d7s",
+    "3": "6s2h"
+   },
+   "start_stacks": [
+    216,
+    195,
+    213,
+    180,
+    199,
+    197
+   ],
+   "went_to_showdown": true
+  },
+  "review": {
+   "board": [
+    "5h",
+    "6c",
+    "Ah",
+    "7c",
+    "Qc"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [
+      {
+       "note": "Limped 62o from MP. The baseline is raise-or-fold \u2014 open-raise it or fold.",
+       "type": "limp"
+      }
+     ],
+     "pot": 3,
+     "realized_pct": null,
+     "required_direct_pct": 40.0,
+     "required_pct": 40.0,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 2
+    },
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 17,
+     "realized_pct": null,
+     "required_direct_pct": 22.7,
+     "required_pct": 22.7,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 5
+    },
+    {
+     "action": "check",
+     "board": [
+      "5h",
+      "6c",
+      "Ah"
+     ],
+     "equity_pct": 31.2,
+     "hand_label": "a pair + backdoor flush draw",
+     "leaks": [],
+     "pot": 22,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "5h",
+      "6c",
+      "Ah",
+      "7c"
+     ],
+     "equity_pct": 12.9,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~38% but only realizing ~12% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 34,
+     "realized_pct": 12.2,
+     "required_direct_pct": 26.1,
+     "required_pct": 37.5,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 12
+    },
+    {
+     "action": "check",
+     "board": [
+      "5h",
+      "6c",
+      "Ah",
+      "7c",
+      "Qc"
+     ],
+     "equity_pct": 11.2,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 46,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 0
+    }
+   ],
+   "hand_index": 2,
+   "hero_cards": [
+    "6s",
+    "2h"
+   ],
+   "hero_net": -19,
+   "leaks": [
+    {
+     "hand_index": 2,
+     "note": "Limped 62o from MP. The baseline is raise-or-fold \u2014 open-raise it or fold.",
+     "street": "preflop",
+     "type": "limp"
+    },
+    {
+     "hand_index": 2,
+     "note": "Called needing ~38% but only realizing ~12% vs their conditioned range \u2014 a call without the price.",
+     "street": "turn",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "BTN",
+       "to_amount": 7
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "MP",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 2,
+       "position": "BTN",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "5h",
+      "6c",
+      "Ah"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 4,
+       "position": "BB",
+       "to_amount": 12
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "BTN",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "5h",
+      "6c",
+      "Ah",
+      "7c"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "MP",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "5h",
+      "6c",
+      "Ah",
+      "7c",
+      "Qc"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": true
+  }
+ },
+ "session row 3": {
+  "data": {
+   "actions": [
+    {
+     "action": "call",
+     "player": 0,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 3,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": 7
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 5,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 5,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": 21
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 3,
+     "position": "BTN",
+     "seat": 5,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "turn",
+     "to_amount": 50
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": 156
+    },
+    {
+     "action": "call",
+     "player": 3,
+     "position": "BTN",
+     "seat": 5,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 5,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": 29
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "BTN",
+     "seat": 5,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "SB",
+     "seat": 0,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "9s 6s Th 2d 4h",
+   "button_player": 3,
+   "hand_index": 3,
+   "hero_cards": "Ac5c",
+   "hero_decision_ms": [],
+   "hero_net": -7,
+   "hero_position": "UTG",
+   "hero_seat": 2,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": false,
+    "folded_to_steal": false,
+    "net": -7,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 0,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": true,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": false
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 617,
+   "results_by_player": {
+    "0": -7,
+    "1": 0,
+    "2": 0,
+    "3": -184,
+    "4": -213,
+    "5": 404
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {
+    "0": "Qd6d",
+    "1": "9d4d"
+   },
+   "start_stacks": [
+    222,
+    213,
+    161,
+    199,
+    190,
+    215
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "9s",
+    "6s",
+    "Th",
+    "2d",
+    "4h"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [
+      {
+       "note": "Limped A5s from UTG. The baseline is raise-or-fold \u2014 open-raise it or fold.",
+       "type": "limp"
+      }
+     ],
+     "pot": 3,
+     "realized_pct": null,
+     "required_direct_pct": 40.0,
+     "required_pct": 40.0,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 2
+    },
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 23,
+     "realized_pct": null,
+     "required_direct_pct": 17.9,
+     "required_pct": 17.9,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 5
+    },
+    {
+     "action": "fold",
+     "board": [
+      "9s",
+      "6s",
+      "Th"
+     ],
+     "equity_pct": 6.7,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 49,
+     "realized_pct": 5.3,
+     "required_direct_pct": 30.0,
+     "required_pct": 30.0,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 21
+    }
+   ],
+   "hand_index": 3,
+   "hero_cards": [
+    "Ac",
+    "5c"
+   ],
+   "hero_net": -7,
+   "leaks": [
+    {
+     "hand_index": 3,
+     "note": "Limped A5s from UTG. The baseline is raise-or-fold \u2014 open-raise it or fold.",
+     "street": "preflop",
+     "type": "limp"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 3,
+       "position": "BTN",
+       "to_amount": 7
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 5,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "UTG",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 5,
+       "position": "BB",
+       "to_amount": 21
+      },
+      {
+       "action": "fold",
+       "is_hero": true,
+       "player": 0,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 3,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "9s",
+      "6s",
+      "Th"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": 50
+      },
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 5,
+       "position": "BB",
+       "to_amount": 156
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 3,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "9s",
+      "6s",
+      "Th",
+      "2d"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 5,
+       "position": "BB",
+       "to_amount": 29
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "SB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "9s",
+      "6s",
+      "Th",
+      "2d",
+      "4h"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "session row 4": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": 8
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 5,
+     "position": "SB",
+     "seat": 0,
+     "street": "flop",
+     "to_amount": 14
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "8d 7d Qd",
+   "button_player": 4,
+   "hand_index": 4,
+   "hero_cards": "Kh5c",
+   "hero_decision_ms": [],
+   "hero_net": -8,
+   "hero_position": "BB",
+   "hero_seat": 1,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": true,
+    "folded_to_steal": false,
+    "net": -8,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 0,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": true,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": false
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 18,
+   "results_by_player": {
+    "0": -8,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": -2,
+    "5": 10
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {},
+   "start_stacks": [
+    617,
+    154,
+    199,
+    190,
+    31,
+    9
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "8d",
+    "7d",
+    "Qd"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 12,
+     "realized_pct": null,
+     "required_direct_pct": 33.3,
+     "required_pct": 33.3,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 6
+    },
+    {
+     "action": "fold",
+     "board": [
+      "8d",
+      "7d",
+      "Qd"
+     ],
+     "equity_pct": 18.4,
+     "hand_label": "backdoor flush draw",
+     "leaks": [],
+     "pot": 32,
+     "realized_pct": 15.6,
+     "required_direct_pct": 30.4,
+     "required_pct": 30.4,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 14
+    }
+   ],
+   "hand_index": 4,
+   "hero_cards": [
+    "Kh",
+    "5c"
+   ],
+   "hero_net": -8,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 5,
+       "position": "SB",
+       "to_amount": 8
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "BTN",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 5,
+       "position": "SB",
+       "to_amount": 14
+      },
+      {
+       "action": "fold",
+       "is_hero": true,
+       "player": 0,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "8d",
+      "7d",
+      "Qd"
+     ],
+     "street": "flop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "session row 5": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "turn",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "river",
+     "to_amount": 4
+    },
+    {
+     "action": "call",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "river",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "river",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "Qd 2d 3d 4s 4c",
+   "button_player": 5,
+   "hand_index": 5,
+   "hero_cards": "8h5d",
+   "hero_decision_ms": [],
+   "hero_net": -6,
+   "hero_position": "SB",
+   "hero_seat": 0,
+   "hero_summary": {
+    "archetype": "0",
+    "cbet_flop": false,
+    "cbet_opp": false,
+    "faced_steal": false,
+    "folded_to_steal": false,
+    "net": -6,
+    "pfr": false,
+    "player": 0,
+    "postflop_bets": 0,
+    "postflop_calls": 1,
+    "postflop_raises": 0,
+    "saw_flop": true,
+    "steal_attempt": false,
+    "steal_opp": false,
+    "threebet": false,
+    "threebet_opp": false,
+    "vpip": true,
+    "was_pfr": false,
+    "won": false,
+    "won_at_showdown": false,
+    "wtsd": true
+   },
+   "lineup": [
+    "hero",
+    "Nit",
+    "TAG",
+    "LAG",
+    "Calling Station",
+    "Maniac"
+   ],
+   "pot": 18,
+   "results_by_player": {
+    "0": -6,
+    "1": 12,
+    "2": 0,
+    "3": 0,
+    "4": -6,
+    "5": 0
+   },
+   "session_id": "legacy-fixture",
+   "shown_cards": {
+    "0": "8h5d",
+    "1": "QcJs",
+    "4": "Ah6c"
+   },
+   "start_stacks": [
+    146,
+    199,
+    190,
+    31,
+    7,
+    627
+   ],
+   "went_to_showdown": true
+  },
+  "review": {
+   "board": [
+    "Qd",
+    "2d",
+    "3d",
+    "4s",
+    "4c"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 5,
+     "realized_pct": null,
+     "required_direct_pct": 16.7,
+     "required_pct": 16.7,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 1
+    },
+    {
+     "action": "check",
+     "board": [
+      "Qd",
+      "2d",
+      "3d"
+     ],
+     "equity_pct": 15.5,
+     "hand_label": "flush draw",
+     "leaks": [],
+     "pot": 6,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "check",
+     "board": [
+      "Qd",
+      "2d",
+      "3d",
+      "4s"
+     ],
+     "equity_pct": 20.3,
+     "hand_label": "flush draw + open-ended straight draw",
+     "leaks": [],
+     "pot": 6,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "turn",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "check",
+     "board": [
+      "Qd",
+      "2d",
+      "3d",
+      "4s",
+      "4c"
+     ],
+     "equity_pct": 0.0,
+     "hand_label": "a pair",
+     "leaks": [],
+     "pot": 6,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "call",
+     "board": [
+      "Qd",
+      "2d",
+      "3d",
+      "4s",
+      "4c"
+     ],
+     "equity_pct": 0.0,
+     "hand_label": "a pair",
+     "leaks": [
+      {
+       "note": "Called needing ~22% but only realizing ~0% vs their conditioned range \u2014 a call without the price.",
+       "type": "call_no_odds"
+      }
+     ],
+     "pot": 14,
+     "realized_pct": 0.0,
+     "required_direct_pct": 22.2,
+     "required_pct": 22.2,
+     "street": "river",
+     "to_amount": null,
+     "to_call": 4
+    }
+   ],
+   "hand_index": 5,
+   "hero_cards": [
+    "8h",
+    "5d"
+   ],
+   "hero_net": -6,
+   "leaks": [
+    {
+     "hand_index": 5,
+     "note": "Called needing ~22% but only realizing ~0% vs their conditioned range \u2014 a call without the price.",
+     "street": "river",
+     "type": "call_no_odds"
+    }
+   ],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Qd",
+      "2d",
+      "3d"
+     ],
+     "street": "flop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "check",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Qd",
+      "2d",
+      "3d",
+      "4s"
+     ],
+     "street": "turn"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": 4
+      },
+      {
+       "action": "call",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      }
+     ],
+     "board": [
+      "Qd",
+      "2d",
+      "3d",
+      "4s",
+      "4c"
+     ],
+     "street": "river"
+    }
+   ],
+   "went_to_showdown": true
+  }
+ },
+ "set-mine flat (22 vs open)": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 6
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "2h2d",
+   "hero_net": 0,
+   "hero_seat": 5,
+   "lineup": [
+    "hero",
+    "Nit",
+    "Nit",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "pocket 2s",
+     "leaks": [],
+     "pot": 9,
+     "realized_pct": null,
+     "required_direct_pct": 40.0,
+     "required_pct": 40.0,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 6
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "2h",
+    "2d"
+   ],
+   "hero_net": 0,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "standard 87s RFI open (BTN, no limper)": {
+  "data": {
+   "actions": [
+    {
+     "action": "fold",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "raise",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": 8
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "8h7h",
+   "hero_net": 0,
+   "hero_seat": 5,
+   "lineup": [
+    "hero",
+    "Nit",
+    "Nit",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [],
+   "decisions": [
+    {
+     "action": "raise",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 3,
+     "realized_pct": null,
+     "required_direct_pct": 40.0,
+     "required_pct": 40.0,
+     "street": "preflop",
+     "to_amount": 8,
+     "to_call": 2
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "8h",
+    "7h"
+   ],
+   "hero_net": 0,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "raise",
+       "is_hero": true,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": 8
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ },
+ "thin value check-raise (flop)": {
+  "data": {
+   "actions": [
+    {
+     "action": "raise",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "preflop",
+     "to_amount": 6
+    },
+    {
+     "action": "fold",
+     "player": 3,
+     "position": "MP",
+     "seat": 3,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 4,
+     "position": "CO",
+     "seat": 4,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 5,
+     "position": "BTN",
+     "seat": 5,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "fold",
+     "player": 0,
+     "position": "SB",
+     "seat": 0,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "call",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "preflop",
+     "to_amount": null
+    },
+    {
+     "action": "check",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": null
+    },
+    {
+     "action": "bet",
+     "player": 2,
+     "position": "UTG",
+     "seat": 2,
+     "street": "flop",
+     "to_amount": 8
+    },
+    {
+     "action": "raise",
+     "player": 1,
+     "position": "BB",
+     "seat": 1,
+     "street": "flop",
+     "to_amount": 24
+    }
+   ],
+   "blinds": [
+    1,
+    2
+   ],
+   "board": "Kd 7h 2c",
+   "button_player": 0,
+   "hand_index": 0,
+   "hero_cards": "Kh7d",
+   "hero_net": 0,
+   "hero_seat": 1,
+   "lineup": [
+    "Nit",
+    "Nit",
+    "hero",
+    "TAG",
+    "Nit",
+    "Nit"
+   ],
+   "went_to_showdown": false
+  },
+  "review": {
+   "board": [
+    "Kd",
+    "7h",
+    "2c"
+   ],
+   "decisions": [
+    {
+     "action": "call",
+     "board": [],
+     "equity_pct": null,
+     "hand_label": "high card",
+     "leaks": [],
+     "pot": 9,
+     "realized_pct": null,
+     "required_direct_pct": 30.8,
+     "required_pct": 30.8,
+     "street": "preflop",
+     "to_amount": null,
+     "to_call": 4
+    },
+    {
+     "action": "check",
+     "board": [
+      "Kd",
+      "7h",
+      "2c"
+     ],
+     "equity_pct": 91.5,
+     "hand_label": "two pair",
+     "leaks": [],
+     "pot": 13,
+     "realized_pct": null,
+     "required_direct_pct": null,
+     "required_pct": null,
+     "street": "flop",
+     "to_amount": null,
+     "to_call": 0
+    },
+    {
+     "action": "raise",
+     "board": [
+      "Kd",
+      "7h",
+      "2c"
+     ],
+     "equity_pct": 89.6,
+     "hand_label": "two pair",
+     "leaks": [],
+     "pot": 21,
+     "realized_pct": 89.6,
+     "required_direct_pct": 27.6,
+     "required_pct": 27.6,
+     "street": "flop",
+     "to_amount": 24,
+     "to_call": 8
+    }
+   ],
+   "hand_index": 0,
+   "hero_cards": [
+    "Kh",
+    "7d"
+   ],
+   "hero_net": 0,
+   "leaks": [],
+   "streets": [
+    {
+     "actions": [
+      {
+       "action": "raise",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 6
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 3,
+       "position": "MP",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 4,
+       "position": "CO",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 5,
+       "position": "BTN",
+       "to_amount": null
+      },
+      {
+       "action": "fold",
+       "is_hero": false,
+       "player": 0,
+       "position": "SB",
+       "to_amount": null
+      },
+      {
+       "action": "call",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      }
+     ],
+     "board": [],
+     "street": "preflop"
+    },
+    {
+     "actions": [
+      {
+       "action": "check",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": null
+      },
+      {
+       "action": "bet",
+       "is_hero": false,
+       "player": 2,
+       "position": "UTG",
+       "to_amount": 8
+      },
+      {
+       "action": "raise",
+       "is_hero": true,
+       "player": 1,
+       "position": "BB",
+       "to_amount": 24
+      }
+     ],
+     "board": [
+      "Kd",
+      "7h",
+      "2c"
+     ],
+     "street": "flop"
+    }
+   ],
+   "went_to_showdown": false
+  }
+ }
+}

@@ -1,11 +1,16 @@
 """Replay a persisted hand street-by-street and attach computed coaching + leak
 detection to each hero decision.
 
-Everything is reconstructed from the stored action log (no engine needed): pot
-and price are accounted from the action amounts; equity is computed vs the same
-modelled villain ranges the live coach uses. Leaks are *computed* judgements
-(range deviation vs the STRATEGY.md §2 baseline, or an EV error vs the price):
-never results-oriented, and labelled as math-based reads, not solver truth.
+No engine is needed. A hand stored with the engine ledger (``data["ledger"]``)
+carries, for every action, the decision facts the player saw: pot, amount to
+call, what a call could win (side pots included), who still acted after a call
+and whether a call ended the betting. The review prices those decisions from the
+facts, so it agrees with the live coach. Older rows have no ledger; for them the
+pot and price are accounted from the action amounts, as before. Equity is computed
+vs the same modelled villain ranges the live coach uses. Leaks are *computed*
+judgements (range deviation vs the STRATEGY.md §2 baseline, or an EV error vs the
+price): never results-oriented, and labelled as math-based reads, not solver
+truth.
 """
 
 from __future__ import annotations
@@ -15,6 +20,8 @@ from dataclasses import dataclass, field
 
 from ..bots.preflop_ranges import RFI_COMBOS, has_rfi, in_rfi
 from ..bots.preflop_strength import hand_class
+from ..engine.ledger import DecisionFacts
+from ..engine.types import positions_for
 from ..math.cards import canonical_combo
 from ..math.classify import Draw, MadeTier, PairStrength, classify, pair_strength
 from ..math.equity import equity
@@ -55,6 +62,8 @@ class Decision:
     realized_pct: float | None = None   # equity x realization factor — what the leak judges
     required_direct_pct: float | None = None  # raw pot odds, before the implied adjustment
     leaks: list[Leak] = field(default_factory=list)
+    # What a call could win (side pots included); None on rows without a ledger.
+    winnable: int | None = None
 
 
 def _board_prefix(street: str, board: list[str]) -> list[str]:
@@ -153,6 +162,38 @@ def _postflop_leaks(
     return leaks
 
 
+class _LedgerView:
+    """Per-action views of a stored ledger: the facts each actor saw, and every
+    seat's stack and street bet just before each action."""
+
+    def __init__(self, ledger: dict, n: int, start_stacks: list[int]) -> None:
+        self.facts: list[DecisionFacts | None] = []
+        self.stacks: list[list[int]] = []
+        self.street_bets: list[list[int]] = []
+        stacks = list(ledger.get("starting_stacks") or start_stacks or [0] * n)
+        bets = [0] * n
+        street = None
+        for e in ledger.get("entries", []):
+            if e["street"] != street:
+                street, bets = e["street"], [0] * n
+            if e["kind"] == "action":
+                raw = e.get("facts")
+                self.facts.append(None if raw is None else DecisionFacts.from_dict(raw))
+                self.stacks.append(list(stacks))
+                self.street_bets.append(list(bets))
+            stacks[e["seat"]] = e["stack_after"]
+            bets[e["seat"]] = e["street_total"]
+
+
+def _ledger_view(data: dict, n: int, start_stacks: list[int], actions: list[dict]) -> _LedgerView | None:
+    ledger = data.get("ledger")
+    if not isinstance(ledger, dict):
+        return None
+    view = _LedgerView(ledger, n, start_stacks)
+    # A ledger that does not line up with the action log is not trusted.
+    return view if len(view.facts) == len(actions) else None
+
+
 def review_hand(data: dict, equity_trials: int = 1800) -> dict:
     lineup: list[str] = data["lineup"]
     n = len(lineup)
@@ -165,12 +206,17 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
     actions = data.get("actions", [])
 
     start_stacks = list(data.get("start_stacks") or [])
+    led = _ledger_view(data, n, start_stacks, actions)
+    # The blinds by position: heads-up, seat 1 posts the small blind (and is the
+    # button) and seat 0 the big blind.
+    positions = positions_for(n)
+    sb_seat, bb_seat = positions.index("SB"), positions.index("BB")
     committed = [0] * n
-    committed[0], committed[1] = sb, bb  # PokerKit seats 0=SB, 1=BB
+    committed[sb_seat], committed[bb_seat] = sb, bb
     # Cumulative across the whole hand (``committed`` resets each street), so we can
     # reconstruct each seat's remaining stack — the implied-odds term needs it.
     total_committed = [0] * n
-    total_committed[0], total_committed[1] = sb, bb
+    total_committed[sb_seat], total_committed[bb_seat] = sb, bb
     pot = sb + bb
     street_max = bb
     cur_street = "preflop"
@@ -206,7 +252,10 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
         )
 
         if seat == hero_seat and hero is not None:
-            to_call = max(0, street_max - committed[seat])
+            facts = led.facts[idx] if led is not None else None
+            to_call = facts.to_call if facts is not None else max(0, street_max - committed[seat])
+            pot_now = facts.pot if facts is not None else pot
+            winnable = facts.winnable_if_call if facts is not None else None
             hc = classify(hero, board_now)
             live = [s for s in range(n) if s != hero_seat and s not in folded]
             eq_frac: float | None = None
@@ -228,16 +277,29 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
             # the one it was advised under makes the app contradict itself.
             required = required_direct = realized = None
             if to_call > 0:
-                hero_stack = (start_stacks[hero_seat] - total_committed[hero_seat]) if start_stacks else 0
-                contesting = [s for s in live if committed[s] >= street_max]
-                players_behind = sum(1 for s in live if committed[s] < street_max)
-                villain_stacks = [
-                    (start_stacks[s] - total_committed[s]) if start_stacks else 0
-                    for s in (contesting or live)
-                ]
-                is_river = len(board_full) == 5 and cur_street == "river"
-                all_villains_allin = bool(villain_stacks) and all(v == 0 for v in villain_stacks)
-                action_closed = is_river or to_call >= hero_stack or all_villains_allin
+                if facts is not None:
+                    # Exact, from the ledger: stacks and street bets as they stood.
+                    stacks_now = led.stacks[idx]
+                    bets_now = led.street_bets[idx]
+                    level = bets_now[hero_seat] + to_call
+                    hero_stack = stacks_now[hero_seat]
+                    contesting = [s for s in live if bets_now[s] >= level]
+                    players_behind = facts.to_act_after_call
+                    villain_stacks = [stacks_now[s] for s in (contesting or live)]
+                    action_closed = facts.betting_over_after_call
+                    pot_for_call = winnable - to_call
+                else:
+                    hero_stack = (start_stacks[hero_seat] - total_committed[hero_seat]) if start_stacks else 0
+                    contesting = [s for s in live if committed[s] >= street_max]
+                    players_behind = sum(1 for s in live if committed[s] < street_max)
+                    villain_stacks = [
+                        (start_stacks[s] - total_committed[s]) if start_stacks else 0
+                        for s in (contesting or live)
+                    ]
+                    is_river = len(board_full) == 5 and cur_street == "river"
+                    all_villains_allin = bool(villain_stacks) and all(v == 0 for v in villain_stacks)
+                    action_closed = is_river or to_call >= hero_stack or all_villains_allin
+                    pot_for_call = pot
 
                 is_strong = hc.made >= MadeTier.TWO_PAIR
                 is_pair = hc.made == MadeTier.PAIR
@@ -251,12 +313,12 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                     is_draw=is_draw,
                     made_tier=hc.made,
                     pair_str=pair_str,
-                    pot=pot,
+                    pot=pot_for_call,
                     behind=effective_behind,
                     action_closed=action_closed,
                 )
-                required_direct = required_equity(to_call, pot)
-                required = implied_required_equity(to_call, pot, implied_adj)
+                required_direct = required_equity(to_call, pot_for_call)
+                required = implied_required_equity(to_call, pot_for_call, implied_adj)
                 if eq_frac is not None:
                     r = _realization_factor(
                         is_strong=is_strong,
@@ -279,7 +341,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
             decision = Decision(
                 street=cur_street,
                 board=board_now,
-                pot=pot,
+                pot=pot_now,
                 to_call=to_call,
                 action=act,
                 to_amount=to,
@@ -289,6 +351,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 realized_pct=None if realized is None else round(realized * 100, 1),
                 required_direct_pct=None if required_direct is None else round(required_direct * 100, 1),
                 leaks=leaks,
+                winnable=winnable,
             )
             decisions.append(decision)
             # A checked strong hand is a missed-value candidate — but only if the
@@ -343,6 +406,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
     ]
     return {
         "hand_index": data.get("hand_index"),
+        "big_blind": bb,
         "hero_cards": hero,
         "board": board_full,
         "hero_net": data.get("hero_net"),
@@ -365,7 +429,7 @@ _CACHE_MAX = 5000
 # Bump when anything that changes a leak verdict changes (thresholds, price model,
 # ranges). Forgetting to bump serves stale verdicts; bumping needlessly only costs
 # one recomputation.
-_REVIEW_VERSION = 2
+_REVIEW_VERSION = 3
 
 
 def _cache_key(data: dict, equity_trials: int) -> tuple | None:
