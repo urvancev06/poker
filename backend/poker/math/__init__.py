@@ -2,6 +2,7 @@
 
     equity / EquityResult     Monte Carlo equity (treys) vs ranges or random hands
     parse_range / combos_in_range   range strings -> concrete combos
+    parse_weighted            weighted range strings ("AKo:0.5, T9s-54s") -> {combo: weight}
     classify / HandClass      made tier, the hole's own part (hole_tier), hole-aware
                               draws and a player's label ("top pair, good kicker")
     pair_strength             the hero's own one-pair holding vs the board
@@ -22,13 +23,14 @@ from .draws import DrawSet, hole_draws
 from .equity import EquityResult, equity
 from .odds import CallAnalysis, analyze_call, call_ev, pot_odds_ratio, required_equity
 from .texture import Texture, scare_flags, texture
-from .ranges import combos_in_range, parse_range, parse_token
+from .ranges import combos_in_range, parse_range, parse_token, parse_weighted
 
 __all__ = [
     "equity",
     "EquityResult",
     "parse_range",
     "parse_token",
+    "parse_weighted",
     "combos_in_range",
     "classify",
     "pair_strength",
