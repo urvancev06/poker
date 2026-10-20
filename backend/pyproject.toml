@@ -44,6 +44,10 @@ poker = ["math/data/*.npz"]
 testpaths = ["tests"]
 # Put backend/ on sys.path so tests can import the (uninstalled) scripts/ helpers.
 pythonpath = ["."]
+# Long oracle checks (for example the flop vector against treys over every combo)
+# are opt-in: run them with `-m slow`.
+markers = ["slow: long oracle checks, run with -m slow"]
+addopts = "-m 'not slow'"
 # Silence PokerKit's advisory hints (suboptimal fold, deal recommendation) that
 # our controlled engine/sim use intentionally triggers.
 filterwarnings = [
