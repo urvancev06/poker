@@ -98,10 +98,16 @@ def clamp_hands(hands: int) -> int:
     return max(1, min(int(hands), MAX_LAB_HANDS))
 
 
+# A table seats 2 to 6 players (PokerKit needs two; the engine names positions
+# up to 6-max).
+MIN_SEATS, MAX_SEATS = 2, 6
+
+
 def validate_lineup(lineup: list[str]) -> list[str]:
-    """The lineup as given, or ValueError for an empty one or an unknown name."""
-    if not lineup:
-        raise ValueError("lineup must have at least one seat")
+    """The lineup as given, or ValueError for one a table cannot seat (fewer than
+    2 or more than 6 players) or an unknown name."""
+    if not MIN_SEATS <= len(lineup) <= MAX_SEATS:
+        raise ValueError(f"a lineup seats {MIN_SEATS} to {MAX_SEATS} players (got {len(lineup)})")
     for name in lineup:
         archetypes.make(name)  # raises ValueError for an unknown archetype
     return list(lineup)

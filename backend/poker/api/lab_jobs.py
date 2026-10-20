@@ -45,7 +45,7 @@ def create_job(req: LabJobRequest, request: Request) -> dict:
     jobs = _jobs(request)
     try:
         job_id = jobs.submit(req.kind, req.model_dump(exclude={"kind"}))
-    except ValueError as exc:  # unknown kind, empty lineup, unknown archetype
+    except ValueError as exc:  # unknown kind, lineup outside 2-6 seats, unknown archetype
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     job = jobs.get(job_id)
     return {"job_id": job_id, "state": job["state"] if job else "queued"}

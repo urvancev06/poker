@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import dataclasses
 import multiprocessing
+import os
 from collections.abc import Callable, Iterator
 from concurrent.futures import Executor, ProcessPoolExecutor
 
@@ -109,10 +110,26 @@ def shard_bounds(hands: int, shard_size: int) -> list[tuple[int, int]]:
     return [(lo, min(lo + size, hands)) for lo in range(0, hands, size)]
 
 
+# Lab workers run at a low CPU priority, so a run never slows the table: the
+# server keeps its own priority and the simulation gets the CPU it leaves idle.
+WORKER_NICENESS = 15
+
+
+def _lower_priority() -> None:
+    """Pool initializer: lower this worker's priority (where the OS has one)."""
+    if hasattr(os, "nice"):
+        os.nice(WORKER_NICENESS)
+
+
 def process_pool(workers: int) -> ProcessPoolExecutor:
-    """A pool of fresh interpreters. Spawn, not fork: the API server is threaded,
-    and forking a threaded process can copy a held lock into the child."""
-    return ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"))
+    """A pool of fresh interpreters at low priority. Spawn, not fork: the API
+    server is threaded, and forking a threaded process can copy a held lock into
+    the child."""
+    return ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=multiprocessing.get_context("spawn"),
+        initializer=_lower_priority,
+    )
 
 
 def run(

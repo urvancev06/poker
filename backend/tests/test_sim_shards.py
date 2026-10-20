@@ -84,3 +84,22 @@ def test_v1_fingerprint_is_reproducible_and_seed_sensitive():
     assert v1_fingerprint(40, seed=0) == a
     assert v1_fingerprint(40, seed=1) != a
     assert len(a) == 16 and int(a, 16) >= 0
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "nice"), reason="no process priorities here")
+def test_lab_workers_run_at_low_priority():
+    """A Lab run must not slow the table: its workers yield the CPU to the
+    server, which keeps its own priority."""
+    import os
+
+    from poker.sim.runner import WORKER_NICENESS, process_pool
+
+    server = os.nice(0)
+    pool = process_pool(1)
+    try:
+        worker = pool.submit(os.nice, 0).result(timeout=60)
+    finally:
+        pool.shutdown()
+    assert WORKER_NICENESS >= 10
+    assert worker == min(19, server + WORKER_NICENESS)
+    assert os.nice(0) == server

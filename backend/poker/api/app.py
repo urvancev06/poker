@@ -322,7 +322,7 @@ def create_app(
         holds the server; the Lab itself uses /lab/jobs and polls."""
         try:
             job_id = jobs.submit("simulate", req.model_dump())
-        except ValueError as exc:  # empty lineup, unknown archetype name
+        except ValueError as exc:  # lineup outside 2-6 seats, unknown archetype name
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         while True:
             job = jobs.get(job_id)

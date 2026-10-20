@@ -10,7 +10,13 @@ and ``get`` reports progress and, at the end, the same report ``run_lab`` gives.
   progress is the number of hands merged. Hand h depends only on (seed, h), so
   the merged result equals a single-process run exactly.
 * ``cancel`` cancels the shards that have not started and marks the job
-  cancelled at once; shards already running finish and are discarded.
+  cancelled at once; shards already running finish and are discarded. A job
+  that fails drops its unstarted shards the same way, so they do not hold the
+  pool for the next job.
+* A worker process that dies (the OOM killer, a crash) breaks a process pool
+  for good. The jobs running on it fail, and the pool is thrown away so the
+  next job starts a fresh one; a job that finds the pool already broken has
+  played nothing yet, so it simply starts again on a fresh pool.
 * States: ``queued`` -> ``running`` -> ``done`` | ``cancelled`` | ``failed``.
 * The registry lives in memory: a server restart forgets every job (the API
   answers 404, and the Lab says the run was lost).
@@ -21,7 +27,7 @@ from __future__ import annotations
 import threading
 import time
 import uuid
-from concurrent.futures import CancelledError, Executor, Future, ThreadPoolExecutor
+from concurrent.futures import BrokenExecutor, CancelledError, Executor, Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -75,8 +81,9 @@ class _Job:
 
 
 def simulate_params(params: dict) -> dict:
-    """A simulate job's parameters, validated and normalised. ValueError for an
-    empty lineup or an unknown archetype (the API turns it into a 400)."""
+    """A simulate job's parameters, validated and normalised. ValueError for a
+    lineup outside 2 to 6 seats or an unknown archetype (the API turns it into a
+    400)."""
     lineup = validate_lineup(list(params.get("lineup") or []))
     sb = int(params.get("small_blind", DEFAULT_BLINDS[0]))
     bb = int(params.get("big_blind", DEFAULT_BLINDS[1]))
@@ -128,6 +135,15 @@ class JobManager:
                     else ThreadPoolExecutor(max_workers=self._max_workers, thread_name_prefix="lab")
                 )
             return self._pool
+
+    def _discard(self, pool: Executor) -> None:
+        """Throw away a broken pool (a dead worker breaks it for good), so the
+        next use builds a new one."""
+        with self._lock:
+            if self._pool is not pool:
+                return  # another job already replaced it
+            self._pool = None
+        pool.shutdown(wait=False, cancel_futures=True)
 
     def submit(self, kind: str, params: dict) -> str:
         if kind not in KINDS:
@@ -192,11 +208,19 @@ class JobManager:
     def _drive(self, job: _Job) -> None:
         """The job's own thread: submit the shards, merge them in order."""
         p = job.params
+        pool: Executor | None = None
         try:
             spec = shard_spec(p["lineup"], p["seed"], p["blinds"], p["starting_stack"], p["overrides"])
             bounds = shard_bounds(p["hands"], self._shard_size)
             pool = self._executor()
-            futures = [pool.submit(run_shard, spec, lo, hi) for lo, hi in bounds]
+            try:
+                futures = [pool.submit(run_shard, spec, lo, hi) for lo, hi in bounds]
+            except BrokenExecutor:
+                # The pool broke while idle; none of this job has run, so start
+                # it on a fresh pool.
+                self._discard(pool)
+                pool = self._executor()
+                futures = [pool.submit(run_shard, spec, lo, hi) for lo, hi in bounds]
             with self._lock:
                 job.futures = futures
                 if job.state == "cancelled":  # cancelled while we were submitting
@@ -226,6 +250,10 @@ class JobManager:
                     job.state = "failed"
                     job.error = f"{type(exc).__name__}: {exc}"
                     job.finished = time.perf_counter()
+                for fut in job.futures:  # the shards not started yet
+                    fut.cancel()
+            if isinstance(exc, BrokenExecutor) and pool is not None:
+                self._discard(pool)
 
     def _wait(self, job: _Job, fut: Future) -> dict | None:
         """One shard's counts, or None once the job is cancelled."""

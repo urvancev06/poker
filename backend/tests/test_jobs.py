@@ -116,3 +116,89 @@ def test_process_executor_runs_a_job():
         assert last["result"]["rows"] == run_lab(lineup=DEFAULT_LINEUP, hands=400, seed=3)["rows"]
     finally:
         jobs.shutdown()
+
+
+def test_a_dead_worker_does_not_break_later_jobs():
+    """A worker process that dies (the OOM killer, a crash) breaks its process
+    pool for good. The job that hit it fails; the next job gets a fresh pool."""
+    import os
+    import signal
+
+    jobs = JobManager(max_workers=2, executor="process", shard_size=500)
+    try:
+        doomed = jobs.submit("simulate", {"lineup": DEFAULT_LINEUP, "hands": 25_000, "seed": 0})
+        deadline = time.monotonic() + 120
+        while jobs.get(doomed)["state"] != "running":
+            assert time.monotonic() < deadline, "the job never started"
+            time.sleep(0.02)
+        os.kill(next(iter(jobs._pool._processes)), signal.SIGKILL)
+        last = _wait(jobs, doomed, timeout=60.0)[-1]
+        assert last["state"] == "failed" and "BrokenProcessPool" in last["error"], last
+        after = jobs.submit("simulate", {"lineup": DEFAULT_LINEUP, "hands": 400, "seed": 3})
+        last = _wait(jobs, after, timeout=120.0)[-1]
+        assert last["state"] == "done", last
+        assert last["result"]["rows"] == run_lab(lineup=DEFAULT_LINEUP, hands=400, seed=3)["rows"]
+    finally:
+        jobs.shutdown()
+
+
+def test_a_worker_that_dies_between_jobs_does_not_fail_the_next():
+    """A worker killed while the pool is idle breaks it before any job sees it;
+    the next job has not run a hand yet, so it starts on a fresh pool."""
+    import os
+    import signal
+
+    jobs = JobManager(max_workers=1, executor="process", shard_size=200)
+    try:
+        first = jobs.submit("simulate", {"lineup": DEFAULT_LINEUP, "hands": 200, "seed": 3})
+        assert _wait(jobs, first, timeout=120.0)[-1]["state"] == "done"
+        pool = jobs._pool
+        os.kill(next(iter(pool._processes)), signal.SIGKILL)
+        deadline = time.monotonic() + 30
+        while not pool._broken:  # the pool notices the death on its own thread
+            assert time.monotonic() < deadline, "the pool never noticed the dead worker"
+            time.sleep(0.02)
+        after = jobs.submit("simulate", {"lineup": DEFAULT_LINEUP, "hands": 400, "seed": 3})
+        last = _wait(jobs, after, timeout=120.0)[-1]
+        assert last["state"] == "done", last
+        assert last["result"]["rows"] == run_lab(lineup=DEFAULT_LINEUP, hands=400, seed=3)["rows"]
+    finally:
+        jobs.shutdown()
+
+
+def test_a_failed_job_drops_its_other_shards(monkeypatch):
+    """One shard raising fails the job; its shards that have not started are
+    cancelled, so they do not hold the pool for the next job."""
+    import threading
+
+    import poker.sim.jobs as jobs_module
+
+    ran: list[int] = []
+    lock = threading.Lock()
+
+    def shard(spec, lo, hi):
+        if lo == 0:
+            raise RuntimeError("boom")
+        time.sleep(0.2)
+        with lock:
+            ran.append(lo)
+        return {}
+
+    monkeypatch.setattr(jobs_module, "run_shard", shard)
+    jobs = JobManager(max_workers=2, executor="thread", shard_size=1000)
+    try:
+        job_id = jobs.submit("simulate", {"lineup": DEFAULT_LINEUP, "hands": 25_000, "seed": 0})
+        last = _wait(jobs, job_id, timeout=10.0)[-1]
+        assert last["state"] == "failed" and "boom" in last["error"], last
+        time.sleep(1.0)
+        # At most the shards already running when shard 0 failed (one per worker,
+        # plus the one a freed worker picked up); never the other 20-odd.
+        assert len(ran) <= 3, ran
+    finally:
+        jobs.shutdown()
+
+
+@pytest.mark.parametrize("seats", [1, 7, 30])
+def test_lineups_pokerkit_cannot_seat_are_refused(jobs, seats):
+    with pytest.raises(ValueError, match="2 to 6"):
+        jobs.submit("simulate", {"lineup": ["tag"] * seats, "hands": 100})

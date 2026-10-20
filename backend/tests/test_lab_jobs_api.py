@@ -115,3 +115,11 @@ def test_health_stays_fast_while_a_job_runs():
         assert client.get(f"/lab/jobs/{job_id}").json()["state"] == "running"
         assert max(times) < 0.05, f"slowest /health {max(times) * 1000:.0f} ms"
         assert _poll(client, job_id, timeout=120)[-1]["state"] == "done"
+
+
+@pytest.mark.parametrize("seats", [1, 7, 30])
+def test_lineup_sizes_outside_2_to_6_are_400(client, seats):
+    """A table seats 2 to 6: anything else is refused at once, not accepted and
+    then failed inside the job."""
+    r = client.post("/lab/jobs", json={"kind": "simulate", "lineup": ["tag"] * seats, "hands": 100})
+    assert r.status_code == 400 and "2 to 6" in r.json()["detail"]
