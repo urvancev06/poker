@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .ledger import DecisionFacts
+
 
 class Street(str, Enum):
     PREFLOP = "preflop"
@@ -109,9 +111,13 @@ class HistoryEntry:
     seat: int
     position: str
     street: str
-    action: str          # ActionType value
-    to_amount: int | None
+    action: str          # "bet" when no bet stands on the street, else "raise"
+    to_amount: int | None  # bet/raise "to" level; None for fold/check/call
     hole_cards: list[str] | None = None
+    added: int = 0           # chips this action put in
+    street_total: int = 0    # the seat's bet on this street after the action
+    all_in: bool = False     # this action put the seat all-in
+    stack_after: int | None = None  # chips behind after the action
 
 
 @dataclass
@@ -131,3 +137,7 @@ class GameState:
     is_over: bool
     history: list[HistoryEntry] = field(default_factory=list)
     results: list[int] | None = None  # net chip delta per seat, set when over
+    # {"contributed": [...], "pot": int, "rake": int} from the engine ledger. Unlike
+    # ``total_pot`` it keeps the pot after PokerKit has pushed the chips.
+    ledger: dict | None = None
+    facts: DecisionFacts | None = None  # for the player to act; None when nobody acts

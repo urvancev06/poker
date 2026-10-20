@@ -30,6 +30,7 @@ warnings.filterwarnings("ignore", message="A card being dealt")
 
 from ..math.cards import FULL_DECK
 from ..rng import shuffled_deck
+from .ledger import DecisionFacts, Ledger
 from .types import (
     Action,
     ActionType,
@@ -101,6 +102,17 @@ class Hand:
         self._dealt: list[list[str]] = [[] for _ in range(table_size)]
         # True when this hand deals from its own deck (not the manual-deal path).
         self._self_dealing = False
+        # Bumped on every change of state; keys the decision-facts cache (facts are
+        # read both by apply() and by every snapshot a bot or the coach takes).
+        self._version = 0
+        self._facts_cache: tuple[int, DecisionFacts | None] | None = None
+        # Chip bookkeeping beside PokerKit. The blinds are already posted when the
+        # state is created; record them small blind first.
+        self.ledger = Ledger(self._starting)
+        posted = [i for i in range(table_size) if state.bets[i]]
+        posted.sort(key=lambda i: ({"SB": 0, "BB": 1}.get(self._positions[i], 2), i))
+        for i in posted:
+            self.ledger.post(i, state.bets[i])
 
     # ---- construction -----------------------------------------------------
 
@@ -155,18 +167,21 @@ class Hand:
         if not manual_deal:
             state.deck_cards = deque(Card.parse("".join(deck)))
             hand._self_dealing = True
+            # One card at a time around the table, twice: seat i gets deck[i] and
+            # deck[i + n]. (Asking PokerKit can_deal_hole() before each card
+            # doubles the cost of the deal, so count the cards instead.)
+            for _ in range(2 * table_size):
+                state.deal_hole(1)
+            hand._capture_holes()
             hand._deal_pending()
         return hand
 
     def _deal_pending(self) -> None:
-        """Deal every card the state is waiting for, from our deck (burns are
-        automated and come off the same deck). No-op on manual-deal hands."""
+        """Deal the board cards the state is waiting for, from our deck (burns
+        are automated and come off the same deck). No-op on manual-deal hands."""
         if not self._self_dealing:
             return
         s = self._state
-        while s.can_deal_hole():
-            s.deal_hole(1)
-        self._capture_holes()
         while s.can_deal_board():
             s.deal_board(s.board_dealing_count)
 
@@ -185,11 +200,13 @@ class Hand:
     def deal_hole(self, cards: str) -> None:
         """Deal one player's hole cards, e.g. ``"AhKs"`` (manual-deal hands)."""
         self._state.deal_hole(cards)
+        self._version += 1
         self._capture_holes()
 
     def deal_board(self, cards: str) -> None:
         """Deal board cards for the current street (manual-deal hands)."""
         self._state.deal_board(cards)
+        self._version += 1
 
     # ---- queries ----------------------------------------------------------
 
@@ -270,6 +287,11 @@ class Hand:
         assert legal is not None  # actor exists => legal actions exist
         street_at_action = self.street.value
         hole = self.hole_cards(seat)
+        s = self._state
+        facts = self.decision_facts()
+        stack_before = s.stacks[seat]
+        bet_before = s.bets[seat]
+        street_index_before = s.street_index
 
         t = action.type
         if t is ActionType.FOLD:
@@ -305,19 +327,92 @@ class Hand:
             self._state.complete_bet_or_raise_to(amount)
         else:  # pragma: no cover - exhaustive
             raise IllegalAction(f"unknown action type: {t}")
+        self._version += 1
+
+        aggressive = t in (ActionType.BET, ActionType.RAISE)
+        if t is ActionType.CALL:
+            added = legal.call_amount
+        elif aggressive:
+            added = action.to_amount - bet_before
+        else:
+            added = 0
+        # One label per situation, whichever of BET/RAISE the caller sent: "bet"
+        # opens a street, "raise" goes over a standing bet. Preflop the blinds are
+        # bets, so every preflop wager is a raise (the BB's raise over limpers too).
+        label = t.value
+        if aggressive:
+            bet_stands = street_at_action == "preflop" or max(self.ledger.street_bets) > 0
+            label = "raise" if bet_stands else "bet"
+        entry = self.ledger.record_action(
+            seat,
+            street_at_action,
+            label,
+            action.to_amount if aggressive else None,
+            added,
+            stack_before - added,
+            facts,
+        )
+        # The betting round is over when the street moved on, the hand ended, or
+        # nobody is left to act (a manual-deal hand waiting for its next cards).
+        if self.is_over or s.street_index != street_index_before or s.actor_index is None:
+            self.ledger.close_street(street_at_action)
+        if self.is_over:
+            self.ledger.rake = -sum(self.results())
 
         self._history.append(
             HistoryEntry(
                 seat=seat,
                 position=self._positions[seat],
                 street=street_at_action,
-                action=t.value,
-                to_amount=action.to_amount if t in (ActionType.BET, ActionType.RAISE) else None,
+                action=label,
+                to_amount=entry.to_amount,
                 hole_cards=hole,
+                added=entry.added,
+                street_total=entry.street_total,
+                all_in=entry.all_in,
+                stack_after=entry.stack_after,
             )
         )
         # Deal whatever the action unlocked: the next street, or an all-in runout.
         self._deal_pending()
+        self._version += 1
+
+    # ---- decision facts ---------------------------------------------------
+
+    def decision_facts(self) -> DecisionFacts | None:
+        """Facts for the player to act (see ``DecisionFacts``); ``None`` when
+        nobody is to act."""
+        cached = self._facts_cache
+        if cached is not None and cached[0] == self._version:
+            return cached[1]
+        facts = self._compute_facts()
+        self._facts_cache = (self._version, facts)
+        return facts
+
+    def _compute_facts(self) -> DecisionFacts | None:
+        s = self._state
+        if self.is_over or s.actor_index is None:
+            return None
+        seat = s.actor_index
+        to_call = s.checking_or_calling_amount
+        street = self.street.value
+        to_act_after = sum(1 for i in s.actor_indices if i != seat)
+        closes = to_act_after == 0
+        live = [i for i in range(self.table_size) if i not in self._folded]
+        with_chips_after_call = sum(
+            1 for i in live if s.stacks[i] - (to_call if i == seat else 0) > 0
+        )
+        return DecisionFacts(
+            seat=seat,
+            street=street,
+            to_call=to_call,
+            pot=self.ledger.pot,
+            winnable_if_call=self.ledger.winnable(seat, to_call),
+            to_act_after_call=to_act_after,
+            closes_on_call=closes,
+            betting_over_after_call=closes and (street == "river" or with_chips_after_call <= 1),
+            can_respond_to_raise=sum(1 for i in live if i != seat and s.stacks[i] > 0),
+        )
 
     # ---- snapshot ---------------------------------------------------------
 
@@ -325,9 +420,8 @@ class Hand:
     def total_pot(self) -> int:
         """Collected pots plus chips in front, right now.
 
-        Read this rather than a snapshot taken after the hand ends: PokerKit's
-        CHIPS_PUSHING automation has already emptied the pot by then, so the
-        snapshot reports 0."""
+        PokerKit's CHIPS_PUSHING automation empties the pot when the hand ends,
+        so this reads 0 afterwards; ``ledger.pot`` keeps the hand's pot."""
         return int(self._state.total_pot_amount)
 
     def _pots(self) -> list[PotState]:
@@ -375,4 +469,6 @@ class Hand:
             is_over=self.is_over,
             history=list(self._history),
             results=self.results(),
+            ledger=self.ledger.summary(),
+            facts=self.decision_facts(),
         )

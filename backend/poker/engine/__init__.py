@@ -7,10 +7,13 @@ Public surface:
     LegalActions    what's legal now, with min/max sizing
     GameState       a serializable snapshot of a hand
     Street          preflop/flop/turn/river
+    Ledger          chips added / returned per entry, pot, winnable, payouts
+    DecisionFacts   to call, winnable, who acts after a call, is betting over
     EngineError / IllegalAction   error types
 """
 
 from .hand import EngineError, Hand, IllegalAction
+from .ledger import DecisionFacts, Ledger, LedgerEntry
 from .types import (
     Action,
     ActionType,
@@ -34,6 +37,9 @@ __all__ = [
     "HistoryEntry",
     "Street",
     "positions_for",
+    "Ledger",
+    "LedgerEntry",
+    "DecisionFacts",
     "EngineError",
     "IllegalAction",
 ]
