@@ -23,6 +23,7 @@ dependencies = [
     "fastapi",    # the API the frontend talks to
     "uvicorn",    # ASGI server (plain build; uvloop/httptools extras skipped for 3.14 wheel safety)
     "sqlalchemy", # SQLite-backed hand history + my stats
+    "numpy>=2.0", # the vector evaluator, exact equity and the precomputed tables
 ]
 
 [project.optional-dependencies]
@@ -34,6 +35,10 @@ dev = [
 [tool.setuptools.packages.find]
 # Flat layout: ship only the `poker` package; tests/ and scripts/ stay out of the install.
 include = ["poker*"]
+
+[tool.setuptools.package-data]
+# The precomputed rank table and preflop equity table (poker/math/data).
+poker = ["math/data/*.npz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

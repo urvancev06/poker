@@ -48,3 +48,23 @@ def test_pokerkit_is_pinned_to_the_version_installed():
     pins = [d for d in project["dependencies"] if re.split(r"[\s<>=!~;\[]", d, maxsplit=1)[0] == "pokerkit"]
     assert pins == ["pokerkit==0.7.6"], pins
     assert version("pokerkit") == "0.7.6"
+
+
+def test_math_data_files_ship_as_package_data():
+    """The rank table and the preflop table are read from ``poker/math/data`` at
+    import time, so an install without them cannot evaluate a single hand."""
+    tool = tomllib.loads((BACKEND / "pyproject.toml").read_text())["tool"]
+    globs = tool["setuptools"]["package-data"]["poker"]
+    data = sorted((BACKEND / "poker" / "math" / "data").glob("*.npz"))
+    assert data, "expected the committed npz tables"
+    for path in data:
+        rel = path.relative_to(BACKEND / "poker")
+        assert any(rel.match(g) for g in globs), f"{rel} is not package data"
+
+
+def test_numpy_is_a_declared_dependency():
+    import re
+
+    project = tomllib.loads((BACKEND / "pyproject.toml").read_text())["project"]
+    names = [re.split(r"[\s<>=!~;\[]", d, maxsplit=1)[0] for d in project["dependencies"]]
+    assert "numpy" in names
