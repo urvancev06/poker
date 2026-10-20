@@ -306,6 +306,9 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 is_draw = Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws
                 pair_str = pair_strength(hero, board_now) if is_pair else PairStrength.NONE
 
+                # An all-in call ends the hero's betting even when others can still
+                # bet a side pot: equity counts in full and no implied term applies.
+                price_closed = action_closed or (to_call > 0 and to_call >= hero_stack)
                 effective_behind = min(hero_stack, max(villain_stacks, default=0))
                 implied_adj, _note = _implied_adjustment(
                     street=cur_street,
@@ -315,7 +318,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                     pair_str=pair_str,
                     pot=pot_for_call,
                     behind=effective_behind,
-                    action_closed=action_closed,
+                    action_closed=price_closed,
                 )
                 required_direct = required_equity(to_call, pot_for_call)
                 required = implied_required_equity(to_call, pot_for_call, implied_adj)
@@ -328,7 +331,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                         num_opponents=len(contesting or live),
                         players_behind=players_behind,
                         street=cur_street,
-                        action_closed=action_closed,
+                        action_closed=price_closed,
                     )
                     realized = eq_frac * r
 

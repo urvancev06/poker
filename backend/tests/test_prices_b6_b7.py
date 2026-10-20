@@ -94,6 +94,49 @@ def test_b7_closing_river_call_is_a_pure_price_spot():
     assert c.winnable == 80 and c.required_direct_pct == 37.5  # 30 to win 50 + 30
 
 
+def _short_all_in_call_with_a_player_behind(hero_hole: str, flop: str) -> Hand:
+    """3-handed 5/10, stacks (SB 1000, BB 100, BTN 1000). BTN limps, SB completes,
+    BB checks. On the flop the SB bets 500; the BB, the hero, has 90 left, so a call
+    puts it all-in for less, and the BTN still acts after it."""
+    h = Hand.new(table_size=3, blinds=(5, 10), starting_stacks=(1000, 100, 1000), manual_deal=True)
+    h.deal_hole("7c2d")    # SB
+    h.deal_hole(hero_hole)  # BB, the hero
+    h.deal_hole("AsQd")    # BTN
+    for a in (C, C, X):
+        h.apply(Action(a))
+    h.deal_board(flop)
+    h.apply(Action(B, 500))
+    return h
+
+
+@pytest.mark.parametrize("hero_hole, flop", [
+    ("Qh2h", "Kh9h4s"),  # a flush draw: implied odds would lower the price
+    ("4h3d", "Kd9c4s"),  # bottom pair: reverse implied odds would raise it
+])
+def test_an_all_in_call_is_priced_exactly_with_a_player_behind(hero_hole, flop):
+    """Calling puts the hero all-in, so it can win nothing more on later streets and
+    lose nothing more: no implied or reverse-implied term, and its equity counts in
+    full (it sees every card). The betting is not over (the BTN acts behind and can
+    bet the side pot), so B7's text stays, but the hero's price is the plain one."""
+    c = build_coaching(
+        HandSession(_short_all_in_call_with_a_player_behind(hero_hole, flop), hero_seat=1,
+                    archetypes={0: "LAG", 2: "TAG"}),
+        trials=600,
+    )
+    assert c.to_call == 90 and c.winnable == 210 and c.players_behind == 1
+    assert c.required_direct_pct == 42.9  # 90 / 210
+    assert c.required_equity_pct == 42.9 and c.implied_note == ""
+    assert c.realization_pct == 100 and c.realized_equity_pct == c.equity_pct
+    assert c.action_closed is False and "no more betting" not in c.rationale
+
+    h = _short_all_in_call_with_a_player_behind(hero_hole, flop)
+    h.apply(Action(C))
+    rev = [x for x in review_hand(stored_record(h, 1, ["LAG", "hero", "TAG"]), equity_trials=300)["decisions"]
+           if x["street"] == "flop"][0]
+    assert rev["required_direct_pct"] == rev["required_pct"] == 42.9
+    assert rev["realized_pct"] == rev["equity_pct"]
+
+
 def test_review_reads_prices_from_the_stored_ledger():
     h = _b6_hand()
     h.apply(Action(C))  # the hero calls its last 40

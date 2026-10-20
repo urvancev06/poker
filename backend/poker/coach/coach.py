@@ -433,6 +433,10 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         is_river = len(board) == 5
         all_villains_allin = bool(villain_seats) and all(state.seats[s].stack == 0 for s in villain_seats)
         action_closed = to_call > 0 and (is_river or to_call >= hero_stack or all_villains_allin)
+    # A call that puts the hero all-in ends the hero's betting even when others can
+    # still bet a side pot: it can win or lose nothing more, so its equity counts in
+    # full and no implied term moves the price. The text still follows action_closed.
+    price_closed = action_closed or (to_call > 0 and to_call >= hero_stack)
 
     street = _STREET_OF.get(len(board), "flop")
     r = _realization_factor(
@@ -443,7 +447,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         num_opponents=len(villain_seats),
         players_behind=players_behind,
         street=street,
-        action_closed=action_closed,
+        action_closed=price_closed,
     )
     realized = equity_frac * r
 
@@ -458,7 +462,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         implied_adj, implied_note = _implied_adjustment(
             street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
             made_tier=hc.made, pair_str=pair_str, pot=pot_for_call,
-            behind=effective_behind, action_closed=action_closed,
+            behind=effective_behind, action_closed=price_closed,
         )
         required_direct = required_equity(to_call, pot_for_call)
         required = implied_required_equity(to_call, pot_for_call, implied_adj)  # decision-relevant
