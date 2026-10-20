@@ -34,6 +34,7 @@ from poker.coach import build_coaching, leak_summary, review_hand_cached
 from poker.db import HandRecord, get_hand, init_db, list_hands, make_engine, make_session_factory, save_hand
 from poker.engine import Action, ActionType, IllegalAction
 from poker.game import GameSession
+from poker.game.session import public_result
 from poker.learn import train as train_cfr
 from poker.sim.hero_stats import decision_seconds, hero_report
 from poker.sim.lab import archetypes_info, run_lab
@@ -253,7 +254,8 @@ def create_app(db_url: str | None = None) -> FastAPI:
         record = get_hand(db, hand_id)
         if record is None:
             raise HTTPException(status_code=404, detail="hand not found")
-        return {**record.summary(), "data": record.data}
+        # The record keeps server-only keys (the session seed in ``truth``).
+        return {**record.summary(), "data": public_result(record.data)}
 
     @app.get("/hands/{hand_id}/review")
     def hand_review(hand_id: int, db: Session = Depends(get_db)) -> dict:

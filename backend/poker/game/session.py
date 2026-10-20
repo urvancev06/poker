@@ -7,15 +7,24 @@ automatically until it's the hero's turn or the hand ends.
 
 Player/seat mapping follows the engine convention (PokerKit seats the SB at 0):
 seat k holds player ``(button + 1 + k) % n`` for the hand's button player.
+
+Randomness comes from seeded streams (``poker.rng``): hand h is dealt from
+``stream(seed, "deck", h)`` and decision k of player p in hand h draws from
+``stream(seed, "decision", h, p, k)``. The same seed and the same hero actions
+replay the session exactly, and a different hero line never changes a later
+deal. The seed reveals every future deck, so it is kept server-side: it is
+stored in the hand record's ``truth`` and never sent to the client.
 """
 
 from __future__ import annotations
 
-import random
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 
 from ..bots import Bot, archetypes, build_context
 from ..engine import Action, GameState, Hand
+from ..engine.ledger import LEDGER_VERSION
+from ..rng import new_seed, shuffled_deck, stream
 from ..sim.stats import StatsAccumulator
 from ..sim.summarize import summarize_hand
 
@@ -23,32 +32,15 @@ HERO = 0
 # Hands observed vs a bot before its HUD read is shown (STRATEGY.md §5 sample-size).
 HUD_MIN_HANDS = 30
 
+# Keys of a hand record that stay on the server (the seed reveals future decks).
+SERVER_ONLY_KEYS = ("truth",)
 
-def _pot_from_actions(actions: list[dict], blinds: tuple[int, int], n: int) -> int:
-    """Total pot, reconstructed from the action log.
 
-    The snapshot's ``total_pot`` is 0 once a hand is over: PokerKit's CHIPS_PUSHING
-    automation runs inside ``apply``, so the pot is distributed before we can read
-    it. This is the same accounting coach/review.py does when it replays a hand.
-    """
-    sb, bb = blinds
-    committed = [0] * n
-    committed[0], committed[1] = sb, bb  # PokerKit seats 0=SB, 1=BB
-    pot = sb + bb
-    street = "preflop"
-    street_max = bb
-    for a in actions:
-        if a["street"] != street:
-            street, committed, street_max = a["street"], [0] * n, 0
-        seat, act, to = a["seat"], a["action"], a["to_amount"]
-        if act in ("bet", "raise") and to is not None:
-            pot += to - committed[seat]
-            committed[seat] = to
-            street_max = max(street_max, to)
-        elif act == "call":
-            pot += street_max - committed[seat]
-            committed[seat] = street_max
-    return pot
+def public_result(result: dict | None) -> dict | None:
+    """A hand record with its server-only keys removed (for API responses)."""
+    if result is None:
+        return None
+    return {k: v for k, v in result.items() if k not in SERVER_ONLY_KEYS}
 
 
 @dataclass
@@ -57,6 +49,7 @@ class GameSession:
     villains: list[str]              # archetype names for players 1..n-1
     blinds: tuple[int, int] = (1, 2)
     buy_in: int = 200
+    # The session's master seed; a fresh 63-bit one when not given.
     seed: int | None = None
     # When False, bots do NOT auto-act to the hero's turn; the caller steps them
     # one action at a time via advance_one() so the UI can watch the hand unfold.
@@ -66,8 +59,12 @@ class GameSession:
     stacks: list[int] = field(init=False)       # carried, per player
     archetype_of: list[str] = field(init=False)  # per player ("hero" for 0)
     hand_index: int = field(init=False, default=0)
+    # Which bot engine plays the villains (the v2 bots arrive behind "v2").
+    engine: str = field(init=False, default="v1")
 
     def __post_init__(self) -> None:
+        if self.seed is None:
+            self.seed = new_seed()
         self.n = len(self.villains) + 1
         self.stacks = [self.buy_in] * self.n
         self._bots: dict[int, Bot] = {
@@ -76,8 +73,8 @@ class GameSession:
         # Use the bots' canonical display names ("Nit", "Calling Station", …) so
         # frontend labels and the coach's per-archetype range model both match.
         self.archetype_of = ["hero"] + [self._bots[p].name for p in range(1, self.n)]
-        self._rng = random.Random(self.seed)
         self._hand: Hand | None = None
+        self._decisions: Counter[int] = Counter()  # per-player decision number this hand
         # Placeholder; start_hand() sets the real button to `hand_index % n`.
         self._button = self.n - 1
         self._seat_to_player: list[int] = []
@@ -139,13 +136,14 @@ class GameSession:
             table_size=self.n,
             blinds=self.blinds,
             starting_stacks=per_seat,
-            seed=self._rng.randint(0, 2**31 - 1),
+            deck=shuffled_deck(stream(self.seed, "deck", self.hand_index)),
         )
         self._last_result = None
         self._decision_ms = []
-        # Capture every seat's cards now: PokerKit clears them on fold/muck, but we
+        self._decisions = Counter()
+        # Every seat's cards as dealt: PokerKit clears them on fold/muck, but we
         # want to reveal non-folded hands at a showdown (and the hero always).
-        self._dealt_holes = [self._hand.hole_cards(s) or [] for s in range(self.n)]
+        self._dealt_holes = self._hand.dealt_holes()
         self._hero_hole = self._dealt_holes[self._player_to_seat[HERO]]
         if self.auto_advance:
             self._advance_bots()
@@ -165,8 +163,10 @@ class GameSession:
         seat = h.actor
         player = self._seat_to_player[seat]
         ctx = build_context(h, self.blinds[1])
-        action = self._bots[player].act(ctx, self._rng)
-        h.apply(action)
+        k = self._decisions[player]
+        self._decisions[player] += 1
+        rng = stream(self.seed, "decision", self.hand_index, player, k)
+        h.apply(self._bots[player].act(ctx, rng))
 
     def advance_one(self) -> bool:
         """Step a single bot action. Returns True if one was applied, False when
@@ -216,6 +216,11 @@ class GameSession:
                 "street": e.street,
                 "action": e.action,
                 "to_amount": e.to_amount,
+                # Lossless amounts from the engine ledger (absent on old rows).
+                "added": e.added,
+                "street_total": e.street_total,
+                "all_in": e.all_in,
+                "stack_after": e.stack_after,
             }
             for e in snap.history
         ]
@@ -241,7 +246,9 @@ class GameSession:
             "start_stacks": getattr(self, "_start_stacks", [self.buy_in] * self.n),
             "hero_cards": "".join(self._hero_hole),
             "board": " ".join(snap.board),
-            "pot": _pot_from_actions(actions, self.blinds, self.n),
+            # The ledger pot: chips in the middle net of uncalled bets, before rake.
+            "pot": h.ledger.pot,
+            "rake": h.ledger.rake,
             "hero_net": results[hero_seat],
             "went_to_showdown": showdown and hero_seat in live,
             "results_by_player": {self._seat_to_player[s]: results[s] for s in range(self.n)},
@@ -251,6 +258,11 @@ class GameSession:
             # Raw wall-clock per hero decision this hand (ms); summarised only as a
             # median, since it also contains tab switches and interruptions.
             "hero_decision_ms": list(self._decision_ms),
+            "seat_to_player": list(self._seat_to_player),
+            "ledger": h.ledger.as_dict(),
+            "versions": {"engine": self.engine, "ledger": LEDGER_VERSION},
+            # Server-only: never in an API response (see public_result).
+            "truth": {"seed": self.seed},
         }
 
         # Per-player summaries: accumulate observed stats (HUD reads) and stash the
@@ -292,7 +304,13 @@ class GameSession:
 
     @property
     def last_result(self) -> dict | None:
+        """The finished hand's full record, as persisted (includes ``truth``)."""
         return self._last_result
+
+    @property
+    def public_last_result(self) -> dict | None:
+        """``last_result`` without the server-only ``truth``."""
+        return public_result(self._last_result)
 
     # ------------------------------------------------------------------ #
     def state(self) -> GameState:

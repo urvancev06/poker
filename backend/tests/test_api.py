@@ -210,3 +210,23 @@ def test_showdown_reveals_villain_cards_and_labels(client: TestClient):
         for s in live:
             assert s["hole_cards"] is not None and len(s["hole_cards"]) == 2
             assert s["hand_label"]
+
+
+def test_state_carries_the_ledger_and_decision_facts(client: TestClient):
+    state = client.post("/session", json={"seed": 7, "auto_advance": False}).json()
+    sid = state["session_id"]
+    for _ in range(4):
+        if state["hero_to_act"] or state["hand_over"]:
+            break
+        state = client.post(f"/session/{sid}/advance").json()
+    st = state["state"]
+    assert st["ledger"]["pot"] == st["pot"] and st["ledger"]["rake"] == 0
+    assert sum(st["ledger"]["contributed"]) == st["pot"]
+    if st["actor"] is not None:
+        facts = st["facts"]
+        assert facts["seat"] == st["actor"]
+        assert facts["to_call"] == st["legal_actions"]["call_amount"]
+        assert facts["winnable_if_call"] <= st["pot"] + facts["to_call"]
+    for e in st["history"]:
+        assert {"added", "street_total", "all_in", "stack_after"} <= set(e)
+        assert e["stack_after"] >= 0

@@ -43,7 +43,9 @@ def seat_to_dict(seat, board: list[str]) -> dict:
 
 def history_to_dict(state: GameState) -> list[dict]:
     """The action log for the table feed. Deliberately omits each entry's
-    hole_cards so a mid-hand snapshot never leaks villain cards to the hero."""
+    hole_cards so a mid-hand snapshot never leaks villain cards to the hero.
+    ``added``/``street_total``/``all_in``/``stack_after`` come from the engine
+    ledger, so the client never has to replay the log to recover an amount."""
     return [
         {
             "seat": e.seat,
@@ -51,6 +53,10 @@ def history_to_dict(state: GameState) -> list[dict]:
             "street": e.street,
             "action": e.action,
             "to_amount": e.to_amount,
+            "added": e.added,
+            "street_total": e.street_total,
+            "all_in": e.all_in,
+            "stack_after": e.stack_after,
         }
         for e in state.history
     ]
@@ -76,6 +82,12 @@ def state_to_dict(state: GameState) -> dict:
         "legal_actions": legal_to_dict(state.legal_actions),
         "results": state.results,
         "history": history_to_dict(state),
+        # {"contributed": [...], "pot", "rake"}: unlike "pot" it survives the end of
+        # the hand (PokerKit has pushed the chips by then).
+        "ledger": state.ledger,
+        # Facts for the player to act (who still acts after a call, what a call can
+        # win); null when nobody is to act.
+        "facts": None if state.facts is None else state.facts.as_dict(),
     }
 
 
@@ -92,5 +104,5 @@ def session_to_dict(session: GameSession) -> dict:
         "seat_to_player": session.seat_to_player,
         "button_player": session.button_player,
         "state": state_to_dict(state),
-        "last_result": session.last_result,
+        "last_result": session.public_last_result,
     }
