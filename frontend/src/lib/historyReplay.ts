@@ -5,9 +5,13 @@
 // the starting stacks and the blinds, B19). Without the second the replay still reads;
 // it only loses the showdown hands, the cap on an all-in call and the all-in marks.
 //
+// Amounts are shown in big blinds of the hand: its stored blinds, else the review's
+// big_blind, else 2 (every hand before the 5/10 chip unit was at 1/2).
+//
 // What is derived here, for display only (the backend's figures stay the backend's):
-// - a call's amount (the history leaves it out): the street level, capped by what the
-//   caller had left. Amounts are street totals, as on the table: "raises to 15", "calls 15";
+// - a call's amount: the stored ledger's street total when the hand has one, else the
+//   street level, capped by what the caller had left. Amounts are street totals, as on the
+//   table: "raises to 7.5 bb", "calls 7.5 bb";
 // - the all-in mark, when a player has nothing left behind;
 // - streets dealt with no betting (an all-in runout), which /review leaves out;
 // - the board at each street: the cards dealt on it, and those already out.
@@ -17,7 +21,7 @@
 
 import type { ActionType, HandRecord, HandReview, ReviewDecision } from '../api'
 import { cardLabel, splitCards } from './cards'
-import { chips, pct } from './format'
+import { bb, bigBlindOf, LEGACY_BIG_BLIND, pct } from './format'
 import { leakLabel } from './historyList'
 import { STREET_LABEL, capitalize, streetVerb, type Street } from './tableModel'
 
@@ -34,6 +38,8 @@ interface StoredAction {
   player: number
   seat: number
   position: string
+  /** The ledger's street total after the action (hands stored since the ledger). */
+  streetTotal: number | null
 }
 
 function storedActions(detail: HandRecord | null | undefined): StoredAction[] {
@@ -42,7 +48,8 @@ function storedActions(detail: HandRecord | null | undefined): StoredAction[] {
   const out: StoredAction[] = []
   for (const a of raw) {
     const r = a as Record<string, unknown>
-    if (typeof r.seat === 'number' && typeof r.player === 'number' && typeof r.position === 'string') out.push({ seat: r.seat, player: r.player, position: r.position })
+    if (typeof r.seat === 'number' && typeof r.player === 'number' && typeof r.position === 'string')
+      out.push({ seat: r.seat, player: r.player, position: r.position, streetTotal: typeof r.street_total === 'number' ? r.street_total : null })
   }
   return out
 }
@@ -69,11 +76,12 @@ export interface DecisionLeak {
 export interface DecisionView {
   key: string
   street: string
-  /** "Call", "Raise to 200", "Bet 13", "Check", "Fold". */
+  /** "Call", "Raise to 100 bb", "Bet 6.5 bb", "Check", "Fold". */
   action: string
   /** "A pair + backdoor flush draw". */
   handLabel: string
-  /** "48 to call into 95", or "Nothing to call, pot 21". */
+  /** "24 bb to call into 47.5 bb", or "Nothing to call, pot 10.5 bb"; when a side pot caps
+   *  what a call can win, ", you can win 10.5 bb of it". */
   price: string
   /** The headline figure: realized equity when the review has it, else raw equity. Null
    *  preflop (the review scores equity only postflop, against live villains). */
@@ -102,8 +110,8 @@ const PRICE_LEAKS: ReadonlySet<string> = new Set(['call_no_odds', 'fold_with_odd
  *  judged on what calling would have cost. */
 const PRICED_ACTIONS: ReadonlySet<string> = new Set(['call', 'fold'])
 
-function actionWord(d: Pick<ReviewDecision, 'action' | 'to_amount' | 'street'>): string {
-  const n = d.to_amount != null ? ` ${chips(d.to_amount)}` : ''
+function actionWord(d: Pick<ReviewDecision, 'action' | 'to_amount' | 'street'>, big: number): string {
+  const n = d.to_amount != null ? ` ${bb(d.to_amount, big, { unit: true })}` : ''
   switch (d.action) {
     case 'raise':
       return `Raise to${n}`
@@ -115,7 +123,15 @@ function actionWord(d: Pick<ReviewDecision, 'action' | 'to_amount' | 'street'>):
   }
 }
 
-export function decisionView(d: ReviewDecision, key: string): DecisionView {
+function priceText(d: Pick<ReviewDecision, 'to_call' | 'pot' | 'winnable'>, big: number): string {
+  const u = (n: number) => bb(n, big, { unit: true })
+  if (d.to_call <= 0) return `Nothing to call, pot ${u(d.pot)}`
+  const capped = typeof d.winnable === 'number' && d.winnable < d.pot + d.to_call
+  return `${u(d.to_call)} to call into ${u(d.pot)}${capped ? `, you can win ${u(d.winnable as number)} of it` : ''}`
+}
+
+/** One hero decision for the replay, its amounts in big blinds of `bigBlind`. */
+export function decisionView(d: ReviewDecision, key: string, bigBlind: number): DecisionView {
   const realized = d.realized_pct ?? null
   const raw = d.equity_pct
   // the price only beside an equity to hold it against (postflop: the review scores no
@@ -127,9 +143,9 @@ export function decisionView(d: ReviewDecision, key: string): DecisionView {
   return {
     key,
     street: streetLabel(d.street),
-    action: actionWord(d),
+    action: actionWord(d, bigBlind),
     handLabel: capitalize(d.hand_label),
-    price: d.to_call > 0 ? `${chips(d.to_call)} to call into ${chips(d.pot)}` : `Nothing to call, pot ${chips(d.pot)}`,
+    price: priceText(d, bigBlind),
     eq: realized != null ? { label: 'Realized', value: realized } : raw != null ? { label: 'Equity', value: raw } : null,
     raw: realized != null ? raw : null,
     need,
@@ -165,7 +181,7 @@ export interface TimelineRow {
   key: string
   /** "You" or the position. */
   who: string
-  /** "raises to 15", "calls 15", "folds"; the hero's in the first person ("call 15"). */
+  /** "raises to 7.5 bb", "calls 7.5 bb", "folds"; the hero's in the first person. */
   what: string
   you: boolean
   fold: boolean
@@ -192,11 +208,26 @@ export interface Timeline {
   decisionCount: number
   flagged: number
   heroFolded: boolean
+  /** The hand's big blind: every amount above is in big blinds of it. */
+  bigBlind: number
+}
+
+/** A stored hand's big blind: its blinds, else the review's, else the legacy 2. */
+export function handBigBlind(review: Pick<HandReview, 'big_blind'> | null | undefined, detail?: HandRecord | null): number {
+  if (Array.isArray(detail?.data?.blinds)) return bigBlindOf(detail.data)
+  return review ? bigBlindOf(review) : LEGACY_BIG_BLIND
 }
 
 export function buildTimeline(review: HandReview, detail?: HandRecord | null): Timeline {
   const data = detail?.data
-  const blinds = Array.isArray(data?.blinds) && data.blinds.length === 2 ? data.blinds : [1, 2]
+  const big = handBigBlind(review, detail)
+  const blinds = Array.isArray(data?.blinds) && data.blinds.length === 2 ? data.blinds : [big / 2, big]
+  // the stored actions run in the same order as the review's streets; their ledger street
+  // totals are used when every action lines up (hands stored since the ledger)
+  const stored = storedActions(detail)
+  const flat = review.streets.flatMap((s) => s.actions)
+  const aligned = stored.length === flat.length && stored.every((a, i) => a.position === flat[i].position)
+  let flatIndex = 0
   // stacks behind, by position (positions are unique within a hand)
   const left = new Map<string, number>()
   const { position } = seatMaps(detail)
@@ -214,7 +245,7 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
   put('BB', blinds[1])
   let level = blinds[1]
 
-  const decisions = review.decisions.map((d, i) => decisionView(d, `d${i}`))
+  const decisions = review.decisions.map((d, i) => decisionView(d, `d${i}`, big))
   const heroActions = review.streets.reduce((n, s) => n + s.actions.filter((a) => a.is_hero).length, 0)
   const inline = heroActions === decisions.length
   let next = 0
@@ -236,12 +267,18 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
         level = Math.max(level, a.to_amount)
         amount = a.to_amount
       }
+      const total = aligned ? stored[flatIndex].streetTotal : null
+      flatIndex++
+      if (total != null && (a.action === 'call' || a.action === 'bet' || a.action === 'raise')) {
+        amount = total
+        bet.set(a.position, total)
+      }
       const moved = a.action === 'call' || a.action === 'bet' || a.action === 'raise'
       if (a.is_hero && a.action === 'fold') heroFolded = true
       return {
         key: `${s.street}-${ai}`,
         who: a.is_hero ? 'You' : a.position,
-        what: streetVerb({ action: a.action as ActionType, street: s.street, to_amount: a.to_amount }, amount, a.is_hero),
+        what: streetVerb({ action: a.action as ActionType, street: s.street, to_amount: a.to_amount }, amount, a.is_hero, big),
         you: a.is_hero,
         fold: a.action === 'fold',
         allIn: known && moved && left.get(a.position) === 0,
@@ -261,7 +298,7 @@ export function buildTimeline(review: HandReview, detail?: HandRecord | null): T
 
   let flagged = 0
   for (const d of decisions) if (d.flagged) flagged++
-  return { streets, loose: inline ? [] : decisions, decisionCount: decisions.length, flagged, heroFolded }
+  return { streets, loose: inline ? [] : decisions, decisionCount: decisions.length, flagged, heroFolded, bigBlind: big }
 }
 
 /** "4 decisions, 1 flagged", "1 decision, none flagged", "No decisions to score". */

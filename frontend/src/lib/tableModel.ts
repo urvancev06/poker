@@ -11,9 +11,12 @@
 //   B12  the street comes from the board length, never from state.street
 //   B17  the status line reads "You fold", and names the latest action (with amounts)
 //   B20  no "all-in" tag once the hand is over (a busted seat just shows 0)
+//
+// Amounts are chips; everything shown is in big blinds of this hand (lib/format `bb`). On
+// the felt the number stands alone ("Open 2.5"); prose carries the unit ("calls 1.5 bb").
 
 import type { ActionLogEntry, BotRead, LegalActions, Reads, SessionState } from '../api'
-import { chips } from './format'
+import { bb, bigBlindOf } from './format'
 import type { VisibilityMode } from './prefsSchema'
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river'
@@ -42,9 +45,10 @@ export function capitalize(s: string | null | undefined): string {
 /* ---------- replaying the history: amounts and each seat's line ---------- */
 
 export interface Replay {
-  /** By history index: the street total after the action (a call's amount is derived). */
+  /** By history index: the street total after the action: the ledger's `street_total` when
+   * the backend sends it, else derived by replaying the history (older payloads). */
   amounts: (number | null)[]
-  /** By engine seat: the preflop role, then this street's action ("3-bet 15", "bets 26"). */
+  /** By engine seat: the preflop role, then this street's action ("3-bet 7.5", "bets 13"). */
   tags: string[][]
 }
 
@@ -59,12 +63,13 @@ function startStacks(s: SessionState): number[] {
 }
 
 /**
- * Replays the hand's history from the start-of-hand stacks, to word each action ("calls
- * 15": a call carries no amount in the history) and each seat's line. Display only: the
- * stacks, bets and pot on screen are the backend's own.
+ * Words each action ("calls 7.5": the ledger's street total, or replayed from the
+ * start-of-hand stacks when the payload predates the ledger) and each seat's line. Display
+ * only: the stacks, bets and pot on screen are the backend's own.
  */
 export function replayHand(s: SessionState): Replay {
   const g = s.state
+  const big = bigBlindOf(g)
   const n = g.seats.length
   const stack = startStacks(s).slice()
   const bet = new Array<number>(n).fill(0)
@@ -113,18 +118,24 @@ export function replayHand(s: SessionState): Replay {
       level = Math.max(level, h.to_amount)
       amount = h.to_amount
     }
+    // the engine ledger's own figure wins over the replay whenever the backend sends it
+    if ((h.action === 'call' || h.action === 'bet' || h.action === 'raise') && typeof h.street_total === 'number') {
+      amount = h.street_total
+      bet[i] = h.street_total
+      if (h.action !== 'call') level = Math.max(level, h.street_total)
+    }
     amounts.push(amount)
     if (street === 'preflop') {
       if ((h.action === 'raise' || h.action === 'bet') && amount != null) {
         raises++
         const role = raises === 2 ? (limped ? 'Raise' : 'Open') : `${raises}-bet`
-        tags[i] = [`${role} ${chips(amount)}`]
+        tags[i] = [`${role} ${bb(amount, big)}`]
       } else if (h.action === 'call' && amount != null) {
         if (raises === 1) limped = true
-        tags[i] = [`${raises === 1 ? 'Limp' : 'Call'} ${chips(amount)}`]
+        tags[i] = [`${raises === 1 ? 'Limp' : 'Call'} ${bb(amount, big)}`]
       } else if (h.action === 'check') tags[i] = ['Check']
     } else {
-      const verb = streetVerb(h, amount, false)
+      const verb = streetVerb(h, amount, false, big, false)
       if (verb) tags[i] = [tags[i][0] ?? '', verb]
     }
   }
@@ -134,10 +145,19 @@ export function replayHand(s: SessionState): Replay {
   return { amounts, tags: tags.map((t) => t.filter(Boolean)) }
 }
 
-/** One action in words. `you`: first person ("You call 15"), else third ("calls 15"). */
-export function streetVerb(h: Pick<ActionLogEntry, 'action' | 'street' | 'to_amount'>, amount: number | null, you: boolean): string {
+/**
+ * One action in words, in big blinds. `you`: first person ("You call 1.5 bb"), else third
+ * ("calls 1.5 bb"). `unit` false leaves the unit off (the felt: "bets 13").
+ */
+export function streetVerb(
+  h: Pick<ActionLogEntry, 'action' | 'street' | 'to_amount'>,
+  amount: number | null,
+  you: boolean,
+  bigBlind: number,
+  unit = true,
+): string {
   const amt = amount ?? h.to_amount
-  const n = amt != null ? ` ${chips(amt)}` : ''
+  const n = amt != null ? ` ${bb(amt, bigBlind, { unit })}` : ''
   switch (h.action) {
     case 'fold':
       return you ? 'fold' : 'folds'
@@ -211,6 +231,8 @@ export function identityOf(seat: Pick<SeatModel, 'player' | 'position' | 'archet
 
 export interface TableModel {
   sessionId: string
+  /** This hand's big blind: every amount below is chips, shown in big blinds of it. */
+  bigBlind: number
   handOver: boolean
   heroTurn: boolean
   boardLen: number
@@ -270,6 +292,7 @@ export function buildTableModel(s: SessionState, reads: Reads | undefined, mode:
   const inBets = s.hand_over ? 0 : g.seats.reduce((a, x) => a + x.bet, 0)
   return {
     sessionId: s.session_id,
+    bigBlind: bigBlindOf(g),
     handOver: s.hand_over,
     heroTurn: s.hero_to_act && !s.hand_over,
     boardLen: g.board.length,
@@ -288,16 +311,16 @@ export function buildTableModel(s: SessionState, reads: Reads | undefined, mode:
 
 /**
  * The dock's line while the bots act (B17): the latest action, in words, with its amount:
- * "You fold", "Maniac bets 26", "SB calls 15". A street that has just been dealt is named
+ * "You fold", "Maniac bets 13 bb", "SB calls 7.5 bb". A street that has just been dealt is named
  * until someone acts on it; before any action, "Dealing".
  */
-export function statusLine(m: Pick<TableModel, 'history' | 'replay' | 'street' | 'hero' | 'nameOfSeat'>): string {
+export function statusLine(m: Pick<TableModel, 'history' | 'replay' | 'street' | 'hero' | 'nameOfSeat' | 'bigBlind'>): string {
   const i = m.history.length - 1
   const last = m.history[i]
   if (!last) return 'Dealing'
   if (last.street !== m.street) return STREET_LABEL[m.street]
   const you = last.seat === m.hero.seat
-  return `${you ? 'You' : m.nameOfSeat(last.seat)} ${streetVerb(last, m.replay.amounts[i] ?? null, you)}`
+  return `${you ? 'You' : m.nameOfSeat(last.seat)} ${streetVerb(last, m.replay.amounts[i] ?? null, you, m.bigBlind)}`
 }
 
 /** "Board: 2 of diamonds, 7 of spades, Queen of diamonds" for assistive tech. */

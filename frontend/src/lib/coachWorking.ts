@@ -8,10 +8,13 @@
 //
 // B18 (render side): draws are never printed as raw enums (backdoor_flush_draw), and the
 // win / tie / lose split appears once.
+//
+// Amounts are in big blinds of the hand (`big_blind`, else 2 for an older answer). When a
+// side pot caps what a call can win (`winnable` < pot + call), the price says so.
 
 import type { Coaching } from '../api'
-import { chips, pct, signed } from './format'
-import { isPriced, priceAdjustment } from './coachView'
+import { bb, bigBlindOf, pct, signed } from './format'
+import { callEvBB, isPriced, priceAdjustment } from './coachView'
 
 export type Provenance = 'exact' | 'computed' | 'estimate'
 
@@ -93,6 +96,11 @@ export function adjustmentNote(delta: number, impliedNote: string): string {
 export function workingRows(c: Coaching): WorkingRow[] {
   const rows: WorkingRow[] = []
   const priced = isPriced(c)
+  const big = bigBlindOf(c)
+  const u = (n: number) => bb(n, big, { unit: true })
+  // what a call can win: everything in the middle plus the call, unless a side pot caps it
+  const winnable = typeof c.winnable === 'number' ? c.winnable : c.pot + c.to_call
+  const capped = winnable < c.pot + c.to_call
 
   rows.push({ key: 'hand', label: 'Your hand', value: humanizeTier(c.made_tier), note: humanizeDraws(c.draws), kind: 'computed' })
   rows.push({
@@ -115,7 +123,8 @@ export function workingRows(c: Coaching): WorkingRow[] {
   if (priced) {
     const direct = c.required_direct_pct ?? (c.required_equity_pct as number)
     const odds = c.pot_odds ? `, pot odds ${c.pot_odds}` : ''
-    rows.push({ key: 'price', label: 'Price', value: pct(direct, 1), note: `${chips(c.to_call)} to call into ${chips(c.pot)}${odds}`, kind: 'exact' })
+    const cap = capped ? `, you can win ${u(winnable)} of it` : ''
+    rows.push({ key: 'price', label: 'Price', value: pct(direct, 1), note: `${u(c.to_call)} to call into ${u(c.pot)}${cap}${odds}`, kind: 'exact' })
     const delta = priceAdjustment(c)
     if (delta != null) {
       const v = `${delta < 0 ? MINUS : '+'}${Math.abs(delta).toFixed(1)} pts`
@@ -128,13 +137,14 @@ export function workingRows(c: Coaching): WorkingRow[] {
       note: delta != null ? 'The price after that adjustment' : 'The price: nothing adjusts it',
       kind: delta != null ? 'estimate' : 'exact',
     })
-    if (c.call_ev != null) {
+    const ev = callEvBB(c)
+    if (ev != null) {
       const before = delta != null ? '. Before implied odds' : ''
       rows.push({
         key: 'ev',
         label: 'Call EV',
-        value: `≈${signed(c.call_ev, 1)}`,
-        note: `${pct(c.realized_equity_pct)} of ${chips(c.pot + c.to_call)}, less the ${chips(c.to_call)} call${before}`,
+        value: `≈${signed(ev, 1)} bb`,
+        note: `${pct(c.realized_equity_pct)} of ${u(winnable)}, less the ${u(c.to_call)} call${before}`,
         kind: 'computed',
       })
     }

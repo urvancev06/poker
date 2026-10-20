@@ -1,30 +1,32 @@
 /**
  * Your hand: two cards standing below the rim, the hand label ("Flush draw") and your line
- * ("You  BB  185", the dealer puck, "All-in"). On your turn the cards lift on the bouncy
+ * ("You  BB  92.5", the stack in big blinds, the dealer puck, "All-in"). On your turn the cards lift on the bouncy
  * spring into a pool of the atmosphere's blue. A hand you folded stays white and steps
  * back; while the bots play on, the backend withholds your cards, and the place says
  * "Folded". Before the first deal: just "You".
  */
 import { cardLabel } from '../../lib/cards'
-import { chips } from '../../lib/format'
+import { bb, bbSpeech } from '../../lib/format'
 import { capitalize, type SeatModel } from '../../lib/tableModel'
 import { FlipCard } from './Felt'
 import { Dealer } from './SeatLabel'
 
 export interface HeroHandProps {
   hero: SeatModel | null
+  /** The hand's big blind (amounts are chips). */
+  bigBlind: number
   turn: boolean
   phone: boolean
   x: number
   y: number
 }
 
-export function HeroHand({ hero, turn, phone, x, y }: HeroHandProps) {
+export function HeroHand({ hero, bigBlind, turn, phone, x, y }: HeroHandProps) {
   const cards = hero?.cards ?? null
   const steppedBack = !!hero?.folded && !!cards
   const label = !hero || !cards ? '' : hero.folded ? 'Folded' : capitalize(hero.label)
   const name = hero
-    ? `You, ${hero.position}, ${hero.allIn ? 'all-in' : `${chips(hero.stack)} chips`}${hero.button ? ', dealer' : ''}${hero.bet > 0 ? `, bet ${chips(hero.bet)}` : ''}${turn ? ', your turn' : ''}`
+    ? `You, ${hero.position}, ${hero.allIn ? 'all-in' : bbSpeech(hero.stack, bigBlind)}${hero.button ? ', dealer' : ''}${hero.bet > 0 ? `, bet ${bbSpeech(hero.bet, bigBlind)}` : ''}${turn ? ', your turn' : ''}`
     : 'You'
   return (
     <div className={`hero ${turn ? 'is-turn' : ''} ${steppedBack ? 'is-folded' : ''}`} role="group" aria-label={name} style={{ left: x, top: y }} data-hero="">
@@ -48,7 +50,7 @@ export function HeroHand({ hero, turn, phone, x, y }: HeroHandProps) {
           <b className="font-semibold text-ink">You</b>
           {hero?.button && <Dealer phone={phone} />}
           {hero && <span className="font-semibold">{hero.position}</span>}
-          {hero && (hero.allIn ? <b className="font-semibold text-ink">All-in</b> : <span>{chips(hero.stack)}</span>)}
+          {hero && (hero.allIn ? <b className="font-semibold text-ink">All-in</b> : <span>{bb(hero.stack, bigBlind)}</span>)}
         </div>
       </div>
     </div>

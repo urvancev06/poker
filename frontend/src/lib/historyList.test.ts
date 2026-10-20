@@ -141,9 +141,18 @@ describe('outcomes (six cases from net and showdown)', () => {
   })
   it('names a row for assistive tech', () => {
     const hands = fixture<HandSummary[]>('hands_list')
-    expect(rowLabel(hands[2])).toBe('Hand 132, SB, 4 of diamonds and Ace of hearts, won at showdown, up 94')
-    expect(rowLabel(hands[0])).toBe('Hand 2, CO, 10 of clubs and 3 of hearts, lost at showdown, down 91')
+    // old rows: 1/2, no big_blind field
+    expect(rowLabel(hands[2])).toBe('Hand 132, SB, 4 of diamonds and Ace of hearts, won at showdown, up 47 bb')
+    expect(rowLabel(hands[0])).toBe('Hand 2, CO, 10 of clubs and 3 of hearts, lost at showdown, down 45.5 bb')
     expect(rowLabel(hands[1])).toBe('Hand 1, BTN, 4 of spades and 9 of diamonds, folded, it cost nothing')
+  })
+  it('reads each row in its own big blinds (Review Focus 1)', () => {
+    const [old] = fixture<HandSummary[]>('hands_list')
+    const atTwo = { ...old, hero_net: 4, went_to_showdown: true, big_blind: 2 }
+    const atTen = { ...old, hero_net: -20, went_to_showdown: true, big_blind: 10 }
+    expect(rowLabel(atTwo)).toMatch(/, up 2 bb$/)
+    expect(rowLabel(atTen)).toMatch(/, down 2 bb$/)
+    expect(rowLabel({ ...atTen, hero_net: 15 })).toMatch(/, up 1.5 bb$/)
   })
 })
 

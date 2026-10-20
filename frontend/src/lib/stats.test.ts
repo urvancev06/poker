@@ -186,6 +186,19 @@ describe('the ring and the facts', () => {
     expect(f?.mixed).toBe('180 of 234 hands at big blind 4')
   })
 
+  it('counts every hand in its own big blinds when the API says which levels it saw', () => {
+    const mixed = resultFact(
+      { hands: 240, net_bb_per_100: 4 },
+      { last: null, session_id: null, hands: 240, big_blind: 10, hands_at_this_blind: 240, blind_levels: [[1, 2], [5, 10]] },
+    )
+    expect(mixed?.mixed).toBe('Includes hands at 1/2 and 5/10, each counted in its own big blinds')
+    expect(mixed?.note).toContain('each hand in its own big blinds')
+    expect(mixed?.note).not.toContain('big blind 10')
+    const one = resultFact({ hands: 20, net_bb_per_100: -3 }, { last: 20, session_id: null, hands: 20, big_blind: 10, hands_at_this_blind: 20, blind_levels: [[5, 10]] })
+    expect(one?.mixed).toBeNull()
+    expect(one?.note).toContain('at 5/10')
+  })
+
   it('shows fold to steal only when the API sends it', () => {
     expect(foldToSteal({ fold_to_steal: 7.1 })).toEqual({ value: '7.1%' })
     expect(foldToSteal({ fold_to_steal: null })).toEqual({ value: null })

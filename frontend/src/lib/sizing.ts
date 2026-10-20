@@ -1,5 +1,7 @@
 // The hero's choices: which buttons the dock shows and how a bet or raise is sized.
-// Pure. Amounts are integer chips and street totals ("raise to"), never increments.
+// Pure. Amounts are integer chips and street totals ("raise to"), never increments; labels
+// show them in big blinds of the hand ("Raise to 7.5 bb"), and a typed size is read in big
+// blinds (lib/format `parseBB`).
 //
 //   B1   never offer Fold when checking is free (the backend rejects that fold)
 //   B26  preflop, the engine reports the big blind's raise over limps as a "bet": it reads
@@ -9,7 +11,7 @@
 //        pot already includes every bet in front. All-in is max_raise_to.
 
 import type { ActionType, LegalActions } from '../api'
-import { chips } from './format'
+import { bb } from './format'
 import type { Street } from './tableModel'
 
 export type DockAction =
@@ -36,9 +38,10 @@ export function aggroType(la: LegalActions): 'bet' | 'raise' {
   return la.can_bet ? 'bet' : 'raise'
 }
 
-/** The confirm button's label: "Bet 52", "Raise to 52". */
-export function aggroLabel(la: LegalActions, street: Street, amount: number): string {
-  return aggroVerb(la, street) === 'Bet' ? `Bet ${chips(amount)}` : `Raise to ${chips(amount)}`
+/** The confirm button's label: "Bet 2.5 bb", "Raise to 7.5 bb". */
+export function aggroLabel(la: LegalActions, street: Street, amount: number, bigBlind: number): string {
+  const n = bb(amount, bigBlind, { unit: true })
+  return aggroVerb(la, street) === 'Bet' ? `Bet ${n}` : `Raise to ${n}`
 }
 
 /** The buttons, in order. Only legal ones; Fold never beside a free check (B1). */
@@ -94,18 +97,6 @@ export function presetIndexFor(la: LegalActions, pot: number, heroBet: number, a
   if (!canAggress(la)) return null
   for (let i = 0; i < PRESETS.length; i++) if (presetAmount(la, pot, heroBet, PRESETS[i].f) === amount) return i
   return null
-}
-
-/**
- * Typed text -> a legal amount: digits only (separators and spaces ignored), rounded and
- * clamped to [min, max]. Empty or no digits -> null (keep the current amount).
- */
-export function parseAmount(text: string, min: number, max: number): number | null {
-  const digits = text.replace(/[^\d]/g, '')
-  if (!digits) return null
-  const n = Number(digits)
-  if (!Number.isFinite(n)) return null
-  return clamp(Math.round(n), min, max)
 }
 
 /** The slider's fill (0..100) for an amount. */

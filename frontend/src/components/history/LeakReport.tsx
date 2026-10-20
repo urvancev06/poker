@@ -12,7 +12,7 @@
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { describeError, type ApiError } from '../../lib/apiError'
-import { chips } from '../../lib/format'
+import { count } from '../../lib/format'
 import { elapsedLabel, firstPassNote, handsCount, leakRows, reviewingLine, type LeakRow } from '../../lib/historyList'
 import { play } from '../../lib/motion'
 import { ErrorNotice } from '../../ui/ErrorNotice'
@@ -103,7 +103,7 @@ function LeakItem({ row }: { row: LeakRow }) {
         }}
       >
         <span className="min-w-0 text-body font-semibold">{row.label}</span>
-        <span className="text-headline font-strong tabular-nums">{chips(row.count)}</span>
+        <span className="text-headline font-strong tabular-nums">{count(row.count)}</span>
         <span className="leak-row__rail" aria-hidden="true">
           <i style={{ width: `${Math.max(2, row.share * 100)}%` }} />
         </span>

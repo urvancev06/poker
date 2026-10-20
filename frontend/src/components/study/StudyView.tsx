@@ -152,17 +152,23 @@ function PotOdds() {
     <>
       <p className="m-0 mt-8 text-headline font-strong tabular-nums">Need = call ÷ (pot + call)</p>
       <p className="m-0 mt-3 max-w-[62ch] text-fog">
-        The pot already counts their bet. A {PRICE_EXAMPLE.call} bet makes the pot {PRICE_EXAMPLE.pot}; calling {PRICE_EXAMPLE.call} makes it{' '}
-        {after}, so you need {PRICE_EXAMPLE.call} ÷ {after}:
+        The pot already counts their bet. A {PRICE_EXAMPLE.call} bb bet makes the pot {PRICE_EXAMPLE.pot} bb; calling {PRICE_EXAMPLE.call} bb makes it{' '}
+        {after} bb, so you need {PRICE_EXAMPLE.call} ÷ {after}:
       </p>
       <dl className="study-figures m-0 mt-6">
         <div>
           <dt>Pot</dt>
-          <dd>{PRICE_EXAMPLE.pot}</dd>
+          <dd>
+            {PRICE_EXAMPLE.pot}
+            <span className="ml-1 text-callout font-semibold text-fog">bb</span>
+          </dd>
         </div>
         <div>
           <dt>To call</dt>
-          <dd>{PRICE_EXAMPLE.call}</dd>
+          <dd>
+            {PRICE_EXAMPLE.call}
+            <span className="ml-1 text-callout font-semibold text-fog">bb</span>
+          </dd>
         </div>
         <div>
           <dt>Need</dt>

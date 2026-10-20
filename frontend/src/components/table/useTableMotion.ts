@@ -18,7 +18,7 @@
 // Reduced motion, a skip to the result, or a view coming back into sight: instant.
 
 import { useLayoutEffect, useRef, type RefObject } from 'react'
-import { chips as chipText } from '../../lib/format'
+import { bb } from '../../lib/format'
 import { EASE, play } from '../../lib/motion'
 import { prefersReducedMotion } from '../../lib/motion'
 import { suffixIds } from '../../lib/svgIds'
@@ -216,7 +216,7 @@ function run(refs: MotionRefs, L: TableLayout, m: TableModel, e: TableEvents, t0
       }
       const gl = ghostOf(q(`[data-bet="${c.player}"]`), refs.overlayGhosts.current)
       if (gl) {
-        gl.textContent = chipText(c.amount)
+        gl.textContent = bb(c.amount, m.bigBlind)
         retire(gl, play(gl, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, ease: 'ease-out', fill: 'forwards' }))
       }
     }

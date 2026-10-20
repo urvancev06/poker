@@ -24,6 +24,7 @@ import { COACH_SAMPLES, coachSample, type CoachSample } from '../../../lib/coach
 import type { CoachStatus } from '../../../lib/coachStatus'
 import { capitalize } from '../../../lib/coachWorking'
 import { DECKS } from '../../../lib/decks'
+import { bb, bigBlindOf } from '../../../lib/format'
 import { PrefsContext, usePrefs, type PrefsValue } from '../../../lib/prefsContext'
 import { normalizeCoachMode, normalizeVisibility, type CoachMode, type VisibilityMode } from '../../../lib/prefsSchema'
 import { Card } from '../../Card'
@@ -127,7 +128,7 @@ function Scene({ sample }: { sample: CoachSample }) {
           ))}
         </div>
         <p className="absolute m-0 -translate-x-1/2 text-callout text-fog" style={{ left: axis, top: (phone ? 220 + 70 : vh * 0.26 + hw * 1.15) }}>
-          Pot <b className="text-title font-strong text-ink tabular-nums">{c.pot}</b>
+          Pot <b className="text-title font-strong text-ink tabular-nums">{bb(c.pot, bigBlindOf(c))}</b> bb
         </p>
         {/* your hand, lifted on your turn */}
         <div className="absolute flex -translate-x-1/2 flex-col items-center" style={{ left: axis, top: heroTop }}>
@@ -165,7 +166,7 @@ function Scene({ sample }: { sample: CoachSample }) {
       </main>
       <div className={`fixed z-[31] -translate-x-1/2 ${phone ? 'w-[calc(100vw-16px)]' : ''}`} style={{ left: axis, bottom: dockBottom }}>
         <Glass className={`flex items-center gap-2 p-2 ${phone ? 'h-[66px]' : 'h-16'}`}>
-          {(priced ? ['Fold', `Call ${c.to_call}`, 'Raise'] : ['Check', 'Bet']).map((label) => (
+          {(priced ? ['Fold', `Call ${bb(c.to_call, bigBlindOf(c), { unit: true })}`, 'Raise'] : ['Check', 'Bet']).map((label) => (
             <Capsule key={label} variant="secondary" size="lg" className={phone ? 'min-w-0 flex-1' : ''}>
               {label}
             </Capsule>

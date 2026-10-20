@@ -22,11 +22,11 @@ import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, 
 import { usePrefs } from '../../lib/prefsContext'
 import { useLayoutKind, useViewportSize } from '../../lib/breakpoints'
 import { cardLabel } from '../../lib/cards'
-import { chips, signedChips } from '../../lib/format'
+import { bb, bbSpeech, parseBB } from '../../lib/format'
 import { classifyResult } from '../../lib/handResult'
 import { handLog } from '../../lib/handLog'
 import { play } from '../../lib/motion'
-import { canAggress, aggroType, dockActions, PRESETS, presetAmount, presetIndexFor, parseAmount, submitOf, type DockAction } from '../../lib/sizing'
+import { canAggress, aggroType, dockActions, PRESETS, presetAmount, presetIndexFor, submitOf, type DockAction } from '../../lib/sizing'
 import { limbHeight, sunPlacement, type Rect } from '../../lib/space'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { commandForKey, targetKind, type HotkeyFace } from '../../lib/tableHotkeys'
@@ -111,9 +111,9 @@ function announcement(m: TableModel | null, table: TableSession): string {
   if (!m) return table.booting ? 'Dealing you in' : ''
   if (m.handOver && table.session) {
     const o = classifyResult(table.session)
-    return o ? `${o.word}${o.net !== null ? ` ${signedChips(o.net)}` : ''}. ${o.sub}.` : ''
+    return o ? `${o.word}${o.net !== null ? ` ${bbSpeech(Math.abs(o.net), m.bigBlind)}` : ''}. ${o.sub}.` : ''
   }
-  if (m.heroTurn && m.legal) return m.legal.can_call ? `Your turn. ${chips(m.legal.call_amount)} to call.` : 'Your turn. You can check.'
+  if (m.heroTurn && m.legal) return m.legal.can_call ? `Your turn. ${bbSpeech(m.legal.call_amount, m.bigBlind)} to call.` : 'Your turn. You can check.'
   return statusLine(m)
 }
 
@@ -203,6 +203,8 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const pressedId = busy && pressed && pressed.key === decisionKey ? pressed.id : null
   const pot = model?.pot ?? 0
   const heroBet = model?.hero.bet ?? 0
+  // every amount is chips; it is shown, and typed, in big blinds of this hand
+  const big = model?.bigBlind ?? 10
 
   const submit = (type: Parameters<TableSession['act']>[0], toAmount: number | undefined, id: string) => {
     if (busy) return
@@ -228,7 +230,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   }
   const typed = (text: string) => {
     if (!sizable) return
-    const n = parseAmount(text, sizable.min_raise_to, sizable.max_raise_to)
+    const n = parseBB(text, big, sizable.min_raise_to, sizable.max_raise_to)
     if (n !== null) setAmount(n)
   }
   const confirm = () => {
@@ -362,7 +364,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   // a phone sheet's medium detent stops 8 px under your cards (lifted), so the hand you are
   // acting on stays in sight; drag it up for the large detent
   const sheetTop = phone ? L.heroTop - L.lift + L.hw * 1.4 + 8 : undefined
-  const log = useMemo(() => (model && session ? handLog(model.history, session.hero_seat, model.replay.amounts) : []), [model, session])
+  const log = useMemo(() => (model && session ? handLog(model.history, session.hero_seat, model.replay.amounts, model.bigBlind) : []), [model, session])
   const showPot = !!model && !model.handOver && model.pot > 0
   const showBets = showPot && model.inBets > 0 && model.inBets < model.pot
 
@@ -390,22 +392,23 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
     faceRole = 'group'
     faceLabel = 'Hand over'
     contentKey = `${outcome.kind}:${outcome.net}`
-    face = <ResultFace outcome={outcome} busy={busy} onNext={() => void table.nextHand()} />
+    face = <ResultFace outcome={outcome} bigBlind={big} busy={busy} onNext={() => void table.nextHand()} />
   } else if (faceKey === 'actions') {
     faceClass = 'face--actions'
     faceRole = 'group'
     faceLabel = 'Your action'
     contentKey = actions.map((a) => `${a.kind}${'amount' in a ? a.amount : ''}`).join(',')
-    face = <ActionsFace actions={actions} busy={busy} pressed={pressedId} onPick={choose} />
+    face = <ActionsFace actions={actions} bigBlind={big} busy={busy} pressed={pressedId} onPick={choose} />
   } else if (faceKey === 'sizing' && sizable) {
     faceClass = 'face--sizing'
     faceRole = 'group'
     faceLabel = 'Choose an amount'
-    contentKey = `sizing:${chips(amount).length}`
+    contentKey = `sizing:${bb(amount, big).length}`
     face = (
       <SizingFace
         la={sizable}
         street={street}
+        bigBlind={big}
         pot={pot}
         heroBet={heroBet}
         amount={amount}
@@ -447,11 +450,12 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
           )}
           <div className="centred flex items-baseline gap-2" data-pot-label="" hidden={!showPot} style={{ left: L.pot.x, top: L.pot.potY }}>
             <span className="text-foot font-semibold text-fog">Pot</span>
-            <span className={`font-strong tabular-nums tracking-[-0.02em] ${phone ? 'text-[24px]' : 'text-title'}`}>{chips(model?.pot ?? 0)}</span>
+            <span className={`font-strong tabular-nums tracking-[-0.02em] ${phone ? 'text-[24px]' : 'text-title'}`}>{bb(model?.pot ?? 0, big)}</span>
+            <span className="text-foot font-semibold text-fog">bb</span>
           </div>
           {showBets && (
             <span className="centred text-foot font-medium tabular-nums text-fog" style={{ left: L.pot.x, top: L.pot.betsY }}>
-              {chips(model.inBets)} in bets
+              {bb(model.inBets, big, { unit: true })} in bets
             </span>
           )}
           {[model?.hero, ...(villains ?? [])].map((s, i) => {
@@ -468,7 +472,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
                 hidden={!s || !(s.bet > 0)}
                 style={{ left: x, top: y }}
               >
-                {chips(s?.bet ?? 0)}
+                {bb(s?.bet ?? 0, big)}
               </span>
             )
           })}
@@ -482,6 +486,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
               <SeatLabel
                 key={k}
                 seat={v}
+                bigBlind={big}
                 identity={identity}
                 place={places[k]}
                 phone={phone}
@@ -491,13 +496,13 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
               />
             )
           })}
-          <HeroHand hero={model?.hero ?? null} turn={!!model?.heroTurn} phone={phone} x={L.axis} y={L.heroTop} />
+          <HeroHand hero={model?.hero ?? null} bigBlind={big} turn={!!model?.heroTurn} phone={phone} x={L.axis} y={L.heroTop} />
         </div>
       </div>
 
       {model && (
         <p className="sr-only">
-          {STREET_LABEL[model.street]}. {boardSpeech(model.board, cardLabel)}.{showPot ? ` Pot ${chips(model.pot)}${showBets ? `, ${chips(model.inBets)} of it in bets` : ''}.` : ''}
+          {STREET_LABEL[model.street]}. {boardSpeech(model.board, cardLabel)}.{showPot ? ` Pot ${bbSpeech(model.pot, big)}${showBets ? `, ${bbSpeech(model.inBets, big)} of it in bets` : ''}.` : ''}
         </p>
       )}
 

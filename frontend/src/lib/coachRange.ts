@@ -12,7 +12,7 @@
 //     shown at all (B28), and outside a priced spot it is just their range's air share.
 
 import type { Coaching, VillainModel } from '../api'
-import { chips, pct } from './format'
+import { count, pct } from './format'
 import { capitalize } from './coachWorking'
 import type { VisibilityMode } from './prefsSchema'
 
@@ -93,7 +93,7 @@ export function villainLines(c: Pick<Coaching, 'villains'>, { visibility, positi
   const many = c.villains.length > 1
   return c.villains.map((v, i) => {
     const r = parseRange(v.description)
-    const combos = `${chips(v.combos)} combos`
+    const combos = `${count(v.combos)} combos`
     const name =
       visibility === 'labeled'
         ? (SHORT[v.archetype] ?? v.archetype)

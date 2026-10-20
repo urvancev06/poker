@@ -1,11 +1,12 @@
 /**
  * The dock's faces. Each renders the inside of one face; Dock.tsx draws the glass.
- *   StatusFace   the latest action while the bots play ("Maniac bets 26"), cross-fading as
+ *   StatusFace   the latest action while the bots play ("Maniac bets 13 bb"), cross-fading as
  *                it changes; "Dealing you in" with a spinner at boot; "Skip to result"
  *                after you fold (B17)
- *   ActionsFace  three equal capsules: Fold / Check, Call N, Bet or Raise (B1, B26). The
+ *   ActionsFace  three equal capsules: Fold / Check, Call 1.5 bb, Bet or Raise (B1, B26). The
  *                coach's pick is not painted on a button: the verdict says it, you choose
- *   SizingFace   back, presets 1/3 1/2 3/4 Pot All-in, the slider, the exact amount, confirm
+ *   SizingFace   back, presets 1/3 1/2 3/4 Pot All-in, the slider, the exact amount in big
+ *                blinds (one decimal; "7.5", "7,5" and "75bb" all read), confirm
  *   ResultFace   six outcomes kept apart (B2) and Next hand
  *   ErrorFace    a scoped error with the backend's detail, Dismiss and Try again
  * Keys (aria-keyshortcuts): F fold, C check/call, R bet/raise, 1-5 presets, Enter
@@ -15,7 +16,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type
 import type { LegalActions } from '../../api'
 import type { ApiError, ErrorContext } from '../../lib/apiError'
 import { describeError } from '../../lib/apiError'
-import { chips, signedChips } from '../../lib/format'
+import { bb, bbSpeech } from '../../lib/format'
 import type { HandOutcome } from '../../lib/handResult'
 import { play, useReducedMotion } from '../../lib/motion'
 import { PRESETS, aggroLabel, amountFill, presetTicks, type DockAction } from '../../lib/sizing'
@@ -71,7 +72,7 @@ export function StatusFace({ text, spinner, canSkip, onSkip }: { text: string; s
 
 const KEYS: Record<DockAction['kind'], string> = { fold: 'F', check: 'C', call: 'C', size: 'R', allin: 'R' }
 
-export function ActionsFace({ actions, busy, pressed, onPick }: { actions: DockAction[]; busy: boolean; pressed: string | null; onPick: (a: DockAction) => void }) {
+export function ActionsFace({ actions, bigBlind, busy, pressed, onPick }: { actions: DockAction[]; bigBlind: number; busy: boolean; pressed: string | null; onPick: (a: DockAction) => void }) {
   return actions.map((a) => {
     const id = a.kind
     let label: string
@@ -84,14 +85,14 @@ export function ActionsFace({ actions, busy, pressed, onPick }: { actions: DockA
         label = 'Check'
         break
       case 'call':
-        label = `Call ${chips(a.amount)}`
+        label = `Call ${bb(a.amount, bigBlind, { unit: true })}`
         break
       case 'size':
         label = a.verb
         name = `${a.verb}, choose an amount`
         break
       case 'allin':
-        label = `All-in ${chips(a.amount)}`
+        label = `All-in ${bb(a.amount, bigBlind, { unit: true })}`
         break
     }
     return (
@@ -117,6 +118,8 @@ export function ActionsFace({ actions, busy, pressed, onPick }: { actions: DockA
 export interface SizingFaceProps {
   la: LegalActions & { min_raise_to: number; max_raise_to: number }
   street: Street
+  /** The hand's big blind: the amount is chips, shown and typed in big blinds. */
+  bigBlind: number
   pot: number
   heroBet: number
   amount: number
@@ -131,7 +134,7 @@ export interface SizingFaceProps {
   onConfirm: () => void
 }
 
-export function SizingFace({ la, street, pot, heroBet, amount, preset, busy, pressed, sliderRef, onBack, onPreset, onAmount, onTyped, onConfirm }: SizingFaceProps) {
+export function SizingFace({ la, street, bigBlind, pot, heroBet, amount, preset, busy, pressed, sliderRef, onBack, onPreset, onAmount, onTyped, onConfirm }: SizingFaceProps) {
   const [draft, setDraft] = useState<string | null>(null)
   const ticks = presetTicks(la, pot, heroBet)
   const fill = amountFill(amount, la.min_raise_to, la.max_raise_to)
@@ -167,7 +170,7 @@ export function SizingFace({ la, street, pot, heroBet, amount, preset, busy, pre
           step={1}
           value={amount}
           aria-label={street !== 'preflop' && la.can_bet ? 'Bet' : 'Raise to'}
-          aria-valuetext={chips(amount)}
+          aria-valuetext={bbSpeech(amount, bigBlind)}
           disabled={busy}
           style={{ ['--fill' as string]: `${fill}%` }}
           onChange={(e: ChangeEvent<HTMLInputElement>) => onAmount(Number(e.target.value))}
@@ -181,16 +184,16 @@ export function SizingFace({ la, street, pot, heroBet, amount, preset, busy, pre
       <input
         className="amount"
         type="text"
-        inputMode="numeric"
-        aria-label={`Exact amount, ${chips(la.min_raise_to)} to ${chips(la.max_raise_to)}`}
-        value={draft ?? String(amount)}
+        inputMode="decimal"
+        aria-label={`Exact amount in big blinds, ${bb(la.min_raise_to, bigBlind)} to ${bb(la.max_raise_to, bigBlind)}`}
+        value={draft ?? bb(amount, bigBlind)}
         disabled={busy}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={onKey}
       />
       <Capsule variant="primary" size="lg" className="sizing__confirm min-w-[150px]" aria-keyshortcuts="Enter" data-pressed={pressed ? '' : undefined} disabled={busy} onClick={onConfirm}>
-        {aggroLabel(la, street, amount)}
+        {aggroLabel(la, street, amount, bigBlind)}
       </Capsule>
     </>
   )
@@ -200,11 +203,11 @@ export function SizingFace({ la, street, pot, heroBet, amount, preset, busy, pre
 
 const NET_TONE = { win: 'text-win', loss: 'text-loss', neutral: 'text-ink' } as const
 
-export function ResultFace({ outcome, busy, onNext }: { outcome: HandOutcome; busy: boolean; onNext: () => void }) {
+export function ResultFace({ outcome, bigBlind, busy, onNext }: { outcome: HandOutcome; bigBlind: number; busy: boolean; onNext: () => void }) {
   return (
     <>
       <span className="text-headline font-strong tracking-[-0.018em]">{outcome.word}</span>
-      {outcome.net !== null && <span className={`text-headline font-strong tabular-nums tracking-[-0.01em] ${NET_TONE[outcome.tone]}`}>{signedChips(outcome.net)}</span>}
+      {outcome.net !== null && <span className={`text-headline font-strong tabular-nums tracking-[-0.01em] ${NET_TONE[outcome.tone]}`}>{bb(outcome.net, bigBlind, { sign: true, unit: true })}</span>}
       <span className="result__sub mr-1.5 text-callout text-fog">{outcome.sub}</span>
       <Capsule variant="primary" size="lg" aria-keyshortcuts="Space" disabled={busy} onClick={onNext}>
         Next hand

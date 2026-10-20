@@ -23,9 +23,9 @@ import { useEffect, useId, useRef, useState, type ReactNode, type UIEvent } from
 import type { HandSummary } from '../../api'
 import { describeError } from '../../lib/apiError'
 import { splitCards } from '../../lib/cards'
-import { pct, signedChips } from '../../lib/format'
+import { bb, pct } from '../../lib/format'
 import { handNumber, outcomeOf, whenLabel } from '../../lib/historyList'
-import { boardSpeech, buildTimeline, decisionsLine, figuresLabel, priceNote, shownHands, type DecisionView, type TimelineStreet } from '../../lib/historyReplay'
+import { boardSpeech, buildTimeline, decisionsLine, figuresLabel, handBigBlind, priceNote, shownHands, type DecisionView, type TimelineStreet } from '../../lib/historyReplay'
 import { usePrefs } from '../../lib/prefsContext'
 import { Capsule } from '../../ui/Capsule'
 import { ErrorNotice } from '../../ui/ErrorNotice'
@@ -123,6 +123,8 @@ export function ReplayBody({ summary: h, load, titleId }: ReplayBodyProps) {
   const o = outcomeOf(h.hero_net, h.went_to_showdown)
   const when = whenLabel(h.created_at, now)
   const t = review ? buildTimeline(review, detail) : null
+  // the hand's own big blind (old hands: 1/2), from the stored hand, the review or the row
+  const big = handBigBlind(review?.big_blind ? review : h, detail)
   const shown = review && detail ? shownHands(detail, { labeled: visibility === 'labeled' }) : []
   const n = handNumber(h.hand_index)
 
@@ -147,7 +149,10 @@ export function ReplayBody({ summary: h, load, titleId }: ReplayBodyProps) {
           {t ? <p className="m-0 mt-0.5 text-callout text-fog">{decisionsLine(t)}</p> : null}
         </div>
         <div className="pt-0.5 text-right max-sm:col-start-2 max-sm:row-start-1">
-          <div className={`text-title font-strong tabular-nums ${NET_TEXT[o.tone]}`}>{signedChips(h.hero_net)}</div>
+          <div className={`text-title font-strong tabular-nums ${NET_TEXT[o.tone]}`}>
+            {bb(h.hero_net, big, { sign: true })}
+            <span className="ml-1 text-callout font-semibold text-fog">bb</span>
+          </div>
           <div className="mt-1 text-foot text-fog">{o.word}</div>
         </div>
       </header>
@@ -173,7 +178,7 @@ export function ReplayBody({ summary: h, load, titleId }: ReplayBodyProps) {
                           ))}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-fog">{s.name ?? ''}</span>
-                        {s.net != null ? <span className={`font-semibold tabular-nums ${NET_TEXT[s.net > 0 ? 'win' : s.net < 0 ? 'loss' : 'even']}`}>{signedChips(s.net)}</span> : null}
+                        {s.net != null ? <span className={`font-semibold tabular-nums ${NET_TEXT[s.net > 0 ? 'win' : s.net < 0 ? 'loss' : 'even']}`}>{bb(s.net, big, { sign: true, unit: true })}</span> : null}
                       </li>
                     ))}
                 </ul>

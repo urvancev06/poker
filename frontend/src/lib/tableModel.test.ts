@@ -26,9 +26,10 @@ describe('replayHand', () => {
   })
   it("words each seat's line: preflop role, then this street", () => {
     const seatOf = (pos: string) => s.state.seats.findIndex((x) => x.position === pos)
-    expect(r.tags[seatOf('SB')]).toEqual(['3-bet 15', 'bets 26'])
-    expect(r.tags[seatOf('MP')]).toEqual(['Open 5'])
-    expect(r.tags[seatOf('BB')]).toEqual(['Call 15'])
+    // at 1/2: amounts in big blinds, the number alone on the felt
+    expect(r.tags[seatOf('SB')]).toEqual(['3-bet 7.5', 'bets 13'])
+    expect(r.tags[seatOf('MP')]).toEqual(['Open 2.5'])
+    expect(r.tags[seatOf('BB')]).toEqual(['Call 7.5'])
     expect(r.tags[seatOf('UTG')]).toEqual([])
   })
   it('agrees with the backend on the bets in front', () => {
@@ -50,8 +51,35 @@ describe('replayHand', () => {
       },
     }
     const tags = replayHand(limped).tags
-    expect(tags[2]).toEqual(['Limp 2'])
-    expect(tags[3]).toEqual(['Raise 8'])
+    expect(tags[2]).toEqual(['Limp 1'])
+    expect(tags[3]).toEqual(['Raise 4'])
+  })
+})
+
+describe('replayHand on a ledger state (5/10)', () => {
+  const s = fixture('state_5_10_ledger')
+  const r = replayHand(s)
+  it('takes every amount from the ledger street total', () => {
+    s.state.history.forEach((h, i) => {
+      if (h.action === 'call' || h.action === 'bet' || h.action === 'raise') expect(r.amounts[i]).toBe(h.street_total)
+    })
+    expect(r.amounts.filter((a) => a != null)).toEqual([25, 25, 25, 48, 48])
+  })
+  it('words the seats in big blinds of this hand', () => {
+    const seatOf = (pos: string) => s.state.seats.findIndex((x) => x.position === pos)
+    expect(r.tags[seatOf('CO')]).toEqual(['Open 2.5', 'calls 4.8'])
+    expect(r.tags[seatOf('BB')]).toEqual(['Call 2.5', 'bets 4.8'])
+  })
+  it('prefers the ledger even when the replay would disagree', () => {
+    const bent: SessionState = {
+      ...s,
+      state: { ...s.state, history: s.state.history.map((h) => (h.action === 'call' ? { ...h, street_total: 30 } : h)) },
+    }
+    expect(replayHand(bent).amounts.filter((a) => a != null)).toEqual([25, 30, 30, 48, 30])
+  })
+  it('carries the big blind on the model', () => {
+    expect(buildTableModel(s, undefined, 'labeled').bigBlind).toBe(10)
+    expect(buildTableModel(fixture('spot_implied_draw'), undefined, 'labeled').bigBlind).toBe(2)
   })
 })
 
@@ -125,11 +153,12 @@ describe('statusLine (B17)', () => {
   it('names the bot by the mode and says the amount', () => {
     const s = fixture('state_hero_allin_waiting')
     const m = buildTableModel(s, undefined, 'labeled')
-    // the last action is the hero's own all-in bet (MP bets 4)
-    expect(statusLine(m)).toBe('You bet 4')
+    // the last action is the hero's own all-in bet (MP bets 4 at 1/2: 2 big blinds)
+    expect(statusLine(m)).toBe('You bet 2 bb')
     const live = buildTableModel(fixture('spot_implied_draw'), undefined, 'live')
-    expect(statusLine(live)).toBe('SB bets 26')
-    expect(statusLine(buildTableModel(fixture('spot_implied_draw'), undefined, 'labeled'))).toBe('Maniac bets 26')
+    expect(statusLine(live)).toBe('SB bets 13 bb')
+    expect(statusLine(buildTableModel(fixture('spot_implied_draw'), undefined, 'labeled'))).toBe('Maniac bets 13 bb')
+    expect(statusLine(buildTableModel(fixture('state_5_10_ledger'), undefined, 'live'))).toBe('CO calls 4.8 bb')
   })
   it('says "Dealing" before anyone acts', () => {
     expect(statusLine(buildTableModel(fixture('state_dealing_no_history'), undefined, 'labeled'))).toBe('Dealing')
@@ -138,8 +167,12 @@ describe('statusLine (B17)', () => {
 
 describe('streetVerb', () => {
   it('words a preflop "bet" (the big blind option) as a raise (B26)', () => {
-    expect(streetVerb({ action: 'bet', street: 'preflop', to_amount: 8 }, 8, false)).toBe('raises to 8')
-    expect(streetVerb({ action: 'bet', street: 'flop', to_amount: 8 }, 8, true)).toBe('bet 8')
-    expect(streetVerb({ action: 'call', street: 'flop', to_amount: null }, 1168, false)).toBe('calls 1,168')
+    expect(streetVerb({ action: 'bet', street: 'preflop', to_amount: 8 }, 8, false, 2)).toBe('raises to 4 bb')
+    expect(streetVerb({ action: 'bet', street: 'flop', to_amount: 8 }, 8, true, 2)).toBe('bet 4 bb')
+    expect(streetVerb({ action: 'call', street: 'flop', to_amount: null }, 1168, false, 2)).toBe('calls 584 bb')
+    expect(streetVerb({ action: 'call', street: 'flop', to_amount: null }, 15, false, 10)).toBe('calls 1.5 bb')
+  })
+  it('leaves the unit off on the felt', () => {
+    expect(streetVerb({ action: 'bet', street: 'flop', to_amount: 48 }, 48, false, 10, false)).toBe('bets 4.8')
   })
 })

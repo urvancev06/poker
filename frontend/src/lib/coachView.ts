@@ -11,9 +11,11 @@
 //   - B8: Call EV leaves out the implied-odds adjustment, so its sign can argue with the
 //     verdict ("Call." next to a red -1.0). When it does, EV renders neutral and says
 //     "before implied" instead of being coloured as a gain or a loss.
+//   - Call EV is in big blinds of the hand (`big_blind`, else 2 for an older answer), with
+//     one fixed decimal: "+4.0", "−0.5".
 
 import type { Coaching } from '../api'
-import { pct, signed } from './format'
+import { bigBlindOf, pct, signed } from './format'
 import { normalizeTone, type Tone } from './ring'
 
 export type EqLabel = 'Realized' | 'Equity'
@@ -57,9 +59,17 @@ export interface EvView {
  * EV <= 0. A "close" verdict on an adjusted price is close only because of the adjustment,
  * so a coloured EV would argue one way: it reads neutral too.
  */
+/** Call EV in big blinds, rounded half away from zero to one decimal. */
+export function callEvBB(c: Pick<Coaching, 'call_ev' | 'big_blind'>): number | null {
+  if (c.call_ev == null || !Number.isFinite(c.call_ev)) return null
+  const v = c.call_ev / bigBlindOf(c)
+  return (Math.sign(v) * Math.round(Math.abs(v) * 10)) / 10
+}
+
 export function evView(c: Coaching): EvView | null {
-  if (!isPriced(c) || c.call_ev == null || !Number.isFinite(c.call_ev)) return null
-  const text = signed(c.call_ev, 1)
+  const ev = callEvBB(c)
+  if (!isPriced(c) || ev == null) return null
+  const text = signed(ev, 1)
   const sign = Number(text.replace('−', '-')) // the shown value: "0.0" has no sign
   const tone = normalizeTone(c.tone)
   const adjusted = isPriceAdjusted(c)
@@ -78,6 +88,8 @@ export interface Figure {
   kind: FigureKind
   /** "39%", "22%", "+8.0": whole percents at a glance (the maths has the decimals). */
   value: string
+  /** A quiet unit after the value ("bb" for Call EV). */
+  unit?: string
   label: string
   /** eq takes the verdict's tone; need is the price grey; ev is win / loss / neutral. */
   tone: Tone | 'need' | EvTone
@@ -107,10 +119,10 @@ export function glanceView(c: Coaching): GlanceView {
   const ev = evView(c)
   const figures: Figure[] = [{ kind: 'eq', value: pct(eq), label: eqLabel, tone, note: null }]
   if (need != null) figures.push({ kind: 'need', value: pct(need), label: 'Need', tone: 'need', note: null })
-  if (ev) figures.push({ kind: 'ev', value: ev.text, label: 'Call EV', tone: ev.tone, note: ev.note })
+  if (ev) figures.push({ kind: 'ev', value: ev.text, unit: 'bb', label: 'Call EV', tone: ev.tone, note: ev.note })
   const parts = [`${eqLabel} ${pct(eq)}`]
   if (need != null) parts.push(`need ${pct(need)}`)
-  if (ev) parts.push(`call EV ${ev.text}${ev.note ? ` ${ev.note}` : ''}`)
+  if (ev) parts.push(`call EV ${ev.text} big blinds${ev.note ? ` ${ev.note}` : ''}`)
   const verdict = c.verdict.trim() || 'No verdict'
   return {
     tone,

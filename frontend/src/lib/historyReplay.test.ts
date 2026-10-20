@@ -9,12 +9,12 @@ const detail = (id: number) => fixture<HandRecord>(`detail_${id}`)
 
 describe('decisionView', () => {
   it('shows realized equity against the price, with raw equity beside it (inventory 22)', () => {
-    const v = decisionView(review(234).decisions[1], 'd1')
+    const v = decisionView(review(234).decisions[1], 'd1', 2)
     expect(v).toMatchObject({
       street: 'Flop',
       action: 'Call',
       handLabel: 'A pair + backdoor flush draw',
-      price: '10 to call into 26',
+      price: '5 bb to call into 13 bb',
       eq: { label: 'Realized', value: 46.8 },
       raw: 50.3,
       need: 27.8,
@@ -26,52 +26,58 @@ describe('decisionView', () => {
     expect(figuresLabel(v)).toBe('Realized 46.8%, need 27.8%, raw equity 50.3%')
   })
   it('names a price made dearer by the adjustment, and the pot odds it started from', () => {
-    const v = decisionView(review(13).decisions[2], 'd2')
+    const v = decisionView(review(13).decisions[2], 'd2', 2)
     expect(v).toMatchObject({ need: 45.7, direct: 33.6, adjust: 'dearer', flagged: true, priceFlag: true })
     expect(v.leaks[0]).toMatchObject({ type: 'call_no_odds', label: 'Called without odds' })
     expect(v.leaks[0].note).toMatch(/a call without the price/)
     expect(priceNote(v)).toBe('Pot odds alone ask 33.6%. The price is raised to 45.7% for what you may lose on later streets when you are behind.')
   })
   it('names a price made cheaper (implied odds)', () => {
-    const v = decisionView(review(141).decisions[1], 'd1')
+    const v = decisionView(review(141).decisions[1], 'd1', 2)
     expect(v).toMatchObject({ need: 22.5, direct: 30, adjust: 'cheaper' })
     expect(priceNote(v)).toMatch(/^Pot odds alone ask 30.0%. The price is lowered to 22.5%/)
   })
   it('preflop: the price in words, no figures (the review scores no preflop equity)', () => {
-    const v = decisionView(review(234).decisions[0], 'd0')
-    expect(v).toMatchObject({ street: 'Preflop', eq: null, raw: null, need: null, price: '5 to call into 8' })
+    const v = decisionView(review(234).decisions[0], 'd0', 2)
+    expect(v).toMatchObject({ street: 'Preflop', eq: null, raw: null, need: null, price: '2.5 bb to call into 4 bb' })
     expect(priceNote(v)).toBe('')
     expect(figuresLabel(v)).toBe('')
   })
   it('a check has equity and no price', () => {
-    const v = decisionView(review(13).decisions[1], 'd1')
-    expect(v).toMatchObject({ action: 'Check', eq: { label: 'Equity', value: 25.8 }, raw: null, need: null, price: 'Nothing to call, pot 21' })
+    const v = decisionView(review(13).decisions[1], 'd1', 2)
+    expect(v).toMatchObject({ action: 'Check', eq: { label: 'Equity', value: 25.8 }, raw: null, need: null, price: 'Nothing to call, pot 10.5 bb' })
     expect(priceNote(v)).toBe('')
   })
   it('words raises and bets as totals; a preflop "bet" is a raise (B26)', () => {
-    expect(decisionView(review(62).decisions[0], 'd0').action).toBe('Raise to 478')
+    expect(decisionView(review(62).decisions[0], 'd0', 2).action).toBe('Raise to 239 bb')
     const bet = { ...review(13).decisions[1], action: 'bet', to_amount: 13 }
-    expect(decisionView(bet, 'x').action).toBe('Bet 13')
-    expect(decisionView({ ...bet, street: 'preflop' }, 'x').action).toBe('Raise to 13')
+    expect(decisionView(bet, 'x', 2).action).toBe('Bet 6.5 bb')
+    expect(decisionView({ ...bet, street: 'preflop' }, 'x', 2).action).toBe('Raise to 6.5 bb')
+    expect(decisionView({ ...bet, to_amount: 75 }, 'x', 10).action).toBe('Bet 7.5 bb')
   })
   it('a raise or a check is not judged on a call price', () => {
-    const open = decisionView(review(62).decisions[0], 'd0')
-    expect(open).toMatchObject({ need: null, eq: null, price: '2 to call into 3', flagged: true, priceFlag: false })
+    const open = decisionView(review(62).decisions[0], 'd0', 2)
+    expect(open).toMatchObject({ need: null, eq: null, price: '1 bb to call into 1.5 bb', flagged: true, priceFlag: false })
     expect(priceNote(open)).toBe('')
-    const fold = decisionView(review(2).decisions[0], 'd0')
+    const fold = decisionView(review(2).decisions[0], 'd0', 2)
     expect(fold).toMatchObject({ need: null, flagged: true })
   })
   it('a postflop fold keeps its price: folding with the odds is judged on it', () => {
     const fold = { ...review(234).decisions[1], action: 'fold', leaks: [{ type: 'fold_with_odds', note: 'Folded with the odds.' }] }
-    expect(decisionView(fold, 'x')).toMatchObject({ action: 'Fold', need: 27.8, eq: { label: 'Realized', value: 46.8 }, priceFlag: true })
+    expect(decisionView(fold, 'x', 2)).toMatchObject({ action: 'Fold', need: 27.8, eq: { label: 'Realized', value: 46.8 }, priceFlag: true })
   })
   it('a missed-value check is flagged, but not on its equity', () => {
-    const v = decisionView(review(141).decisions[2], 'd2')
+    const v = decisionView(review(141).decisions[2], 'd2', 2)
     expect(v).toMatchObject({ action: 'Check', eq: { label: 'Equity', value: 91.1 }, flagged: true, priceFlag: false })
   })
   it('carries preflop leaks', () => {
-    expect(decisionView(review(2).decisions[0], 'd0').leaks.map((l) => l.label)).toEqual(['Folded too tight'])
-    expect(decisionView(review(237).decisions[0], 'd0').leaks.map((l) => l.label)).toEqual(['Limped first in'])
+    expect(decisionView(review(2).decisions[0], 'd0', 2).leaks.map((l) => l.label)).toEqual(['Folded too tight'])
+    expect(decisionView(review(237).decisions[0], 'd0', 2).leaks.map((l) => l.label)).toEqual(['Limped first in'])
+  })
+  it('says what a call can win when a side pot caps it', () => {
+    const d = { ...review(234).decisions[1], to_call: 40, pot: 130, winnable: 105 }
+    expect(decisionView(d, 'x', 10).price).toBe('4 bb to call into 13 bb, you can win 10.5 bb of it')
+    expect(decisionView({ ...d, winnable: 170 }, 'x', 10).price).toBe('4 bb to call into 13 bb')
   })
 })
 
@@ -80,8 +86,9 @@ describe('buildTimeline', () => {
     const t = buildTimeline(review(234), detail(234))
     expect(t.streets.map((s) => s.label)).toEqual(['Preflop', 'Flop', 'Turn', 'River'])
     const pre = t.streets[0].rows.map((r) => `${r.who} ${r.what}`)
-    expect(pre).toEqual(['UTG folds', 'MP raises to 5', 'You call 5', 'BTN folds', 'SB folds', 'BB calls 5'])
-    expect(t.streets[1].rows.map((r) => `${r.who} ${r.what}`)).toEqual(['BB bets 10', 'MP folds', 'You call 10'])
+    expect(pre).toEqual(['UTG folds', 'MP raises to 2.5 bb', 'You call 2.5 bb', 'BTN folds', 'SB folds', 'BB calls 2.5 bb'])
+    expect(t.streets[1].rows.map((r) => `${r.who} ${r.what}`)).toEqual(['BB bets 5 bb', 'MP folds', 'You call 5 bb'])
+    expect(t.bigBlind).toBe(2)
     const hero = t.streets.flatMap((s) => s.rows.filter((r) => r.you))
     expect(hero).toHaveLength(4)
     expect(hero.every((r) => r.decision !== null)).toBe(true)
@@ -108,18 +115,31 @@ describe('buildTimeline', () => {
     ])
     const rows = t.streets[0].rows
     expect(rows.map((r) => `${r.who} ${r.what}${r.allIn ? ' (all in)' : ''}`)).toEqual([
-      'You raise to 478 (all in)',
-      'MP calls 190 (all in)',
+      'You raise to 239 bb (all in)',
+      'MP calls 95 bb (all in)',
       'CO folds',
-      'BTN calls 165 (all in)',
-      'SB calls 144 (all in)',
+      'BTN calls 82.5 bb (all in)',
+      'SB calls 72 bb (all in)',
       'BB folds',
     ])
+  })
+  it("takes a call's amount from the stored ledger when the hand has one", () => {
+    const d = detail(62)
+    const actions = (d.data.actions ?? []).map((a, i) => (i === 1 ? { ...a, street_total: 150 } : a))
+    const rows = buildTimeline(review(62), { ...d, data: { ...d.data, actions } }).streets[0].rows
+    expect(rows[1].what).toBe('calls 75 bb')
+  })
+  it("reads a 5/10 hand in its own big blinds, from the stored blinds or the review's", () => {
+    const d = detail(234)
+    const t = buildTimeline({ ...review(234), big_blind: 10 }, { ...d, data: { ...d.data, blinds: [5, 10], start_stacks: undefined } })
+    expect(t.bigBlind).toBe(10)
+    expect(t.streets[1].rows.map((r) => r.what)).toEqual(['bets 1 bb', 'folds', 'call 1 bb'])
+    expect(buildTimeline({ ...review(234), big_blind: 10 }).bigBlind).toBe(10)
   })
   it('without the stored hand: no all-in marks, calls at the street level', () => {
     const rows = buildTimeline(review(62)).streets[0].rows
     expect(rows.some((r) => r.allIn)).toBe(false)
-    expect(rows[1].what).toBe('calls 478')
+    expect(rows[1].what).toBe('calls 239 bb')
   })
   it('a hand the hero folded keeps playing out', () => {
     const t = buildTimeline(review(63), detail(63))

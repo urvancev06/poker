@@ -37,12 +37,21 @@ describe('glanceView over every captured answer', () => {
     expect(g.figures.map((f) => [f.value, f.label])).toEqual([
       ['39%', 'Realized'],
       ['22%', 'Need'],
-      ['+8.0', 'Call EV'],
+      ['+4.0', 'Call EV'],
     ])
+    expect(g.figures[2].unit).toBe('bb')
     expect(g.figures.map((f) => f.tone)).toEqual(['good', 'need', 'win'])
     expect(g.need).toBe(22.2)
     expect(g.raw).toBe(40)
-    expect(g.spoken).toBe('Clear call. Realized 39%, need 22%, call EV +8.0.')
+    // a 1/2 sample: call EV +8 chips is +4 big blinds
+    expect(g.spoken).toBe('Clear call. Realized 39%, need 22%, call EV +4.0 big blinds.')
+  })
+
+  it('shows call EV in big blinds of the hand, one decimal', () => {
+    const c = { ...coach('spot_implied_draw'), call_ev: 8 }
+    expect(evView(c)?.text).toBe('+4.0')
+    expect(evView({ ...c, big_blind: 10 })?.text).toBe('+0.8')
+    expect(evView({ ...c, big_blind: 10, call_ev: -15 })?.text).toBe('−1.5')
   })
 
   it('a bet/check spot has no ring figures: the verdict and one figure', () => {
@@ -89,8 +98,8 @@ describe('the price', () => {
 
 describe('Call EV and the verdict (B8)', () => {
   it('colours EV by sign when it agrees with the verdict', () => {
-    expect(evView(coach('spot_implied_draw'))).toEqual({ text: '+8.0', tone: 'win', disagrees: false, note: null })
-    expect(evView(coach('coach_verdict_fold'))).toEqual({ text: '−3.0', tone: 'loss', disagrees: false, note: null })
+    expect(evView(coach('spot_implied_draw'))).toEqual({ text: '+4.0', tone: 'win', disagrees: false, note: null })
+    expect(evView(coach('coach_verdict_fold'))).toEqual({ text: '−1.5', tone: 'loss', disagrees: false, note: null })
     // close on the raw price: the sign is information, not an argument
     expect(evView(coach('coach_verdict_close__call_or_fold'))?.tone).toBe('win')
     expect(evView(coach('coach_verdict_close_preflop'))?.tone).toBe('loss')
@@ -98,22 +107,22 @@ describe('Call EV and the verdict (B8)', () => {
 
   it('renders EV neutral, "before implied", when its sign argues with the verdict', () => {
     // "Call." with -1.0: the set-value adjustment made the call right
-    expect(evView(coach('spot_implied_set'))).toEqual({ text: '−1.0', tone: 'neutral', disagrees: true, note: 'before implied' })
+    expect(evView(coach('spot_implied_set'))).toEqual({ text: '−0.5', tone: 'neutral', disagrees: true, note: 'before implied' })
     // "Fold." with +0.3: the reverse-implied adjustment made the fold right
-    expect(evView(coach('spot_implied_reverse'))).toEqual({ text: '+0.3', tone: 'neutral', disagrees: true, note: 'before implied' })
+    expect(evView(coach('spot_implied_reverse'))).toEqual({ text: '+0.2', tone: 'neutral', disagrees: true, note: 'before implied' })
     const g = glanceView(coach('spot_implied_set'))
-    expect(g.figures[2]).toEqual({ kind: 'ev', value: '−1.0', label: 'Call EV', tone: 'neutral', note: 'before implied' })
-    expect(g.spoken).toBe('Call. Realized 22%, need 19%, call EV −1.0 before implied.')
+    expect(g.figures[2]).toEqual({ kind: 'ev', value: '−0.5', unit: 'bb', label: 'Call EV', tone: 'neutral', note: 'before implied' })
+    expect(g.spoken).toBe('Call. Realized 22%, need 19%, call EV −0.5 big blinds before implied.')
   })
 
   it('a close verdict on an adjusted price keeps EV neutral', () => {
     const c = { ...coach('spot_implied_reverse'), tone: 'close', verdict: 'Close — call or fold.', call_ev: -2.7 } as Coaching
-    expect(evView(c)).toEqual({ text: '−2.7', tone: 'neutral', disagrees: true, note: 'before implied' })
+    expect(evView(c)).toEqual({ text: '−1.4', tone: 'neutral', disagrees: true, note: 'before implied' })
   })
 
   it('a good verdict with negative EV on the raw price is neutral without the implied note', () => {
     const c = { ...coach('coach_verdict_raise_for_value'), call_ev: -1.2 }
-    expect(evView(c)).toEqual({ text: '−1.2', tone: 'neutral', disagrees: true, note: null })
+    expect(evView(c)).toEqual({ text: '−0.6', tone: 'neutral', disagrees: true, note: null })
   })
 
   it('a zero EV has no sign and no colour', () => {

@@ -2,20 +2,23 @@
  * A villain's place: floating type on the void beside the rim. Line one is the name (by
  * visibility mode), the dealer puck and the stack ("All-in" while all-in). In HUD mode the
  * read has its own line. The last line is the position, then what happened: this street's
- * action ("3-bet 15, bets 26"; a phone keeps only the latest), "Folded", or at hand end the
- * net (+197 in green, −5 in red) and a shown hand's label (on a line of its own when it
+ * action ("3-bet 7.5, bets 13"; a phone keeps only the latest), "Folded", or at hand end the
+ * net (+98.5 in green, −2.5 in red) and a shown hand's label (on a line of its own when it
  * does not fit beside them in the seat's width). A bot thinking has a pulsing dot.
  * Folded seats step back to the tertiary colour (and say "Folded": never colour alone).
+ * Amounts are big blinds, the number alone; the accessible name says "big blinds".
  */
 import type { ReactNode, Ref } from 'react'
 import { cardLabel } from '../../lib/cards'
-import { chips, signedChips } from '../../lib/format'
+import { bb, bbSpeech } from '../../lib/format'
 import type { SeatPlacement } from '../../lib/tableLayout'
 import { capitalize, type Identity, type SeatModel } from '../../lib/tableModel'
 
 export interface SeatLabelProps {
   /** null while booting: the name only. */
   seat: SeatModel | null
+  /** The hand's big blind (amounts are chips). */
+  bigBlind: number
   identity: Identity
   place: SeatPlacement
   phone: boolean
@@ -30,7 +33,7 @@ export function Dealer({ phone }: { phone: boolean }) {
   )
 }
 
-export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelProps) {
+export function SeatLabel({ seat, bigBlind, identity, place, phone, labelRef }: SeatLabelProps) {
   const folded = !!seat?.folded
   const ink = folded ? 'text-dust' : ''
   let act: ReactNode = null
@@ -39,7 +42,7 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
     if (seat.net != null && seat.net !== 0)
       act = (
         <>
-          <span className={`flex-none font-strong ${seat.net > 0 ? 'text-win' : 'text-loss'}`}>{signedChips(seat.net)}</span>
+          <span className={`flex-none font-strong ${seat.net > 0 ? 'text-win' : 'text-loss'}`}>{bb(seat.net, bigBlind, { sign: true })}</span>
           {shown}
         </>
       )
@@ -50,15 +53,15 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
   const name = [
     identity.name,
     identity.pos,
-    seat ? (seat.allIn ? 'all-in' : `${chips(seat.stack)} chips`) : null,
-    seat && seat.bet > 0 ? `bet ${chips(seat.bet)}` : null,
+    seat ? (seat.allIn ? 'all-in' : bbSpeech(seat.stack, bigBlind)) : null,
+    seat && seat.bet > 0 ? `bet ${bbSpeech(seat.bet, bigBlind)}` : null,
     seat ? (folded ? 'folded' : 'in the hand') : null,
     seat?.button ? 'dealer' : null,
     seat?.actor ? 'thinking' : null,
     identity.hud?.join(', '),
     seat?.tags.length && !folded ? seat.tags.join(', ') : null,
     seat?.cards ? `shows ${seat.cards.map(cardLabel).join(' and ')}${seat.label ? `, ${seat.label}` : ''}` : null,
-    seat?.net ? `${signedChips(seat.net)} this hand` : null,
+    seat?.net ? `${seat.net > 0 ? 'won' : 'lost'} ${bbSpeech(Math.abs(seat.net), bigBlind)} this hand` : null,
   ]
     .filter(Boolean)
     .join(', ')
@@ -88,7 +91,7 @@ export function SeatLabel({ seat, identity, place, phone, labelRef }: SeatLabelP
           (seat.allIn ? (
             <span className={`flex-none font-strong text-ink ${phone ? 'text-[15px]' : 'text-[17px]'}`}>All-in</span>
           ) : (
-            <span className={`flex-none font-medium tabular-nums tracking-[-0.01em] ${phone ? 'text-[15px]' : 'text-[17px]'} ${folded ? 'text-dust' : 'text-fog'}`}>{chips(seat.stack)}</span>
+            <span className={`flex-none font-medium tabular-nums tracking-[-0.01em] ${phone ? 'text-[15px]' : 'text-[17px]'} ${folded ? 'text-dust' : 'text-fog'}`}>{bb(seat.stack, bigBlind)}</span>
           ))}
       </div>
       {identity.hud && seat && (

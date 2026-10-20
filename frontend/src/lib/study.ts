@@ -107,6 +107,7 @@ export function priceToCall(call: number, potAfterBet: number): number {
 }
 
 /** The worked example: a 10 bet into 14 makes the pot 24; calling 10 makes it 34. */
+/** The pot-odds example, in big blinds. */
 export const PRICE_EXAMPLE = { pot: 24, call: 10 } as const
 
 /** The unseen cards after the flop: 52 minus your two and the board's three. */

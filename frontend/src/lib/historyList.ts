@@ -13,7 +13,7 @@
 
 import type { HandSummary, LeakSummary } from '../api'
 import { cardLabel, splitCards } from './cards'
-import { chips } from './format'
+import { bb, bigBlindOf, count } from './format'
 
 export const LEAK_WINDOWS = [200, 500, 1000] as const
 export type LeakWindow = (typeof LEAK_WINDOWS)[number]
@@ -158,7 +158,7 @@ export function groupBySession(hands: readonly HandSummary[], currentSessionId: 
 
 /** "3 hands", "1 hand". */
 export function handsCount(n: number): string {
-  return `${chips(n)} ${n === 1 ? 'hand' : 'hands'}`
+  return `${count(n)} ${n === 1 ? 'hand' : 'hands'}`
 }
 
 export type Tone = 'win' | 'loss' | 'even'
@@ -185,12 +185,14 @@ export function outcomeOf(net: number, showdown: boolean): Outcome {
 }
 
 /** The row's accessible name: "Hand 132, SB, 4 of diamonds and Ace of hearts, won at
- *  showdown, up 94". The session it belongs to is the group the row sits in. */
+ *  showdown, up 47 bb" (in the hand's own big blinds). The session it belongs to is the
+ *  group the row sits in. */
 export function rowLabel(h: HandSummary): string {
   const cards = splitCards(h.hero_cards).map(cardLabel)
   const o = outcomeOf(h.hero_net, h.went_to_showdown)
   const net = Math.round(h.hero_net)
-  const money = net > 0 ? `, up ${chips(net)}` : net < 0 ? `, down ${chips(-net)}` : ''
+  const big = bigBlindOf(h)
+  const money = net > 0 ? `, up ${bb(net, big, { unit: true })}` : net < 0 ? `, down ${bb(-net, big, { unit: true })}` : ''
   return `Hand ${handNumber(h.hand_index)}, ${h.hero_position}, ${cards.join(' and ') || 'cards unknown'}, ${o.word.toLowerCase()}${money}`
 }
 
@@ -237,7 +239,7 @@ export function firstPassNote(hands: number | null): string {
 
 /** "Reviewing 239 hands" (or "up to 500" before the list says how many there are). */
 export function reviewingLine(known: number | null, window: number): string {
-  if (known == null) return `Reviewing up to ${chips(window)} hands`
+  if (known == null) return `Reviewing up to ${count(window)} hands`
   return `Reviewing ${handsCount(known)}`
 }
 

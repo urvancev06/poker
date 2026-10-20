@@ -6,14 +6,16 @@
  * Decorative: the row it sits in already says what the mode does.
  */
 import type { BotRead } from '../../api'
-import { chips } from '../../lib/format'
+import { bb } from '../../lib/format'
 import type { VisibilityMode } from '../../lib/prefsSchema'
 import { identityOf } from '../../lib/tableModel'
 
 const SEAT = { player: 5, position: 'SB', archetype: 'Maniac' } as const
 const READ: BotRead = { hands: 40, min_hands: 30, ready: true, stats: { vpip: 60, pfr: 37.5, threebet: 25, af: 1.8, wtsd: 73.7 } }
+// 5/10, as the table plays: 1,168 chips is 116.8 big blinds, a 3-bet to 75 is 7.5
+const BIG_BLIND = 10
 const STACK = 1168
-const ACTION = '3-bet 15'
+const ACTION = `3-bet ${bb(75, BIG_BLIND)}`
 
 export function SeatSample({ mode }: { mode: VisibilityMode }) {
   const id = identityOf(SEAT, mode, READ)
@@ -21,7 +23,7 @@ export function SeatSample({ mode }: { mode: VisibilityMode }) {
     <span className="seat-sample">
       <span className="flex items-baseline gap-2">
         <span className="text-[17px] font-strong tracking-[-0.02em] text-ink">{id.name}</span>
-        <span className="text-callout font-medium text-fog tabular-nums">{chips(STACK)}</span>
+        <span className="text-callout font-medium text-fog tabular-nums">{bb(STACK, BIG_BLIND)}</span>
       </span>
       {id.hud ? (
         <span className="flex gap-2 text-foot font-semibold text-fog tabular-nums">

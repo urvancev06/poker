@@ -23,7 +23,7 @@ import type { HandSummary } from '../../api'
 import { describeError, type ApiError } from '../../lib/apiError'
 import { BP, useLayoutKind, useViewportSize } from '../../lib/breakpoints'
 import { DEFAULT_WINDOW, LEAK_WINDOWS, handNumber, inWindow, reportScope, type LeakWindow, type Scope } from '../../lib/historyList'
-import { chips } from '../../lib/format'
+import { count } from '../../lib/format'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { Capsule } from '../../ui/Capsule'
 import { ErrorNotice } from '../../ui/ErrorNotice'
@@ -53,7 +53,7 @@ const WINDOW_OPTIONS = LEAK_WINDOWS.map((w) => ({
   label: (
     <>
       <span className="max-sm:sr-only">Last </span>
-      {chips(w)}
+      {count(w)}
     </>
   ),
 }))

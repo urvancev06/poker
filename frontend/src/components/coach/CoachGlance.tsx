@@ -304,7 +304,10 @@ function Summary({ view, row, ringSize, tight, expanded, revealDelay, autoFocus,
 function FigureView({ figure: f, small }: { figure: Figure; small: boolean }) {
   return (
     <span className="flex flex-col gap-px">
-      <b className={`${small ? 'text-body' : 'text-headline'} font-strong leading-[1.15] tracking-[-0.015em] tabular-nums ${FIGURE_TEXT[f.tone]}`}>{f.value}</b>
+      <b className={`${small ? 'text-body' : 'text-headline'} font-strong leading-[1.15] tracking-[-0.015em] tabular-nums ${FIGURE_TEXT[f.tone]}`}>
+        {f.value}
+        {f.unit && <span className={`ml-[3px] font-semibold text-dust ${small ? 'text-foot' : 'text-callout'}`}>{f.unit}</span>}
+      </b>
       <small className="text-caption font-medium whitespace-nowrap text-dust">{f.label}</small>
       {f.note && <small className="text-caption font-medium whitespace-nowrap text-dust">{f.note}</small>}
     </span>

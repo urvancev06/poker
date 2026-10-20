@@ -73,19 +73,6 @@ export function count(n: number): string {
   return nf.format(Math.round(n))
 }
 
-/** 1168 -> "1,168". Rounds to an integer (chips are integers). */
-export function chips(n: number): string {
-  const s = nf.format(Math.abs(Math.round(n)))
-  return n < 0 && Math.round(n) !== 0 ? MINUS + s : s
-}
-
-/** +14, −191, 0 (no sign on zero). */
-export function signedChips(n: number): string {
-  const r = Math.round(n)
-  if (r === 0) return '0'
-  return (r > 0 ? '+' : MINUS) + nf.format(Math.abs(r))
-}
-
 /** A fixed-precision signed number: signed(8, 1) -> "+8.0", signed(-1, 1) -> "−1.0". */
 export function signed(n: number, digits = 1): string {
   const s = Math.abs(n).toFixed(digits)

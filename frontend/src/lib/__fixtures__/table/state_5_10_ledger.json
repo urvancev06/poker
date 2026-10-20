@@ -1,0 +1,255 @@
+{
+ "session_id": "a28c8b46f5bc",
+ "hand_index": 0,
+ "hand_over": false,
+ "hero_seat": 5,
+ "hero_to_act": true,
+ "stacks_by_player": [
+  1000,
+  1000,
+  1000,
+  1000,
+  1000,
+  1000
+ ],
+ "archetypes": [
+  "hero",
+  "Nit",
+  "TAG",
+  "LAG",
+  "Calling Station",
+  "Maniac"
+ ],
+ "seat_to_player": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  0
+ ],
+ "button_player": 0,
+ "state": {
+  "table_size": 6,
+  "button": 5,
+  "blinds": [
+   5,
+   10
+  ],
+  "street": "flop",
+  "board": [
+   "Qc",
+   "8s",
+   "9d"
+  ],
+  "pot": 176,
+  "pots": [
+   {
+    "amount": 80,
+    "eligible_seats": [
+     1,
+     4,
+     5
+    ]
+   }
+  ],
+  "actor": 5,
+  "is_over": false,
+  "seats": [
+   {
+    "seat": 0,
+    "position": "SB",
+    "stack": 995,
+    "bet": 0,
+    "folded": true,
+    "all_in": false,
+    "is_actor": false,
+    "hole_cards": null,
+    "hand_label": null
+   },
+   {
+    "seat": 1,
+    "position": "BB",
+    "stack": 927,
+    "bet": 48,
+    "folded": false,
+    "all_in": false,
+    "is_actor": false,
+    "hole_cards": null,
+    "hand_label": null
+   },
+   {
+    "seat": 2,
+    "position": "UTG",
+    "stack": 1000,
+    "bet": 0,
+    "folded": true,
+    "all_in": false,
+    "is_actor": false,
+    "hole_cards": null,
+    "hand_label": null
+   },
+   {
+    "seat": 3,
+    "position": "MP",
+    "stack": 1000,
+    "bet": 0,
+    "folded": true,
+    "all_in": false,
+    "is_actor": false,
+    "hole_cards": null,
+    "hand_label": null
+   },
+   {
+    "seat": 4,
+    "position": "CO",
+    "stack": 927,
+    "bet": 48,
+    "folded": false,
+    "all_in": false,
+    "is_actor": false,
+    "hole_cards": null,
+    "hand_label": null
+   },
+   {
+    "seat": 5,
+    "position": "BTN",
+    "stack": 975,
+    "bet": 0,
+    "folded": false,
+    "all_in": false,
+    "is_actor": true,
+    "hole_cards": [
+     "Ac",
+     "Jc"
+    ],
+    "hand_label": "gutshot + backdoor flush draw"
+   }
+  ],
+  "legal_actions": {
+   "can_fold": true,
+   "can_check": false,
+   "can_call": true,
+   "call_amount": 48,
+   "can_bet": false,
+   "can_raise": true,
+   "min_raise_to": 96,
+   "max_raise_to": 975
+  },
+  "results": null,
+  "history": [
+   {
+    "seat": 2,
+    "position": "UTG",
+    "street": "preflop",
+    "action": "fold",
+    "to_amount": null,
+    "added": 0,
+    "street_total": 0,
+    "all_in": false,
+    "stack_after": 1000
+   },
+   {
+    "seat": 3,
+    "position": "MP",
+    "street": "preflop",
+    "action": "fold",
+    "to_amount": null,
+    "added": 0,
+    "street_total": 0,
+    "all_in": false,
+    "stack_after": 1000
+   },
+   {
+    "seat": 4,
+    "position": "CO",
+    "street": "preflop",
+    "action": "raise",
+    "to_amount": 25,
+    "added": 25,
+    "street_total": 25,
+    "all_in": false,
+    "stack_after": 975
+   },
+   {
+    "seat": 5,
+    "position": "BTN",
+    "street": "preflop",
+    "action": "call",
+    "to_amount": null,
+    "added": 25,
+    "street_total": 25,
+    "all_in": false,
+    "stack_after": 975
+   },
+   {
+    "seat": 0,
+    "position": "SB",
+    "street": "preflop",
+    "action": "fold",
+    "to_amount": null,
+    "added": 0,
+    "street_total": 5,
+    "all_in": false,
+    "stack_after": 995
+   },
+   {
+    "seat": 1,
+    "position": "BB",
+    "street": "preflop",
+    "action": "call",
+    "to_amount": null,
+    "added": 15,
+    "street_total": 25,
+    "all_in": false,
+    "stack_after": 975
+   },
+   {
+    "seat": 1,
+    "position": "BB",
+    "street": "flop",
+    "action": "bet",
+    "to_amount": 48,
+    "added": 48,
+    "street_total": 48,
+    "all_in": false,
+    "stack_after": 927
+   },
+   {
+    "seat": 4,
+    "position": "CO",
+    "street": "flop",
+    "action": "call",
+    "to_amount": null,
+    "added": 48,
+    "street_total": 48,
+    "all_in": false,
+    "stack_after": 927
+   }
+  ],
+  "ledger": {
+   "contributed": [
+    5,
+    73,
+    0,
+    0,
+    73,
+    25
+   ],
+   "pot": 176,
+   "rake": 0
+  },
+  "facts": {
+   "seat": 5,
+   "street": "flop",
+   "to_call": 48,
+   "pot": 176,
+   "winnable_if_call": 224,
+   "to_act_after_call": 0,
+   "closes_on_call": true,
+   "betting_over_after_call": false,
+   "can_respond_to_raise": 2
+  }
+ },
+ "last_result": null
+}

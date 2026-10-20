@@ -11,7 +11,7 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 import type { HandSummary } from '../../api'
 import { splitCards } from '../../lib/cards'
-import { chips, signedChips } from '../../lib/format'
+import { bb, bigBlindOf, count } from '../../lib/format'
 import { PAGE_SIZE, groupBySession, handNumber, handsCount, outcomeOf, rowLabel, type SessionGroup } from '../../lib/historyList'
 import { Capsule } from '../../ui/Capsule'
 import { Card } from '../Card'
@@ -69,7 +69,7 @@ export function HandList({ hands, sessionId, selectedId, onSelect }: HandListPro
       </div>
       {rest > 0 ? (
         <Capsule variant="quiet" size="md" className="mt-6" onClick={() => setShown((n) => n + PAGE_SIZE)}>
-          Show {chips(Math.min(PAGE_SIZE, rest))} more
+          Show {count(Math.min(PAGE_SIZE, rest))} more
         </Capsule>
       ) : null}
     </section>
@@ -123,7 +123,10 @@ function Row({ hand: h, selected, tabbable, onSelect }: { hand: HandSummary; sel
           ))}
         </span>
         <span className="min-w-0 truncate text-foot text-fog">{o.short}</span>
-        <span className={`text-right text-body font-strong tabular-nums ${NET_TEXT[o.tone]}`}>{signedChips(h.hero_net)}</span>
+        <span className={`text-right text-body font-strong tabular-nums ${NET_TEXT[o.tone]}`}>
+          {bb(h.hero_net, bigBlindOf(h), { sign: true })}
+          <span className="ml-1 text-foot font-medium text-fog">bb</span>
+        </span>
       </button>
     </li>
   )

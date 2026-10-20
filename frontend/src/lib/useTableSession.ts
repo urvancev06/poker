@@ -84,7 +84,7 @@ export interface TableSession {
   act: (type: ActionType, toAmount?: number) => Promise<void>
   /** Deal the next hand (when hand_over). Ignored while a deal is in flight. */
   nextHand: () => Promise<void>
-  /** Start a fresh session: stacks back to 200, hand 0, HUD reads reset. Ignored while a
+  /** Start a fresh session: stacks back to 100bb (1,000 chips at 5/10), hand 0, HUD reads reset. Ignored while a
    * new table is being created; whatever the old game still had in flight is dropped. */
   newGame: () => Promise<void>
 

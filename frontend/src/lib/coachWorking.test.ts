@@ -14,16 +14,17 @@ describe('workingRows', () => {
       ['Price', '29.9%', 'exact'],
       ['Price adjustment', '−7.7 pts', 'estimate'],
       ['Need', '22.2%', 'estimate'],
-      ['Call EV', '≈+8.0', 'computed'],
+      ['Call EV', '≈+4.0 bb', 'computed'],
     ])
     const r = byKey(rows('spot_implied_draw'))
     expect(r.hand.note).toBe('Flush draw')
     expect(r.equity.note).toBe('Wins 40%, ties 0%, loses 60%')
     expect(r.realized.note).toBe('Realizing ~99% in position, nobody left to act')
-    expect(r.price.note).toBe('26 to call into 61, pot odds 2.3 : 1')
+    // a 1/2 sample: 26 chips is 13 big blinds
+    expect(r.price.note).toBe('13 bb to call into 30.5 bb, pot odds 2.3 : 1')
     expect(r.adjust.note).toBe('Cheaper: you should win more later when you hit. Draw — paid off when you complete.')
     expect(r.need.note).toBe('The price after that adjustment')
-    expect(r.ev.note).toBe('39% of 87, less the 26 call. Before implied odds')
+    expect(r.ev.note).toBe('39% of 43.5 bb, less the 13 bb call. Before implied odds')
   })
 
   it('tags Need Estimate exactly when the price was adjusted', () => {
@@ -51,8 +52,20 @@ describe('workingRows', () => {
     const r = byKey(rows('coach_verdict_call'))
     expect(r.adjust).toBeUndefined()
     expect(r.need).toMatchObject({ value: '38.5%', kind: 'exact', note: 'The price: nothing adjusts it' })
-    expect(r.ev.note).toBe('46% of 13, less the 5 call')
+    expect(r.ev.note).toBe('46% of 6.5 bb, less the 2.5 bb call')
     expect(r.realized.note).toBe('Realizing ~70% in position, 2 still to act behind you')
+  })
+
+  it('reads a 5/10 spot in its own big blinds, and says when a side pot caps the win', () => {
+    const c = { ...coachSample('coach_verdict_call').coach, big_blind: 10, to_call: 15, pot: 30, call_ev: 2 }
+    const r = byKey(workingRows(c))
+    expect(r.price.note).toMatch(/^1.5 bb to call into 3 bb/)
+    expect(r.ev.value).toBe('≈+0.2 bb')
+    expect(r.ev.note).toBe('46% of 4.5 bb, less the 1.5 bb call')
+    const capped = byKey(workingRows({ ...c, winnable: 35 }))
+    expect(capped.price.note).toMatch(/^1.5 bb to call into 3 bb, you can win 3.5 bb of it/)
+    expect(capped.ev.note).toBe('46% of 3.5 bb, less the 1.5 bb call')
+    expect(byKey(workingRows({ ...c, winnable: 45 })).price.note).not.toMatch(/you can win/)
   })
 
   it('counts equity in full once the action is closed', () => {

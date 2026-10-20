@@ -249,16 +249,32 @@ export interface ResultFact {
   mixed: string | null
 }
 
-/** bb/100, deliberately subordinate. bb/100 is measured at the most recent blind level. */
+/** "1/2 and 5/10". */
+function levelsText(levels: ReadonlyArray<readonly [number, number]>): string {
+  const t = levels.map(([sb, b]) => `${count(sb)}/${count(b)}`)
+  return t.length <= 1 ? (t[0] ?? '') : `${t.slice(0, -1).join(', ')} and ${t[t.length - 1]}`
+}
+
+/** bb/100, deliberately subordinate. The backend counts each hand in its own big blinds
+ *  and lists the levels it saw (`blind_levels`); an older backend measured bb/100 at the
+ *  most recent level only, and said how many hands were at it. */
 export function resultFact(overall: Pick<HeroStatLine, 'hands' | 'net_bb_per_100'>, win: StatsWindow | null | undefined): ResultFact | null {
   if (overall.hands <= 0 || !Number.isFinite(overall.net_bb_per_100)) return null
+  const value = signedFixed(overall.net_bb_per_100, 1)
+  const levels = win?.blind_levels
+  if (Array.isArray(levels) && levels.length > 0) {
+    const several = levels.length > 1
+    const where = several ? ', each hand in its own big blinds' : `, at ${levelsText(levels)}`
+    const note = `Big blinds won per 100 hands${where}. Noisy until tens of thousands of hands, so judge the decisions, not this.`
+    return { value, note, mixed: several ? `Includes hands at ${levelsText(levels)}, each counted in its own big blinds` : null }
+  }
   const bb = win?.big_blind
   const atLevel = win?.hands_at_this_blind
   const where = bb ? `, measured at big blind ${count(bb)}` : ''
   const note = `Big blinds won per 100 hands${where}. Noisy until tens of thousands of hands, so judge the decisions, not this.`
   const mixed =
     bb && atLevel != null && atLevel < overall.hands ? `${count(atLevel)} of ${hands(overall.hands)} at big blind ${count(bb)}` : null
-  return { value: signedFixed(overall.net_bb_per_100, 1), note, mixed }
+  return { value, note, mixed }
 }
 
 /** Fold to steal: returned without a target band, so shown quietly and never judged.

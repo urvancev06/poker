@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalActions } from '../api'
-import { aggroLabel, aggroType, aggroVerb, amountFill, dockActions, parseAmount, presetAmount, presetIndexFor, presetTicks, submitOf } from './sizing'
+import { aggroLabel, aggroType, aggroVerb, amountFill, dockActions, presetAmount, presetIndexFor, presetTicks, submitOf } from './sizing'
 
 // spot_implied_draw: facing a 26 bet into 61, 52..185
 const FACING: LegalActions = { can_fold: true, can_check: false, can_call: true, call_amount: 26, can_bet: false, can_raise: true, min_raise_to: 52, max_raise_to: 185 }
@@ -33,13 +33,15 @@ describe('B26: the big blind option over limps reads Raise', () => {
   const option: LegalActions = { ...FREE, min_raise_to: 4, max_raise_to: 200 }
   it('preflop "bet" is labelled a raise, but submits what the engine asked for', () => {
     expect(aggroVerb(option, 'preflop')).toBe('Raise')
-    expect(aggroLabel(option, 'preflop', 8)).toBe('Raise to 8')
+    expect(aggroLabel(option, 'preflop', 8, 2)).toBe('Raise to 4 bb')
     expect(aggroType(option)).toBe('bet')
   })
   it('postflop with nothing to call is a bet', () => {
     expect(aggroVerb(FREE, 'turn')).toBe('Bet')
-    expect(aggroLabel(FREE, 'turn', 52)).toBe('Bet 52')
-    expect(aggroLabel(FACING, 'flop', 1168)).toBe('Raise to 1,168')
+    expect(aggroLabel(FREE, 'turn', 52, 2)).toBe('Bet 26 bb')
+    expect(aggroLabel(FACING, 'flop', 52, 2)).toBe('Raise to 26 bb')
+    expect(aggroLabel(FACING, 'flop', 1168, 2)).toBe('Raise to 584 bb')
+    expect(aggroLabel(FACING, 'flop', 75, 10)).toBe('Raise to 7.5 bb')
   })
 })
 
@@ -72,15 +74,7 @@ describe('presets: the pot-raise formula', () => {
   })
 })
 
-describe('parseAmount', () => {
-  it('reads digits, rounds and clamps', () => {
-    expect(parseAmount('1,168', 52, 2000)).toBe(1168)
-    expect(parseAmount(' 60 ', 52, 185)).toBe(60)
-    expect(parseAmount('10', 52, 185)).toBe(52)
-    expect(parseAmount('999', 52, 185)).toBe(185)
-    expect(parseAmount('abc', 52, 185)).toBeNull()
-    expect(parseAmount('', 52, 185)).toBeNull()
-  })
+describe('amountFill', () => {
   it('fills the slider', () => {
     expect(amountFill(52, 52, 185)).toBe(0)
     expect(amountFill(185, 52, 185)).toBe(100)
