@@ -19,6 +19,8 @@ export type ApiErrorCode =
   | 'server' // 5xx
   | 'bad_response' // 2xx whose body is not the JSON we expected
   | 'http' // any other status
+  | 'lab_lost' // a Lab job the server no longer knows (it restarted mid-run)
+  | 'lab_failed' // a Lab job that ended with an error instead of a result
 
 export interface ApiErrorInit {
   status: number | null
@@ -173,6 +175,10 @@ function headlineFor(err: ApiError, context: ErrorContext): string {
       return 'The server hit an error.'
     case 'bad_response':
       return 'The server sent something unexpected.'
+    case 'lab_lost':
+      return 'The lab restarted before this run finished.'
+    case 'lab_failed':
+      return 'The simulation stopped with an error.'
     default:
       return 'Something went wrong.'
   }
@@ -180,6 +186,7 @@ function headlineFor(err: ApiError, context: ErrorContext): string {
 
 export function describeError(err: ApiError, context: ErrorContext = 'generic'): ErrorDescription {
   const needsNewGame = err.code === 'not_found' && TABLE_CONTEXTS.has(context)
-  const retryable = !needsNewGame && (err.code === 'network' || err.code === 'server' || err.code === 'conflict' || err.code === 'bad_response')
+  const retryable =
+    !needsNewGame && (err.code === 'network' || err.code === 'server' || err.code === 'conflict' || err.code === 'bad_response' || err.code === 'lab_lost' || err.code === 'lab_failed')
   return { headline: headlineFor(err, context), detail: err.detail, retryable, needsNewGame }
 }

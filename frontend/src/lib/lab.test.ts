@@ -11,6 +11,8 @@ import {
   dotFraction,
   durationText,
   elapsedText,
+  progressShare,
+  progressText,
   estimateText,
   formatBand,
   formatDistance,
@@ -361,5 +363,18 @@ describe('before any run', () => {
     expect(rows[0].cells[0].cell!.band).toEqual([20, 24])
     expect(targetsText(rows[1])).toBe('VPIP 50–65%, PFR none, 3-bet none, AF none, WTSD none')
     expect(rowSpeech(rows[0])).toBe('TAG, seats 1 and 3. Not run yet. Targets: VPIP 20 to 24%, PFR none, 3-bet none, AF none, WTSD none.')
+  })
+})
+
+describe('progressText', () => {
+  it('says how far a background run has got', () => {
+    expect(progressText(12000, 25000)).toBe('12,000 of 25,000 hands')
+    expect(progressText(0, 300)).toBe('0 of 300 hands')
+    expect(progressText(1, 1)).toBe('1 of 1 hand')
+  })
+  it('a share for the progress track, 0 to 1', () => {
+    expect(progressShare(12000, 25000)).toBeCloseTo(0.48)
+    expect(progressShare(5, 0)).toBe(0)
+    expect(progressShare(30, 20)).toBe(1)
   })
 })

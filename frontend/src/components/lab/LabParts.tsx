@@ -16,6 +16,9 @@
  *           (parsed and clamped by the caller) on Enter or blur, and shows with separators.
  * Elapsed   the seconds a run has taken so far, ticking twice a second. Its own component
  *           so the tick re-renders only this text.
+ * LabProgress  a background run's hands done so far: a bare hairline track with an ink
+ *           fill (the rail's language), growing as polls land; reduced motion makes it
+ *           jump. Exposed as a progressbar with the hands in words.
  */
 import { useEffect, useId, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { elapsedText, parseWhole } from '../../lib/lab'
@@ -118,6 +121,15 @@ export function DockField({ label, value, onCommit, format, hint, disabled, clas
         {hint}
       </span>
     </label>
+  )
+}
+
+export function LabProgress({ share, label }: { share: number; label: string }) {
+  const pct = Math.round(Math.min(1, Math.max(0, share)) * 100)
+  return (
+    <span className="lab-progress mb-1.5" role="progressbar" aria-label="Simulation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={label}>
+      <span className="lab-progress__fill" style={{ '--p': share } as CSSProperties} />
+    </span>
   )
 }
 

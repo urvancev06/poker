@@ -378,6 +378,30 @@
   opacity: 0.45;
 }
 
+/* ---------- a background run's progress: the rail's hairline, filled in ink ---------- */
+.lab-progress {
+  position: relative;
+  display: block;
+  width: min(100%, 420px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.lab-progress__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+  transition: transform 400ms var(--ease-spring, ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-progress__fill {
+    transition: none;
+  }
+}
+
 /* ---------- knobs ---------- */
 .lab-knobs {
   display: grid;

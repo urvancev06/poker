@@ -3,9 +3,10 @@
  *
  * The status line, in the coach's register:
  *   not run yet    "Not run yet." and how long a run takes
- *   simulating     "Simulating 5,000 hands." the seconds so far, the estimate, and that the
- *                  table waits and a run cannot be stopped; the last result stays below,
- *                  marked as the last run
+ *   simulating     "Simulating 5,000 hands." the hands done so far on a hairline track, the
+ *                  seconds so far and the estimate; the run is a background job, so the
+ *                  table keeps playing and Cancel (in the dock) stops it; the last result
+ *                  stays below, marked as the last run
  *   result         "Passes the gate." / "Fails the gate." with its caveat ("indicative, not
  *                  the gate") and the meta line; a note when the setup has changed since
  *
@@ -15,9 +16,9 @@
  */
 import { useId, type Ref } from 'react'
 import type { LabArchetypesInfo, LabResult } from '../../api'
-import { LAB_STATS, gateCaveat, gateHeadline, gateSummary, metaLine, type ResultRowView, type RunConfig } from '../../lib/lab'
+import { LAB_STATS, gateCaveat, gateHeadline, gateSummary, metaLine, progressShare, progressText, type ResultRowView, type RunConfig } from '../../lib/lab'
 import { count } from '../../lib/stats'
-import { Elapsed } from './LabParts'
+import { Elapsed, LabProgress } from './LabParts'
 import { ResultRow } from './ResultRow'
 
 export interface BotResultsProps {
@@ -29,11 +30,13 @@ export interface BotResultsProps {
   stale: boolean
   running: RunConfig | null
   startedAt: number | null
+  /** Hands done so far in the run in flight (null until the first poll answers). */
+  progress?: { done: number; total: number } | null
   /** How long a run of the current hands takes, in words. */
   estimate: string
 }
 
-export function BotResults({ ref, info, rows, result, stale, running, startedAt, estimate }: BotResultsProps) {
+export function BotResults({ ref, info, rows, result, stale, running, startedAt, progress = null, estimate }: BotResultsProps) {
   const headId = useId()
   const gate = result ? gateSummary(result, rows) : null
   const busy = running !== null
@@ -59,10 +62,11 @@ export function BotResults({ ref, info, rows, result, stale, running, startedAt,
       <div className="mt-2.5 grid gap-1 text-callout text-fog">
         {busy && startedAt !== null ? (
           <>
+            <LabProgress share={progress ? progressShare(progress.done, progress.total) : 0} label={progress ? progressText(progress.done, progress.total) : 'Starting'} />
             <p className="m-0 tabular-nums">
-              Usually {estimate} for this many hands; <Elapsed since={startedAt} /> so far.
+              {progress ? `${progressText(progress.done, progress.total)}. ` : ''}Usually {estimate} for this many hands; <Elapsed since={startedAt} /> so far.
             </p>
-            <p className="m-0">The server does nothing else meanwhile, so the table waits until it finishes. A run can’t be stopped once it starts.</p>
+            <p className="m-0">It runs in the background, so the table keeps playing. Cancel in the dock stops it.</p>
             {result ? <p className="m-0 text-dust">Below is the last run, until this one lands.</p> : null}
           </>
         ) : gate && result ? (
@@ -75,7 +79,7 @@ export function BotResults({ ref, info, rows, result, stale, running, startedAt,
           <>
             <p className="m-0">Each archetype’s targets are on the rails below; a run puts its readings on them.</p>
             <p className="m-0">
-              This one takes {estimate}. The server does nothing else meanwhile, so the table waits until it finishes.
+              This one takes {estimate}. It runs in the background, so the table keeps playing meanwhile.
             </p>
           </>
         )}

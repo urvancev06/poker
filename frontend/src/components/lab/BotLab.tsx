@@ -7,12 +7,13 @@
  *   <BotLab />
  *
  * States: loading the metadata (the frame, no figures), its error (scoped notice with Try
- * again), idle (the targets on the rails, "Not run yet."), simulating (15-75 s: elapsed
- * time, the estimate, and that the table waits), a result (pass or fail), a result whose
- * setup has since changed, a run error (notice; the last result stays).
+ * again), idle (the targets on the rails, "Not run yet."), simulating (a background job:
+ * hands done so far, elapsed time, the estimate, and Cancel in the dock; the table keeps
+ * playing), a result (pass or fail), a result whose setup has since changed, a run error
+ * (notice; the last result stays), and a run the server lost when it restarted.
  */
 import { useRef, useState } from 'react'
-import { api, type LabArchetypesInfo, type LabResult } from '../../api'
+import type { LabArchetypesInfo, LabJobBody } from '../../api'
 import {
   HANDS_MIN,
   clampHands,
@@ -21,6 +22,7 @@ import {
   estimateText,
   msPerHand,
   previewRows,
+  progressText,
   resultRows,
   seatedOverrides,
   type Overrides,
@@ -38,10 +40,15 @@ import { KnobPanel } from './KnobPanel'
 import { Lineup } from './Lineup'
 import { DockField, Elapsed, LabDock } from './LabParts'
 import { useLabInfo } from './useLabInfo'
-import { useLabRun } from './useLabRun'
+import { useLabJob } from './useLabJob'
 
-const simulate = (c: RunConfig): Promise<LabResult> =>
-  api.labSimulate({ lineup: [...c.lineup], hands: c.hands, seed: c.seed, overrides: c.overrides as Record<string, Record<string, number>> })
+const simulate = (c: RunConfig): LabJobBody => ({
+  kind: 'simulate',
+  lineup: [...c.lineup],
+  hands: c.hands,
+  seed: c.seed,
+  overrides: c.overrides as Record<string, Record<string, number>>,
+})
 
 const INTRO = (
   <p className="m-0 mt-5 max-w-[62ch] text-body text-fog max-sm:text-callout">
@@ -86,7 +93,7 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
   const [seed, setSeed] = useState(0)
   const [overrides, setOverrides] = useState<Overrides>({})
   const [picked, setPicked] = useState<string | null>(null)
-  const run = useLabRun(simulate)
+  const run = useLabJob(simulate)
   const results = useRef<HTMLElement>(null)
 
   const config: RunConfig = { lineup, hands, seed, overrides: seatedOverrides(overrides, lineup) }
@@ -117,8 +124,15 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
           <ErrorNotice
             error={run.error}
             context="lab"
-            headline={run.error.code === 'network' ? 'The simulation didn’t reach the server.' : 'The simulation didn’t run.'}
+            headline={
+              run.error.code === 'network'
+                ? 'The simulation didn’t reach the server.'
+                : run.error.code === 'lab_lost' || run.error.code === 'lab_failed'
+                  ? undefined
+                  : 'The simulation didn’t run.'
+            }
             onRetry={describeError(run.error, 'lab').retryable ? start : undefined}
+            retryLabel={run.error.code === 'lab_lost' || run.error.code === 'lab_failed' ? 'Run again' : undefined}
             onDismiss={run.dismissError}
             layout="row"
             className="max-sm:flex-col max-sm:items-start"
@@ -134,6 +148,7 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
         stale={stale}
         running={run.running}
         startedAt={run.startedAt}
+        progress={run.progress}
         estimate={estimate}
       />
 
@@ -164,17 +179,26 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
           )}
         />
         <span className="lab-dock__note text-foot text-fog tabular-nums" aria-hidden="true">
-          {busy && run.startedAt !== null ? <Elapsed since={run.startedAt} /> : estimate}
-        </span>
-        <Capsule variant="primary" size="lg" className="lab-dock__go" onClick={start} disabled={busy}>
-          {busy ? (
-            'Simulating…'
+          {busy && run.progress ? (
+            progressText(run.progress.done, run.progress.total)
+          ) : busy && run.startedAt !== null ? (
+            <Elapsed since={run.startedAt} />
           ) : (
+            estimate
+          )}
+        </span>
+        {busy ? (
+          // the run goes on in the background: the one thing to do with it now is stop it
+          <Capsule variant="secondary" size="lg" className="lab-dock__go" onClick={run.cancel} disabled={run.cancelling} aria-label="Cancel the simulation">
+            {run.cancelling ? 'Cancelling…' : 'Cancel'}
+          </Capsule>
+        ) : (
+          <Capsule variant="primary" size="lg" className="lab-dock__go" onClick={start}>
             <span>
               Run<span className="max-sm:sr-only"> simulation</span>
             </span>
-          )}
-        </Capsule>
+          </Capsule>
+        )}
       </LabDock>
     </>
   )

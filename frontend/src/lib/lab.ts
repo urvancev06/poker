@@ -362,6 +362,16 @@ export function msPerHand(last: Pick<LabResult, 'hands' | 'elapsed_ms'> | null |
   return last.elapsed_ms / last.hands
 }
 
+/** How far a background run has got: "12,000 of 25,000 hands". */
+export function progressText(done: number, total: number): string {
+  return `${count(done)} of ${count(total)} ${total === 1 ? 'hand' : 'hands'}`
+}
+
+/** The progress track's fill, 0 to 1. */
+export function progressShare(done: number, total: number): number {
+  return total > 0 ? Math.min(1, Math.max(0, done / total)) : 0
+}
+
 /** How long a run will take, in words: "a few seconds", "about 15 s", "about a minute". */
 export function estimateText(hands: number, rate: number = MS_PER_HAND): string {
   const s = (hands * rate) / 1000
