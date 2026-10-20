@@ -10,6 +10,9 @@
 
 import type { DecisionTime, HeroStatLine, StatsWindow } from '../api'
 import { describeError, type ApiError } from './apiError'
+import { count } from './format'
+
+export { count }
 
 export const GATES = [500, 2000, 3000] as const
 export type Gate = (typeof GATES)[number]
@@ -66,12 +69,6 @@ export function bandFor(targets: Readonly<Record<string, unknown>> | null | unde
 }
 
 const MINUS = '−'
-const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
-
-/** 2766 -> "2,766". */
-export function count(n: number): string {
-  return nf.format(Math.round(n))
-}
 
 /** "1 hand", "234 hands". */
 export function hands(n: number): string {

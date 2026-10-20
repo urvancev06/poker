@@ -40,6 +40,33 @@ export interface ActionLogEntry {
   street: string
   action: ActionType
   to_amount: number | null
+  // From the engine ledger (absent on records from before it): chips this action put in,
+  // the seat's bet on the street after it, whether it put the seat all-in, and the stack left.
+  added?: number
+  street_total?: number
+  all_in?: boolean
+  stack_after?: number
+}
+
+/** Facts for the player to act, computed by the engine before the action. */
+export interface DecisionFacts {
+  seat: number
+  street: string
+  to_call: number
+  pot: number
+  /** What a call can win: the caller's chips plus each opponent's, up to the caller's total. */
+  winnable_if_call: number
+  to_act_after_call: number
+  closes_on_call: boolean
+  betting_over_after_call: boolean
+  can_respond_to_raise: number
+}
+
+/** The chips in the middle, per seat; unlike `pot` it survives the end of the hand. */
+export interface LedgerSummary {
+  contributed: number[]
+  pot: number
+  rake: number
 }
 
 /** A pot layer. At hand end every amount is 0, and mid-hand it excludes this street's
@@ -64,6 +91,8 @@ export interface GameStateDict {
   legal_actions: LegalActions | null
   results: number[] | null
   history: ActionLogEntry[]
+  ledger?: LedgerSummary
+  facts?: DecisionFacts | null
 }
 
 export interface HandResult {
@@ -135,6 +164,12 @@ export interface Coaching {
   rationale: string
   tone: 'good' | 'neutral' | 'close' | 'fold'
   basis: string[]
+  /** What a call can win (side pots cap it); absent when the spot has no engine facts. */
+  winnable?: number | null
+  /** Amounts above are chips at this level; the UI shows big blinds. */
+  big_blind?: number
+  /** Nobody acts after a call (the betting may still go on to a later street). */
+  closes_on_call?: boolean | null
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -205,6 +240,8 @@ export interface StatsWindow {
   hands: number
   big_blind?: number
   hands_at_this_blind?: number
+  /** Distinct [small, big] blind levels in the window; bb/100 counts each hand in its own. */
+  blind_levels?: Array<[number, number]>
 }
 
 export interface MyStats {
@@ -226,6 +263,8 @@ export interface HandSummary {
   pot: number
   hero_net: number
   went_to_showdown: boolean
+  /** The hand's own big blind (old rows: 2). `pot` and `hero_net` are chips at it. */
+  big_blind?: number
 }
 
 /** GET /hands/{id}: the summary plus the stored hand. History reads `shown_cards`, `lineup`,
@@ -253,6 +292,8 @@ export interface ReviewDecision {
   required_pct: number | null
   realized_pct?: number | null
   required_direct_pct?: number | null
+  /** What a call could win (side pots cap it); absent on hands from before the ledger. */
+  winnable?: number | null
   leaks: Leak[]
 }
 export interface ReviewStreet {
@@ -262,6 +303,7 @@ export interface ReviewStreet {
 }
 export interface HandReview {
   hand_index: number
+  big_blind?: number
   hero_cards: string[] | null
   board: string[]
   hero_net: number
@@ -322,6 +364,22 @@ export interface LabSimulateBody {
   hands: number
   seed?: number
   overrides?: Record<string, Record<string, number>>
+}
+
+/** A background Lab run (POST /lab/jobs). */
+export interface LabJobBody extends LabSimulateBody {
+  kind: 'simulate'
+}
+export type LabJobState = 'queued' | 'running' | 'done' | 'cancelled' | 'failed'
+export interface LabJob {
+  job_id: string
+  kind: string
+  state: LabJobState
+  progress: { done: number; total: number }
+  result: LabResult | null
+  error: string | null
+  created_at: string
+  elapsed_ms: number
 }
 
 export interface CfrStrategyRow {
@@ -385,6 +443,10 @@ export const api = {
   labArchetypes: () => req<LabArchetypesInfo>('/lab/archetypes'),
   labSimulate: (body: LabSimulateBody) =>
     req<LabResult>('/lab/simulate', { method: 'POST', body: JSON.stringify(body) }),
+  labJobCreate: (body: LabJobBody, init?: RequestInit) =>
+    req<{ job_id: string; state: LabJobState }>('/lab/jobs', { method: 'POST', body: JSON.stringify(body), ...init }),
+  labJobGet: (id: string, init?: RequestInit) => req<LabJob>(`/lab/jobs/${id}`, init),
+  labJobCancel: (id: string) => req<{ job_id: string; state: LabJobState }>(`/lab/jobs/${id}`, { method: 'DELETE' }),
   cfr: (iterations: number, seed = 0) =>
     req<CfrResult>('/lab/cfr', { method: 'POST', body: JSON.stringify({ iterations, seed }) }),
 }
