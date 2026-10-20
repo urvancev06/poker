@@ -16,19 +16,22 @@ brand/      logo kit + favicon
 
 Installed editable from `backend/pyproject.toml`, so `import poker` resolves the same
 in the app, the tests and the scripts. Chips are integers throughout (smallest unit),
-so no rounding error can accumulate across a session.
+so no rounding error can accumulate across a session. Sessions, the simulator and the Lab
+play 5/10 blinds with 1,000-chip (100bb) stacks; the engine's own defaults stay 1/2 and
+200, so the rules tests do not depend on the table's chip unit. Hands stored before phase 1
+are at 1/2, and every reader takes a hand's big blind from the hand itself.
 
 | Module | Responsibility |
 |---|---|
 | `poker.engine` | Wrapper over **PokerKit** for 6-max NLHE cash: whose turn, legal actions and sizing, apply action, advance streets, showdown, side pots, and a serialisable game-state object. Rules and hand evaluation are not re-implemented. Deals come from a deck we shuffle (PokerKit's manual dealing). `ledger.py` keeps the chip ledger beside PokerKit: chips added per post and action, the uncalled-bet return, the pot, `winnable(seat, extra)` (side-pot aware) and payouts. The decision facts for the player to act (to call, what a call can win, who acts after a call, whether a call ends the betting) feed the coach and the review. Snapshots hide other seats' hole cards, history included; the rake hook exists and is off. |
 | `poker.rng` | Seeded random streams: one `random.Random` per purpose (the deck of hand h, decision k of player p in hand h, ...), derived with blake2b from the seed and keys. Nothing reads the global `random` state, so a seeded session or simulation replays exactly. |
 | `poker.math` | Monte Carlo equity (**treys**), pot odds, required equity, EV, a made-hand and draw classifier, and a range-string parser (`"22+, ATs+"` → combos, blockers removed). Pure functions, no game-state or framework dependencies. |
-| `poker.bots` | Bot interface `(game_state, legal_actions, own_cards) -> action`, a parameterised strategy (positional ranges + a postflop heuristic over `poker.math`), and five archetypes as parameter sets. |
-| `poker.sim` | Headless simulation: play archetypes against each other for N hands, logging every decision; the stats module (VPIP, PFR, 3-bet%, AF, WTSD); the measured-vs-target report; and `lab.py`, the same machinery exposed as JSON for the bot lab. |
+| `poker.bots` | Bot interface `(game_state, legal_actions, own_cards) -> action`, a parameterised strategy (positional ranges + a postflop heuristic over `poker.math`), and five archetypes as parameter sets. These are the v1 bots; `sim/fingerprint.py` hashes what they do over 300 seeded hands and `tests/test_v1_frozen.py` pins it, so shared code can change under them without moving a decision. |
+| `poker.sim` | Headless simulation: play archetypes against each other for N hands, logging every decision; the stats module (VPIP, PFR, 3-bet%, AF, WTSD); the measured-vs-target report; and `lab.py`, the same machinery exposed as JSON for the bot lab. Hand h is dealt and decided from streams seeded by (seed, h), so a run splits into shards of 1,000 hands that play anywhere and merge, as integer counts, into exactly the one-process result (`run(..., workers=4)`). `jobs.py` (`JobManager`) runs Lab simulations as background jobs on a pool of spawned processes: `queued` → `running` → `done`, `cancelled` or `failed`, progress per merged shard, cancel between shards, and an in-memory registry that a restart forgets. |
 | `poker.coach` | Per-spot coaching (equity against modelled ranges, pot odds, a candid line), hand replay reconstruction, and computed leak detection. All maths comes from `poker.math`. |
-| `poker.game` | Interactive session: hero plus villains, stacks and rebuys, button rotation, bots auto-acting, per-bot observed reads for the HUD. Deals and bot decisions come from the session seed's streams; the seed is stored server-side only (`truth` in the hand record). |
-| `poker.db` | SQLAlchemy models and persistence: hand histories and hero stats over time, in SQLite. |
-| `poker.api` | FastAPI app: session, state, action, coaching, history and lab endpoints. |
+| `poker.game` | Interactive session: hero plus villains, stacks and rebuys, button rotation, bots auto-acting, per-bot observed reads for the HUD. Deals and bot decisions come from the session seed's streams; the seed is stored server-side only (`truth` in the hand record). Each session has a re-entrant lock that every request on it takes, so a double-click, a coach fetch during an advance and the next action cannot interleave. A finished hand stores the ledger's pot, the ledger itself and each action's chips (`added`, `street_total`, `all_in`, `stack_after`), all as new keys of `hands.data`; old rows without them still load, replay and review. |
+| `poker.db` | SQLAlchemy models and persistence: hand histories and hero stats over time, in SQLite. `HandRecord.summary()` reports each hand's big blind (2 for rows stored before phase 1), and `/stats/me` counts bb/100 in each hand's own big blinds. |
+| `poker.api` | FastAPI app: session, state, action, coaching, history and lab endpoints. `lab_jobs.py` adds the Lab job API: `POST /lab/jobs` starts a simulation and answers at once, `GET /lab/jobs/{id}` reports progress and the result, `DELETE /lab/jobs/{id}` cancels; `/lab/simulate` remains as a wrapper that waits for a job. `GET /hands/{id}` strips the server-only `truth`. |
 | `poker.learn` | `kuhn_cfr.py` runs vanilla Counterfactual Regret Minimization on Kuhn poker and converges to its known equilibrium (game value −1/18), with exact best-response exploitability. |
 
 Not part of the installed package:
@@ -87,7 +90,7 @@ a phone or tablet), `Disclosure`, `Tooltip` and `InfoButton`, `Ring` (the coach'
 | `coach/` | `CoachGlance` (ring, verdict, figures) and `MathsSheet` (the working); `dev/` is the harness behind `coach-harness.html` |
 | `stats/` | My stats: the readiness ring, the facts, stats grouped by sample gate, the trend; `useMyStats` |
 | `history/` | the leak report, the hand list, the street-by-street replay; `useHistoryData` |
-| `lab/` | the bot lab (lineup, results against bands, knobs) and CFR on Kuhn; `useLabRun`, `useLabInfo` |
+| `lab/` | the bot lab (lineup, results against bands, knobs) and CFR on Kuhn; `useLabJob` runs a simulation as a background job (progress, Cancel, polling paused while the Lab is hidden), CFR keeps `useLabRun`; `useLabInfo` |
 | `study/` | the static reference: positions, opening ranges on a 13 × 13 grid, the postflop framework, pot odds, draws, the five player types, stat targets, bankroll, terms |
 | `prefs/` | Preferences: coach mode, opponent visibility, the deck picker |
 
@@ -99,6 +102,14 @@ where the coach goes. `tableModel.ts` turns a backend snapshot into what the tab
 rows and range lines are `coachView.ts`, `coachWorking.ts` and `coachRange.ts`. Alongside them are
 sizing and presets, hotkeys, error parsing, ring geometry, the starfield and its masks, the stats,
 history, lab and study models, and the decks.
+
+Every chip amount reaches the screen through `format.ts`: `bb(chips, bigBlind)` shows at most
+one decimal and drops a trailing `.0` (25 at a 10-chip big blind is "2.5"), `parseBB` reads a
+typed size ("7.5", "7,5", "75bb") back into chips, and `bigBlindOf` takes the big blind from
+the payload itself, falling back to 2 for records stored before phase 1. A Lab simulation's
+state is a pure reducer in `labJob.ts`, and its request loop (create, poll every 400 ms, one
+poll at a time, cancel, pause and resume) is `labJobController.ts`, with the transport and
+timers injected so it is tested with fake timers.
 
 **`lib/useTableSession.ts`** is the table session hook. It lives in `App`, above the views, so the
 game keeps running while another view is open: bots keep stepping (650 ms apart, 1,000 ms for the
@@ -116,10 +127,11 @@ on the table.
 
 ### Tests
 
-`npm test` runs **vitest** (`vitest run`): **371 tests in 35 files**, all `src/lib/*.test.ts`, in a
+`npm test` runs **vitest** (`vitest run`): **428 tests in 37 files**, all `src/lib/*.test.ts`, in a
 Node environment with no DOM. They test the pure logic, not the components. The largest groups are
-the table's layout and camera (44), the lab (30), the hand list and replay shaping (25 and 24), the
-stats model (21) and the table model (19). Many assert a specific number or property: the
+the table's layout and camera (44), the lab (33), the replay and hand list shaping (27 and 26), the
+table model (24), the stats model (22), the formatter (16), and the Lab job reducer and request
+loop (15 each). Many assert a specific number or property: the
 projection against its closed form; every bet clearing the board, the backs, the pot block and the
 rim at each tested viewport size; the top seat labels at least 20 px apart; a 409 on an action being
 retryable and a 404 needing a new game. One (`tokens.test.ts`) reads `index.css` and checks that

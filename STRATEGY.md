@@ -15,6 +15,7 @@ The poker domain knowledge the app is built from. It feeds three things:
 ## 1. The format this is built for
 
 - **No-Limit Texas Hold'em, 6-max cash, 100bb effective, ~2.5bb opens** (3bb from the SB). Online-style.
+- **5/10 blinds, 1,000-chip (100bb) buy-ins; every amount is shown in big blinds.** Hands stored before this change were played at 1/2 and show in their own big blinds.
 - Positions, worst→best preflop: **UTG, MP (HJ), CO, BTN, SB, BB.**
 - Everything assumes heads-up-to-the-flop decisions unless noted; multiway tightens ranges.
 
