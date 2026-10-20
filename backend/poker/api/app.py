@@ -15,7 +15,10 @@ Endpoints:
     GET  /hands/{id}                   one persisted hand (full data for replay)
     GET  /hands/{id}/review            street-by-street replay + coaching + leaks
     GET  /lab/archetypes               bot-lab metadata (target bands + tunable knobs)
-    POST /lab/simulate                 run a capped sim; emergent stats vs targets
+    POST /lab/jobs                     start a background Lab simulation (202 + job id)
+    GET  /lab/jobs/{id}                a job's progress and, when done, its report
+    DELETE /lab/jobs/{id}              cancel a job
+    POST /lab/simulate                 (compatibility) run a sim as a job and wait for it
     POST /lab/cfr                      train CFR on Kuhn poker (learning module)
 
 Run:  backend/.venv/bin/uvicorn poker.api.app:app --reload
@@ -23,6 +26,9 @@ Run:  backend/.venv/bin/uvicorn poker.api.app:app --reload
 
 from __future__ import annotations
 
+import time
+from contextlib import asynccontextmanager
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -38,8 +44,10 @@ from poker.game import GameSession
 from poker.game.session import public_result
 from poker.learn import train as train_cfr
 from poker.sim.hero_stats import decision_seconds, hero_report
-from poker.sim.lab import archetypes_info, run_lab
+from poker.sim.jobs import JobManager
+from poker.sim.lab import archetypes_info
 
+from .lab_jobs import router as lab_jobs_router
 from .schemas import ActionRequest, CfrRequest, CreateSessionRequest, LabSimulateRequest
 from .serializers import session_to_dict
 
@@ -73,12 +81,25 @@ def _warn_if_multi_worker() -> None:
         )
 
 
-def create_app(db_url: str | None = None) -> FastAPI:
+def create_app(
+    db_url: str | None = None,
+    *,
+    job_executor: Literal["process", "thread"] = "process",
+    job_workers: int = 2,
+) -> FastAPI:
+    """The app. Lab jobs run on ``job_workers`` processes (spawned on first use),
+    so a long simulation never holds the server; tests pass ``"thread"``."""
     engine = make_engine(db_url) if db_url else make_engine()
     init_db(engine)
     SessionFactory = make_session_factory(engine)
+    jobs = JobManager(max_workers=job_workers, executor=job_executor)
 
-    app = FastAPI(title="Poker", version=__version__)
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+        jobs.shutdown()
+
+    app = FastAPI(title="Poker", version=__version__, lifespan=lifespan)
     # Local-first dev: the Vite dev server (any localhost port) may call the API.
     app.add_middleware(
         CORSMiddleware,
@@ -93,6 +114,8 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     app.state.sessions: dict[str, GameSession] = {}
     app.state.saved: dict[str, set[int]] = {}
+    app.state.jobs = jobs
+    app.include_router(lab_jobs_router)
 
     def get_db():
         db = SessionFactory()
@@ -294,20 +317,21 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     @app.post("/lab/simulate")
     def lab_simulate(req: LabSimulateRequest) -> dict:
-        """Run a (capped) headless simulation and return emergent stats vs targets."""
-        if not req.lineup:
-            raise HTTPException(status_code=400, detail="lineup must have at least one seat")
+        """Compatibility: run a (capped) simulation as a background job and wait for
+        it. The work runs on the job pool, so even this blocking call no longer
+        holds the server; the Lab itself uses /lab/jobs and polls."""
         try:
-            return run_lab(
-                lineup=req.lineup,
-                hands=req.hands,
-                seed=req.seed,
-                blinds=(req.small_blind, req.big_blind),
-                starting_stack=req.starting_stack,
-                overrides=req.overrides,
-            )
-        except ValueError as exc:  # unknown archetype name
+            job_id = jobs.submit("simulate", req.model_dump())
+        except ValueError as exc:  # empty lineup, unknown archetype name
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        while True:
+            job = jobs.get(job_id)
+            if job is None or job["state"] in ("cancelled", "failed"):
+                detail = "the simulation was lost" if job is None else (job["error"] or job["state"])
+                raise HTTPException(status_code=503, detail=detail)
+            if job["state"] == "done":
+                return job["result"]
+            time.sleep(0.05)
 
     @app.post("/lab/cfr")
     def lab_cfr(req: CfrRequest) -> dict:

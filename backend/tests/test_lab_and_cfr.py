@@ -155,7 +155,7 @@ def test_exploitability_zero_at_known_equilibrium():
 # --------------------------------------------------------------------------- #
 @pytest.fixture(scope="module")
 def client():
-    return TestClient(create_app("sqlite://"))
+    return TestClient(create_app("sqlite://", job_executor="thread"))
 
 
 def test_lab_endpoints(client):

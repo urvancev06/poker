@@ -161,7 +161,10 @@ class JobManager:
                 self._mark_cancelled(job)
             return job.as_dict()
 
-    def shutdown(self) -> None:
+    def shutdown(self, wait: bool = True) -> None:
+        """Cancel every job and stop the executor. Shards that have not started
+        are dropped; with ``wait`` the ones already running (a few seconds at
+        most) are waited for, so no simulation outlives the app's shutdown."""
         with self._lock:
             self._closed = True
             for job in self._jobs.values():
@@ -169,7 +172,7 @@ class JobManager:
                     self._mark_cancelled(job)
             pool, self._pool = self._pool, None
         if pool is not None:
-            pool.shutdown(wait=False, cancel_futures=True)
+            pool.shutdown(wait=wait, cancel_futures=True)
 
     # ------------------------------------------------------------------ #
     def _mark_cancelled(self, job: _Job) -> None:  # caller holds the lock
