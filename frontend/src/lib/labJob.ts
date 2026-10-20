@@ -5,7 +5,10 @@
 //   setup that produced it, so the view can say when the controls no longer match it.
 // - A poll for any job but the one in flight is ignored (a late answer from a run that
 //   was cancelled or replaced).
-// - Cancelled (by us or by the server) keeps the last result and shows no error.
+// - Cancelled (by us or by the server) keeps the last result and shows no error;
+//   `cancelled` says how far the run got, until the next one starts.
+// - Cancel answers only once a poll has shown the job on the server (`canCancel`), so the
+//   second click of a double-click on Run (the same button, now reading Cancel) is a no-op.
 // - Lost (a 404: the server restarted and forgot its jobs) and failed (the job raised)
 //   are errors with their own copy (lib/apiError: 'lab_lost', 'lab_failed').
 
@@ -26,6 +29,8 @@ export interface LabJobState<C> {
   progress: { done: number; total: number } | null
   /** Cancel was pressed and the server has not answered yet. */
   cancelling: boolean
+  /** The last run was cancelled after this many hands (null: it was not). */
+  cancelled: { done: number; total: number } | null
   error: ApiError | null
 }
 
@@ -40,7 +45,12 @@ export type LabJobEvent<C> =
   | { type: 'dismissError' }
 
 export function initialLabJob<C>(): LabJobState<C> {
-  return { result: null, resultFor: null, running: null, startedAt: null, jobId: null, progress: null, cancelling: false, error: null }
+  return { result: null, resultFor: null, running: null, startedAt: null, jobId: null, progress: null, cancelling: false, cancelled: null, error: null }
+}
+
+/** Cancel does something: the job is on the server, a poll has seen it, no cancel is out. */
+export function canCancel<C>(s: LabJobState<C>): boolean {
+  return s.running !== null && s.jobId !== null && s.progress !== null && !s.cancelling
 }
 
 export function isTerminal(state: JobState): boolean {
@@ -49,14 +59,14 @@ export function isTerminal(state: JobState): boolean {
 
 export const LAB_LOST_DETAIL = 'The server no longer knows this run, so its result is gone. Run it again.'
 
-function stopped<C>(s: LabJobState<C>, error: ApiError | null): LabJobState<C> {
-  return { ...s, running: null, startedAt: null, jobId: null, progress: null, cancelling: false, error }
+function stopped<C>(s: LabJobState<C>, error: ApiError | null, cancelled: LabJobState<C>['cancelled'] = null): LabJobState<C> {
+  return { ...s, running: null, startedAt: null, jobId: null, progress: null, cancelling: false, cancelled, error }
 }
 
 export function reduce<C>(s: LabJobState<C>, e: LabJobEvent<C>): LabJobState<C> {
   switch (e.type) {
     case 'started':
-      return { ...s, running: e.config, startedAt: e.at, jobId: null, progress: null, cancelling: false, error: null }
+      return { ...s, running: e.config, startedAt: e.at, jobId: null, progress: null, cancelling: false, cancelled: null, error: null }
     case 'created':
       return s.running === null ? s : { ...s, jobId: e.jobId }
     case 'polled': {
@@ -65,7 +75,7 @@ export function reduce<C>(s: LabJobState<C>, e: LabJobEvent<C>): LabJobState<C> 
       if (j.state === 'done' && j.result) {
         return { ...stopped(s, null), result: j.result, resultFor: s.running }
       }
-      if (j.state === 'cancelled') return stopped(s, null)
+      if (j.state === 'cancelled') return stopped(s, null, { done: j.progress.done, total: j.progress.total })
       if (j.state === 'failed' || j.state === 'done') {
         return stopped(s, new ApiError({ status: 500, code: 'lab_failed', detail: j.error || 'The simulation stopped without a result.', path: `/lab/jobs/${j.job_id}` }))
       }
@@ -74,7 +84,7 @@ export function reduce<C>(s: LabJobState<C>, e: LabJobEvent<C>): LabJobState<C> 
     case 'cancelling':
       return s.running === null ? s : { ...s, cancelling: true }
     case 'cancelled':
-      return stopped(s, null)
+      return s.running === null ? s : stopped(s, null, s.progress ?? { done: 0, total: 0 })
     case 'failed':
       return stopped(s, e.error)
     case 'lost':

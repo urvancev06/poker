@@ -1,10 +1,10 @@
-// One synchronous lab request at a time (a simulation, a CFR training run), started by a
-// click. The request lives outside any effect, so hiding the view or switching tools never
-// drops its answer.
+// One synchronous lab request at a time, started by a click: the CFR training run (a few
+// seconds at most; the Bot lab's simulations are background jobs, useLabJob). The request
+// lives outside any effect, so hiding the view or switching tools never drops its answer.
 //
 // - The last result stays on screen while a new run is in flight; `resultFor` is the setup
 //   that produced it, so the view can say when the controls no longer match it.
-// - A second click while running does nothing (the server can only do one thing at once).
+// - A second click while running does nothing.
 // - Errors are kept until the next run or a dismiss; the last good result stays.
 
 import { useCallback, useRef, useState } from 'react'

@@ -7,6 +7,9 @@
  *                  seconds so far and the estimate; the run is a background job, so the
  *                  table keeps playing and Cancel (in the dock) stops it; the last result
  *                  stays below, marked as the last run
+ *   cancelled      "Cancelled." how far the run got, and whether the rows below are still
+ *                  the last finished run (its verdict and meta line under it); until the
+ *                  next run
  *   result         "Passes the gate." / "Fails the gate." with its caveat ("indicative, not
  *                  the gate") and the meta line; a note when the setup has changed since
  *
@@ -16,7 +19,18 @@
  */
 import { useId, type Ref } from 'react'
 import type { LabArchetypesInfo, LabResult } from '../../api'
-import { LAB_STATS, gateCaveat, gateHeadline, gateSummary, metaLine, progressShare, progressText, type ResultRowView, type RunConfig } from '../../lib/lab'
+import {
+  LAB_STATS,
+  cancelledText,
+  gateCaveat,
+  gateHeadline,
+  gateSummary,
+  metaLine,
+  progressShare,
+  progressText,
+  type ResultRowView,
+  type RunConfig,
+} from '../../lib/lab'
 import { count } from '../../lib/stats'
 import { Elapsed, LabProgress } from './LabParts'
 import { ResultRow } from './ResultRow'
@@ -32,11 +46,13 @@ export interface BotResultsProps {
   startedAt: number | null
   /** Hands done so far in the run in flight (null until the first poll answers). */
   progress?: { done: number; total: number } | null
+  /** How far the last run got, when it was cancelled (until the next run). */
+  cancelled?: { done: number; total: number } | null
   /** How long a run of the current hands takes, in words. */
   estimate: string
 }
 
-export function BotResults({ ref, info, rows, result, stale, running, startedAt, progress = null, estimate }: BotResultsProps) {
+export function BotResults({ ref, info, rows, result, stale, running, startedAt, progress = null, cancelled = null, estimate }: BotResultsProps) {
   const headId = useId()
   const gate = result ? gateSummary(result, rows) : null
   const busy = running !== null
@@ -46,6 +62,9 @@ export function BotResults({ ref, info, rows, result, stale, running, startedAt,
   if (busy) {
     headline = `Simulating ${count(running.hands)} hands.`
     tone = 'busy'
+  } else if (cancelled) {
+    headline = 'Cancelled.'
+    tone = 'idle'
   } else if (gate && result) {
     headline = gateHeadline(gate)
     tone = gate.pass ? 'pass' : 'fail'
@@ -68,6 +87,18 @@ export function BotResults({ ref, info, rows, result, stale, running, startedAt,
             </p>
             <p className="m-0">It runs in the background, so the table keeps playing. Cancel in the dock stops it.</p>
             {result ? <p className="m-0 text-dust">Below is the last run, until this one lands.</p> : null}
+          </>
+        ) : cancelled ? (
+          <>
+            <p className="m-0 tabular-nums">{cancelledText(cancelled, result !== null)}</p>
+            {gate && result ? (
+              <p className="m-0 text-foot text-dust tabular-nums">
+                {gateHeadline(gate)} {metaLine(result)}
+              </p>
+            ) : (
+              <p className="m-0">This one takes {estimate}. It runs in the background, so the table keeps playing meanwhile.</p>
+            )}
+            {stale ? <p className="m-0 mt-1 text-ink">The setup has changed since that run. Run again to measure it.</p> : null}
           </>
         ) : gate && result ? (
           <>

@@ -446,7 +446,8 @@ export const api = {
   labJobCreate: (body: LabJobBody, init?: RequestInit) =>
     req<{ job_id: string; state: LabJobState }>('/lab/jobs', { method: 'POST', body: JSON.stringify(body), ...init }),
   labJobGet: (id: string, init?: RequestInit) => req<LabJob>(`/lab/jobs/${id}`, init),
-  labJobCancel: (id: string) => req<{ job_id: string; state: LabJobState }>(`/lab/jobs/${id}`, { method: 'DELETE' }),
+  labJobCancel: (id: string, init?: RequestInit) =>
+    req<{ job_id: string; state: LabJobState }>(`/lab/jobs/${id}`, { method: 'DELETE', ...init }),
   cfr: (iterations: number, seed = 0) =>
     req<CfrResult>('/lab/cfr', { method: 'POST', body: JSON.stringify({ iterations, seed }) }),
 }

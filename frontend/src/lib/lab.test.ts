@@ -11,6 +11,7 @@ import {
   dotFraction,
   durationText,
   elapsedText,
+  cancelledText,
   progressShare,
   progressText,
   estimateText,
@@ -376,5 +377,13 @@ describe('progressText', () => {
     expect(progressShare(12000, 25000)).toBeCloseTo(0.48)
     expect(progressShare(5, 0)).toBe(0)
     expect(progressShare(30, 20)).toBe(1)
+  })
+})
+
+describe('cancelledText', () => {
+  it('says where a cancelled run stopped and what is on screen', () => {
+    expect(cancelledText({ done: 3000, total: 25000 }, false)).toBe('Cancelled at 3,000 of 25,000 hands. A cancelled run keeps no readings.')
+    expect(cancelledText({ done: 3000, total: 25000 }, true)).toBe('Cancelled at 3,000 of 25,000 hands. Below is still the last finished run.')
+    expect(cancelledText({ done: 0, total: 5000 }, false)).toBe('Cancelled before the first hands came in. A cancelled run keeps no readings.')
   })
 })

@@ -367,6 +367,12 @@ export function progressText(done: number, total: number): string {
   return `${count(done)} of ${count(total)} ${total === 1 ? 'hand' : 'hands'}`
 }
 
+/** Where a cancelled run stopped, and what the rows below show now. */
+export function cancelledText(at: { done: number; total: number }, hasResult: boolean): string {
+  const where = at.done > 0 ? `Cancelled at ${progressText(at.done, at.total)}.` : 'Cancelled before the first hands came in.'
+  return `${where} ${hasResult ? 'Below is still the last finished run.' : 'A cancelled run keeps no readings.'}`
+}
+
 /** The progress track's fill, 0 to 1. */
 export function progressShare(done: number, total: number): number {
   return total > 0 ? Math.min(1, Math.max(0, done / total)) : 0

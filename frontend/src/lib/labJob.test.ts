@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LabJob, LabResult } from '../api'
 import { ApiError, describeError } from './apiError'
-import { initialLabJob, isTerminal, reduce, type LabJobState } from './labJob'
+import { canCancel, initialLabJob, isTerminal, reduce, type LabJobState } from './labJob'
 
 type C = { hands: number }
 
@@ -88,5 +88,42 @@ describe('the lab job reducer', () => {
 
   it('knows the terminal states', () => {
     expect(['queued', 'running', 'done', 'cancelled', 'failed'].map((x) => isTerminal(x as LabJob['state']))).toEqual([false, false, true, true, true])
+  })
+
+  it('Cancel answers only once the server has the job running (a double-click on Run never cancels it)', () => {
+    expect(canCancel(initialLabJob<C>())).toBe(false)
+    const started = reduce(initialLabJob<C>(), { type: 'started', config: { hands: 1200 }, at: 1000 })
+    expect(canCancel(started)).toBe(false)
+    const created = reduce(started, { type: 'created', jobId: 'j1' })
+    expect(canCancel(created)).toBe(false)
+    const polled = reduce(created, { type: 'polled', job: job({ progress: { done: 0, total: 1200 } }) })
+    expect(canCancel(polled)).toBe(true)
+    expect(canCancel(reduce(polled, { type: 'cancelling' }))).toBe(false)
+    expect(canCancel(reduce(polled, { type: 'polled', job: job({ state: 'done', result: RESULT }) }))).toBe(false)
+  })
+
+  it('a cancelled run remembers how far it got, until the next run', () => {
+    let s = reduce(running(), { type: 'polled', job: job({ progress: { done: 3000, total: 25000 } }) })
+    expect(s.cancelled).toBeNull()
+    s = reduce(s, { type: 'cancelling' })
+    s = reduce(s, { type: 'cancelled' })
+    expect(s.cancelled).toEqual({ done: 3000, total: 25000 })
+    s = reduce(s, { type: 'started', config: { hands: 300 }, at: 4000 })
+    expect(s.cancelled).toBeNull()
+  })
+
+  it('a run cancelled before its first poll got nowhere', () => {
+    const s = reduce(running(), { type: 'cancelled' })
+    expect(s.cancelled?.done).toBe(0)
+  })
+
+  it('a server-side cancel takes the server’s count', () => {
+    const s = reduce(running(), { type: 'polled', job: job({ state: 'cancelled', progress: { done: 4000, total: 25000 } }) })
+    expect(s.cancelled).toEqual({ done: 4000, total: 25000 })
+  })
+
+  it('an error or a result is not a cancel', () => {
+    expect(reduce(running(), { type: 'lost' }).cancelled).toBeNull()
+    expect(reduce(running(), { type: 'polled', job: job({ state: 'done', result: RESULT }) }).cancelled).toBeNull()
   })
 })

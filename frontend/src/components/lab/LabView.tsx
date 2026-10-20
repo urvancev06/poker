@@ -8,8 +8,9 @@
  *   <LabView />
  *
  * Both tools stay mounted (React <Activity>): switching never loses a lineup, a knob, an
- * iteration count or a result, and a run in flight lands even while the other tool is
- * shown. The hidden tool's effects pause and its dock hides with it.
+ * iteration count or a result. A simulation in flight goes on on the server while the
+ * other tool (or another view) is shown; its polling pauses and picks up on return. A CFR
+ * training request lands even while hidden. The hidden tool's dock hides with it.
  */
 import { Activity, useState } from 'react'
 import { BP, useViewportSize } from '../../lib/breakpoints'

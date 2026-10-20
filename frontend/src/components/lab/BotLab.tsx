@@ -9,8 +9,9 @@
  * States: loading the metadata (the frame, no figures), its error (scoped notice with Try
  * again), idle (the targets on the rails, "Not run yet."), simulating (a background job:
  * hands done so far, elapsed time, the estimate, and Cancel in the dock; the table keeps
- * playing), a result (pass or fail), a result whose setup has since changed, a run error
- * (notice; the last result stays), and a run the server lost when it restarted.
+ * playing), cancelled (how far it got; the last result stays), a result (pass or fail), a
+ * result whose setup has since changed, a run error (notice; the last result stays), and a
+ * run the server lost when it restarted (notice with Run again).
  */
 import { useRef, useState } from 'react'
 import type { LabArchetypesInfo, LabJobBody } from '../../api'
@@ -149,6 +150,7 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
         running={run.running}
         startedAt={run.startedAt}
         progress={run.progress}
+        cancelled={run.cancelled}
         estimate={estimate}
       />
 
@@ -188,8 +190,17 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
           )}
         </span>
         {busy ? (
-          // the run goes on in the background: the one thing to do with it now is stop it
-          <Capsule variant="secondary" size="lg" className="lab-dock__go" onClick={run.cancel} disabled={run.cancelling} aria-label="Cancel the simulation">
+          // The run goes on in the background: the one thing to do with it now is stop it.
+          // The same button as Run, so focus stays on it; it answers once the server has
+          // the job (canCancel), so the second click of a double-click on Run is a no-op.
+          <Capsule
+            variant="secondary"
+            size="lg"
+            className="lab-dock__go"
+            onClick={run.cancel}
+            disabled={!run.canCancel}
+            aria-label={run.cancelling ? undefined : 'Cancel the simulation'}
+          >
             {run.cancelling ? 'Cancelling…' : 'Cancel'}
           </Capsule>
         ) : (
