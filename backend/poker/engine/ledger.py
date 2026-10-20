@@ -231,3 +231,19 @@ class Ledger:
         led.contributed = list(d["contributed"])
         led.rake = int(d.get("rake", 0))
         return led
+
+
+@dataclass(frozen=True)
+class RakeConfig:
+    """House rake: ``percentage`` of each pot, capped at ``cap_bb`` big blinds
+    per pot, and nothing when no flop is dealt (``no_flop_no_drop``).
+
+    PokerKit applies the rake function per pot, every time it computes the pots,
+    so the function must be pure; the cap therefore applies to each pot (a hand
+    with side pots can be raked up to the cap once per pot). Off (``None``)
+    everywhere until the table model turns it on.
+    """
+
+    percentage: float = 0.05
+    cap_bb: float = 3.0
+    no_flop_no_drop: bool = True

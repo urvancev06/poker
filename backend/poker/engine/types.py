@@ -33,17 +33,19 @@ class ActionType(str, Enum):
     RAISE = "raise"  # re-raising over a prior bet
 
 
-# Seat -> position name. PokerKit always seats the small blind at index 0, so for
-# a fixed table size the position of each seat is fixed; the *session* layer
-# rotates which player sits in which seat to move the button. Names follow
-# STRATEGY.md (UTG, MP, CO, BTN, SB, BB).
+# Seat -> position name, by distance to the button. PokerKit always seats the small
+# blind at index 0 and the button last, so for a fixed table size each seat's
+# position is fixed; the *session* layer rotates which player sits in which seat
+# to move the button. Short tables drop the earliest positions first: the seat
+# before the button is always the CO, and 5-handed the first to act is the MP.
+# Names follow STRATEGY.md (UTG, MP, CO, BTN, SB, BB).
 _POSITIONS: dict[int, list[str]] = {
     # Heads-up is PokerKit's special case: seat 0 posts the BB, seat 1 posts the
     # SB and is the button (it acts first preflop). So seat 0 = BB, seat 1 = SB.
     2: ["BB", "SB"],
     3: ["SB", "BB", "BTN"],
-    4: ["SB", "BB", "UTG", "BTN"],
-    5: ["SB", "BB", "UTG", "CO", "BTN"],
+    4: ["SB", "BB", "CO", "BTN"],
+    5: ["SB", "BB", "MP", "CO", "BTN"],
     6: ["SB", "BB", "UTG", "MP", "CO", "BTN"],
 }
 

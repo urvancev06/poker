@@ -13,7 +13,7 @@ Public surface:
 """
 
 from .hand import EngineError, Hand, IllegalAction
-from .ledger import DecisionFacts, Ledger, LedgerEntry
+from .ledger import DecisionFacts, Ledger, LedgerEntry, RakeConfig
 from .types import (
     Action,
     ActionType,
@@ -40,6 +40,7 @@ __all__ = [
     "Ledger",
     "LedgerEntry",
     "DecisionFacts",
+    "RakeConfig",
     "EngineError",
     "IllegalAction",
 ]

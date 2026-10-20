@@ -14,12 +14,16 @@ rotates which player sits in which seat; one ``Hand`` is a single deal.
 
 from __future__ import annotations
 
+import dataclasses
+import functools
+import math
 import random
 import warnings
 from collections import deque
 from collections.abc import Sequence
 
 from pokerkit import Automation, Card, Mode, NoLimitTexasHoldem, State
+from pokerkit.utilities import rake as pokerkit_rake
 
 # PokerKit emits advisory UserWarnings that are irrelevant to our controlled use:
 # a hint when a player folds while a free check is available (we allow it; it's
@@ -30,7 +34,7 @@ warnings.filterwarnings("ignore", message="A card being dealt")
 
 from ..math.cards import FULL_DECK
 from ..rng import shuffled_deck
-from .ledger import DecisionFacts, Ledger
+from .ledger import DecisionFacts, Ledger, RakeConfig
 from .types import (
     Action,
     ActionType,
@@ -82,6 +86,17 @@ def _card_str(card) -> str:
     return repr(card)
 
 
+def _rake_function(config: RakeConfig, big_blind: int):
+    """PokerKit's own rake function with our parameters. It must stay pure:
+    PokerKit calls it per pot every time the pots are read."""
+    return functools.partial(
+        pokerkit_rake,
+        percentage=config.percentage,
+        cap=math.floor(config.cap_bb * big_blind),
+        no_flop_no_drop=config.no_flop_no_drop,
+    )
+
+
 class Hand:
     def __init__(
         self,
@@ -125,6 +140,7 @@ class Hand:
         seed: int | None = None,
         manual_deal: bool = False,
         deck: Sequence[str] | None = None,
+        rake: RakeConfig | None = None,
     ) -> "Hand":
         """Start a fresh hand.
 
@@ -137,6 +153,10 @@ class Hand:
         ``random`` state: PokerKit still shuffles its own copy of the deck with
         it, but that copy is replaced before any card is dealt.
         ``manual_deal=True`` leaves dealing to the caller (tests).
+
+        ``rake`` is off (``None``) by default. With a ``RakeConfig`` the house
+        takes its percentage of each pot, capped per pot (see ``RakeConfig``);
+        the results then sum to ``-ledger.rake``.
         """
         sb, bb = blinds
         if isinstance(starting_stacks, int):
@@ -162,6 +182,7 @@ class Hand:
             stacks,
             table_size,
             mode=Mode.CASH_GAME,
+            **({} if rake is None else {"rake": _rake_function(rake, bb)}),
         )
         hand = cls(state, stacks, blinds, table_size)
         if not manual_deal:
@@ -356,8 +377,6 @@ class Hand:
         # nobody is left to act (a manual-deal hand waiting for its next cards).
         if self.is_over or s.street_index != street_index_before or s.actor_index is None:
             self.ledger.close_street(street_at_action)
-        if self.is_over:
-            self.ledger.rake = -sum(self.results())
 
         self._history.append(
             HistoryEntry(
@@ -373,9 +392,12 @@ class Hand:
                 stack_after=entry.stack_after,
             )
         )
-        # Deal whatever the action unlocked: the next street, or an all-in runout.
+        # Deal whatever the action unlocked: the next street, or an all-in runout
+        # (which can end the hand).
         self._deal_pending()
         self._version += 1
+        if self.is_over:
+            self.ledger.rake = -sum(self.results())
 
     # ---- decision facts ---------------------------------------------------
 
@@ -433,8 +455,9 @@ class Hand:
     def snapshot(
         self, viewer: int | None = None, reveal_all: bool = False
     ) -> GameState:
-        """A serializable snapshot. Hole cards are shown for ``viewer`` only,
-        unless ``reveal_all`` (e.g. at showdown / for tests)."""
+        """A serializable snapshot. Hole cards, on the seats and in the history,
+        are shown for ``viewer`` only, unless ``reveal_all`` (e.g. at showdown /
+        for tests)."""
         s = self._state
         actor = s.actor_index
         seats: list[SeatState] = []
@@ -467,7 +490,14 @@ class Hand:
             actor=actor,
             legal_actions=self.legal_actions(),
             is_over=self.is_over,
-            history=list(self._history),
+            history=(
+                list(self._history)
+                if reveal_all
+                else [
+                    e if e.seat == viewer else dataclasses.replace(e, hole_cards=None)
+                    for e in self._history
+                ]
+            ),
             results=self.results(),
             ledger=self.ledger.summary(),
             facts=self.decision_facts(),
