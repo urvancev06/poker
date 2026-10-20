@@ -1,19 +1,37 @@
-"""Hand-strength classifier: made-hand tier + draw detection.
+"""Hole-aware hand classifier: the made tier, the part the hole cards play, draws
+that need a hole card, and a label a player would say.
 
-The made-hand tier comes from treys (so it's the same evaluator the equity engine
-trusts); draws (flush draws, open-enders, gutshots, overcards, backdoors) are
-detected here because treys only scores made hands. This feeds both the bots'
-postflop logic and the coach's "what do I have" read.
+``made`` is the tier of the best five cards, from treys, exactly as before. What
+changed in phase 2 is everything that asks "whose hand is it":
+
+* ``hole_tier`` is the strength the hole cards themselves contribute. A straight
+  or better counts only when a hole card is in it (quads only when a hole card is
+  one of the four). Below a straight the best five's groups are read from rank
+  counts, and a group is the hero's when the hole holds its rank. So 4♠4♥ on
+  A♠A♦9♦3♣6♠ is two pair (``made``) but one pair of fours (``hole_tier``), and
+  8♣4♦ on K♠K♥5♦5♣Q♠ plays the board (``hole_tier`` HIGH_CARD).
+* ``board_plays`` is True when the board alone is as good as the best hand (the
+  river only), so no hole card is needed.
+* ``draws`` come from ``draws.hole_draws`` (a hole card must take part, the
+  board's own straight outs do not count); ``nut_flush_draw`` marks the nut one.
+* ``label`` reads like a player: "top pair, good kicker", "underpair", "board two
+  pair, ace kicker", "set", "ace high + nut flush draw".
+
+The v1 bots keep the classifier they were measured with, in
+``classify_legacy.py``. The enums and ``HandClass`` here are shared with it.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
+from typing import Sequence
 
 from treys import Card, Evaluator
 
-from .cards import RANK_INDEX, suit_of
+from .cards import RANK_INDEX
+from .draws import hole_draws
 
 _EVAL = Evaluator()
 _INT = Card.new
@@ -40,10 +58,15 @@ class Draw(str, Enum):
 
 
 class PairStrength(IntEnum):
-    """Strength of a one-pair hand relative to the board, for grading how willing a
-    player should be to continue. STRONG (top pair / overpair) defends far more
-    than WEAK (bottom/under pair). NONE = not the hero's own pair (e.g. a board
-    pair the hero doesn't improve) or too few board cards."""
+    """Strength of a one-pair holding relative to the board, for grading how willing
+    a player should be to continue.
+
+    STRONG  = an overpair or top pair (any kicker).
+    MEDIUM  = second or middle pair, or a pocket pair between the board's ranks.
+    WEAK    = bottom pair, or an underpair below the whole board.
+    NONE    = no one-pair holding of the hero's own (a board pair, a pair that
+              does not play, two pair or better) or no board yet.
+    """
 
     NONE = 0
     WEAK = 1
@@ -61,104 +84,40 @@ class HandClass:
     made: MadeTier
     draws: frozenset[Draw] = field(default_factory=frozenset)
     label: str = ""
+    # The strength the hole cards themselves contribute (see the module docstring).
+    hole_tier: MadeTier = MadeTier.HIGH_CARD
+    nut_flush_draw: bool = False
+    board_plays: bool = False
 
     def has(self, draw: Draw) -> bool:
         return draw in self.draws
 
     @property
     def is_made_hand(self) -> bool:
-        """At least a pair."""
+        """At least a pair (the board's pairs included; see ``hole_tier``)."""
         return self.made >= MadeTier.PAIR
 
 
-def _rank_values(cards: list[str]) -> set[int]:
-    """Distinct rank values (2..14, A=14), adding 1 for the wheel when an ace is
-    present, for straight detection."""
-    vals = {RANK_INDEX[c[0]] + 2 for c in cards}  # RANK_INDEX 0..12 -> 2..14
-    if 14 in vals:
-        vals.add(1)
-    return vals
-
-
-def _has_straight(vals: set[int]) -> bool:
-    return any(all(v + k in vals for k in range(5)) for v in range(1, 11))
-
-
-def _straight_outs(vals: set[int]) -> int:
-    """Number of distinct RANKS that would complete a straight.
-
-    A rank count, not a card count: an open-ended draw gives 2, a gutshot 1. These
-    are the thresholds `classify` compares against."""
-    out_ranks: set[int] = set()
-    for v in range(1, 15):
-        if v in vals:
-            continue
-        test = vals | {v}
-        if v == 1:
-            test.add(1)
-        if _has_straight(test):
-            out_ranks.add(14 if v == 1 else v)  # ace dedupe
-    return len(out_ranks)
-
-
-def classify(hole: tuple[str, str] | list[str], board: list[str] | tuple[str, ...] = ()) -> HandClass:
-    """Classify a holding. ``board`` may be 0 (preflop), 3, 4, or 5 cards."""
-    hole = list(hole)
-    board = list(board)
-    cards = hole + board
-
-    # Preflop / too few cards to evaluate a 5-card hand.
-    if len(cards) < 5:
-        if hole[0][0] == hole[1][0]:
-            return HandClass(MadeTier.PAIR, frozenset(), f"pocket {hole[0][0]}s")
-        return HandClass(MadeTier.HIGH_CARD, frozenset(), "high card")
-
-    score = _EVAL.evaluate([_INT(c) for c in board], [_INT(c) for c in hole])
-    made = _TREYS_TO_TIER[_EVAL.get_rank_class(score)]
-
-    draws: set[Draw] = set()
-    on_flop_or_turn = len(board) in (3, 4)
-    if on_flop_or_turn:
-        # Flush draws (only meaningful if we don't already have a flush).
-        if made < MadeTier.FLUSH:
-            suit_counts: dict[str, int] = {}
-            for c in cards:
-                suit_counts[suit_of(c)] = suit_counts.get(suit_of(c), 0) + 1
-            top = max(suit_counts.values())
-            if top == 4:
-                draws.add(Draw.FLUSH_DRAW)
-            elif top == 3 and len(board) == 3:
-                draws.add(Draw.BACKDOOR_FLUSH_DRAW)
-
-        # Straight draws (only if we don't already have a straight).
-        if made < MadeTier.STRAIGHT:
-            outs = _straight_outs(_rank_values(cards))
-            if outs >= 2:
-                draws.add(Draw.OPEN_ENDED)
-            elif outs == 1:
-                draws.add(Draw.GUTSHOT)
-
-        # Overcards: nothing made, both hole cards beat the board.
-        if made == MadeTier.HIGH_CARD:
-            top_board = max(RANK_INDEX[c[0]] for c in board)
-            if all(RANK_INDEX[c[0]] > top_board for c in hole):
-                draws.add(Draw.OVERCARDS)
-
-    label = _label(made, draws)
-    return HandClass(made=made, draws=frozenset(draws), label=label)
-
-
-_TIER_LABEL = {
-    MadeTier.HIGH_CARD: "high card",
-    MadeTier.PAIR: "a pair",
+_WORD = ("two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "jack", "queen", "king", "ace")
+_PLURAL = ("twos", "threes", "fours", "fives", "sixes", "sevens", "eights", "nines", "tens",
+           "jacks", "queens", "kings", "aces")
+_BOARD_TIER = {
+    MadeTier.PAIR: "pair",
     MadeTier.TWO_PAIR: "two pair",
-    MadeTier.TRIPS: "three of a kind",
-    MadeTier.STRAIGHT: "a straight",
-    MadeTier.FLUSH: "a flush",
-    MadeTier.FULL_HOUSE: "a full house",
-    MadeTier.QUADS: "four of a kind",
-    MadeTier.STRAIGHT_FLUSH: "a straight flush",
+    MadeTier.TRIPS: "trips",
+    MadeTier.STRAIGHT: "straight",
+    MadeTier.FLUSH: "flush",
+    MadeTier.FULL_HOUSE: "full house",
+    MadeTier.QUADS: "quads",
+    MadeTier.STRAIGHT_FLUSH: "straight flush",
 }
+_OWN_TIER = {
+    MadeTier.STRAIGHT: "straight",
+    MadeTier.FULL_HOUSE: "full house",
+    MadeTier.QUADS: "quads",
+    MadeTier.STRAIGHT_FLUSH: "straight flush",
+}
+_DRAW_ORDER = (Draw.FLUSH_DRAW, Draw.OPEN_ENDED, Draw.GUTSHOT, Draw.OVERCARDS, Draw.BACKDOOR_FLUSH_DRAW)
 _DRAW_LABEL = {
     Draw.FLUSH_DRAW: "flush draw",
     Draw.BACKDOOR_FLUSH_DRAW: "backdoor flush draw",
@@ -166,54 +125,190 @@ _DRAW_LABEL = {
     Draw.GUTSHOT: "gutshot",
     Draw.OVERCARDS: "two overcards",
 }
+_TEN = RANK_INDEX["T"]
+_KING = RANK_INDEX["K"]
+_ACE = RANK_INDEX["A"]
 
 
-def _label(made: MadeTier, draws: set[Draw]) -> str:
-    parts = [_TIER_LABEL[made]]
-    # show stronger draws first
-    order = [Draw.FLUSH_DRAW, Draw.OPEN_ENDED, Draw.GUTSHOT, Draw.OVERCARDS, Draw.BACKDOOR_FLUSH_DRAW]
-    extra = [_DRAW_LABEL[d] for d in order if d in draws]
-    if made == MadeTier.HIGH_CARD and extra:
-        parts = []  # "two overcards + flush draw" reads better without "high card"
-    return " + ".join(parts + extra)
+@dataclass(frozen=True)
+class _Read:
+    made: MadeTier
+    hole_tier: MadeTier
+    own: tuple[int, ...]  # the rank indices of the hero's groups in the best five
+    board_plays: bool
 
 
-def pair_strength(hole: tuple[str, str] | list[str], board: list[str] | tuple[str, ...]) -> PairStrength:
-    """Rank a one-pair holding relative to the board (for grading continue/fold).
+def _read(hole: list[str], board: list[str]) -> _Read:
+    """Made tier, the hole's own part and whether the board plays (3-5 board cards)."""
+    board_ints = [_INT(c) for c in board]
+    score = _EVAL.evaluate(board_ints, [_INT(c) for c in hole])
+    made = _TREYS_TO_TIER[_EVAL.get_rank_class(score)]
+    board_plays = len(board) == 5 and _EVAL.evaluate(board_ints, []) == score
+    if board_plays:
+        return _Read(made, MadeTier.HIGH_CARD, (), True)
 
-    STRONG  = an overpair (pocket pair above the top board card) or top pair (a
-              hole card pairs the highest board card).
-    MEDIUM  = second/middle pair, or a pocket pair sitting between board cards.
-    WEAK    = bottom pair, or an underpair below the whole board.
-    NONE    = the pair isn't the hero's own (a board pair the hero doesn't add to)
-              or there's no board yet.
+    hole_ranks = {RANK_INDEX[c[0]] for c in hole}
+    counts = Counter(RANK_INDEX[c[0]] for c in hole + board)
+    if made == MadeTier.QUADS:
+        quad = next(r for r, n in counts.items() if n == 4)
+        return _Read(made, MadeTier.QUADS, (quad,), False) if quad in hole_ranks else _Read(made, MadeTier.HIGH_CARD, (), False)
+    if made >= MadeTier.STRAIGHT:
+        # Every card of a straight, flush or full house is part of it, and the board
+        # alone does not make it (or the board would play).
+        return _Read(made, made, (), False)
 
-    Kicker is deliberately ignored: every top pair and overpair grades STRONG
-    regardless of kicker, and how often a bot actually continues with one is set by
-    ``strong_pair_defend`` in its profile rather than here.
-    """
+    # Below a straight there is no flush, so rank counts fix the best five's groups.
+    if made == MadeTier.TRIPS:
+        playing = [r for r, n in counts.items() if n == 3]
+    elif made == MadeTier.TWO_PAIR:
+        playing = sorted((r for r, n in counts.items() if n == 2), reverse=True)[:2]
+    elif made == MadeTier.PAIR:
+        playing = [r for r, n in counts.items() if n == 2]
+    else:
+        playing = []
+    own = tuple(r for r in playing if r in hole_ranks)
+    if not own:
+        tier = MadeTier.HIGH_CARD
+    elif made == MadeTier.TRIPS:
+        tier = MadeTier.TRIPS
+    elif len(own) == 2:
+        tier = MadeTier.TWO_PAIR
+    else:
+        tier = MadeTier.PAIR
+    return _Read(made, tier, own, False)
+
+
+def _pair_kind(hole_ranks: list[int], board_ranks: list[int], pair: int) -> str:
+    """Where the hero's one pair sits: over / under / pocket (a pocket pair the
+    board does not match), or top / second / middle / bottom (a hole card pairing
+    a board card)."""
+    distinct = sorted(set(board_ranks), reverse=True)
+    if hole_ranks[0] == hole_ranks[1]:
+        if pair > distinct[0]:
+            return "over"
+        if pair < distinct[-1]:
+            return "under"
+        return "pocket"
+    idx = distinct.index(pair)
+    if idx == 0:
+        return "top"
+    if idx == len(distinct) - 1 and len(distinct) >= 3:
+        return "bottom"
+    if idx == 1:
+        return "second"
+    return "middle"
+
+
+def _made_label(hole: list[str], board: list[str], rd: _Read) -> str:
+    hole_ranks = [RANK_INDEX[c[0]] for c in hole]
+    board_ranks = [RANK_INDEX[c[0]] for c in board]
+    high = max(hole_ranks)
+    tier = rd.hole_tier
+    if tier == MadeTier.HIGH_CARD:
+        if rd.made == MadeTier.HIGH_CARD:
+            return f"{_WORD[high]} high"
+        return f"board {_BOARD_TIER[rd.made]}, {_WORD[high]} kicker"
+    if tier == MadeTier.PAIR:
+        pair = rd.own[0]
+        kind = _pair_kind(hole_ranks, board_ranks, pair)
+        if kind == "pocket":
+            text = f"pocket {_PLURAL[pair]}"
+        elif kind == "over":
+            text = "overpair"
+        elif kind == "under":
+            text = "underpair"
+        elif kind == "top":
+            kicker = hole_ranks[1] if hole_ranks[0] == pair else hole_ranks[0]
+            if kicker == _ACE or (kicker == _KING and pair == _ACE):
+                text = "top pair, top kicker"
+            elif kicker >= _TEN:
+                text = "top pair, good kicker"
+            else:
+                text = "top pair, weak kicker"
+        else:
+            text = f"{kind} pair"
+        if len(set(board_ranks)) < len(board_ranks):
+            text += " on a paired board"
+        return text
+    if tier == MadeTier.TWO_PAIR:
+        top_two = sorted(set(board_ranks), reverse=True)[:2]
+        return "top two pair" if sorted(rd.own, reverse=True) == top_two else "two pair"
+    if tier == MadeTier.TRIPS:
+        return "set" if hole_ranks[0] == hole_ranks[1] else "trips"
+    if tier == MadeTier.FLUSH:
+        return "nut flush" if _holds_nut_flush(hole, board) else "flush"
+    return _OWN_TIER[tier]
+
+
+def _holds_nut_flush(hole: list[str], board: list[str]) -> bool:
+    """The hole holds the highest rank of the flush suit that is not on the board."""
+    suit = Counter(c[1] for c in hole + board).most_common(1)[0][0]
+    on_board = {RANK_INDEX[c[0]] for c in board if c[1] == suit}
+    missing = max(r for r in range(13) if r not in on_board)
+    return any(c[1] == suit and RANK_INDEX[c[0]] == missing for c in hole)
+
+
+def classify(hole: tuple[str, str] | list[str], board: Sequence[str] = ()) -> HandClass:
+    """Classify a holding. ``board`` may be 0 (preflop), 3, 4, or 5 cards."""
+    hole = list(hole)
+    board = list(board)
+
+    # Preflop: the labels are unchanged.
+    if len(board) < 3:
+        if hole[0][0] == hole[1][0]:
+            return HandClass(MadeTier.PAIR, frozenset(), f"pocket {hole[0][0]}s", hole_tier=MadeTier.PAIR)
+        return HandClass(MadeTier.HIGH_CARD, frozenset(), "high card")
+
+    rd = _read(hole, board)
+    ds = hole_draws(hole, board)
+    draws: set[Draw] = set()
+    if ds.flush:
+        draws.add(Draw.FLUSH_DRAW)
+    if ds.oesd:
+        draws.add(Draw.OPEN_ENDED)
+    if ds.gutshot:
+        draws.add(Draw.GUTSHOT)
+    if ds.overcards:
+        draws.add(Draw.OVERCARDS)
+    if ds.backdoor_flush:
+        draws.add(Draw.BACKDOOR_FLUSH_DRAW)
+
+    parts = [_made_label(hole, board, rd)]
+    for d in _DRAW_ORDER:
+        if d in draws:
+            parts.append("nut flush draw" if d is Draw.FLUSH_DRAW and ds.nut_flush else _DRAW_LABEL[d])
+    return HandClass(
+        made=rd.made,
+        draws=frozenset(draws),
+        label=" + ".join(parts),
+        hole_tier=rd.hole_tier,
+        nut_flush_draw=ds.nut_flush,
+        board_plays=rd.board_plays,
+    )
+
+
+_PAIR_STRENGTH = {
+    "over": PairStrength.STRONG,
+    "top": PairStrength.STRONG,
+    "pocket": PairStrength.MEDIUM,
+    "second": PairStrength.MEDIUM,
+    "middle": PairStrength.MEDIUM,
+    "under": PairStrength.WEAK,
+    "bottom": PairStrength.WEAK,
+}
+
+
+def pair_strength(hole: tuple[str, str] | list[str], board: Sequence[str]) -> PairStrength:
+    """Rank the hero's own one-pair holding relative to the board (for grading
+    continue/fold). NONE unless the hole cards make exactly one pair that plays
+    (``hole_tier`` PAIR): a board pair, a counterfeited pair and two pair or better
+    all give NONE. Kicker is ignored: every top pair and overpair is STRONG."""
     hole = list(hole)
     board = list(board)
     if len(board) < 3:
         return PairStrength.NONE
-    hole_ranks = [RANK_INDEX[c[0]] for c in hole]
-    board_ranks = sorted({RANK_INDEX[c[0]] for c in board}, reverse=True)
-    top_board = board_ranks[0]
-
-    if hole_ranks[0] == hole_ranks[1]:  # pocket pair
-        pr = hole_ranks[0]
-        if pr > top_board:
-            return PairStrength.STRONG          # overpair
-        if pr < board_ranks[-1]:
-            return PairStrength.WEAK            # underpair to the whole board
-        return PairStrength.MEDIUM             # pocket between board cards
-
-    matched = [r for r in board_ranks if r in hole_ranks]
-    if not matched:
-        return PairStrength.NONE               # pair is on the board, not ours
-    top_matched = max(matched)
-    if top_matched == top_board:
-        return PairStrength.STRONG             # top pair (kicker ignored, see above)
-    if len(board_ranks) > 1 and top_matched == board_ranks[1]:
-        return PairStrength.MEDIUM             # second pair
-    return PairStrength.WEAK                    # third pair or lower
+    rd = _read(hole, board)
+    if rd.hole_tier != MadeTier.PAIR:
+        return PairStrength.NONE
+    kind = _pair_kind([RANK_INDEX[c[0]] for c in hole], [RANK_INDEX[c[0]] for c in board], rd.own[0])
+    return _PAIR_STRENGTH[kind]

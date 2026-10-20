@@ -7,11 +7,16 @@ Supports the standard notation used in STRATEGY.md:
     offsuit          "KQo", "ATo+", "KTo+"
     bare (both)      "AK"            -> AKs and AKo
     explicit combo   "AhKs"          -> just that combo
+    connectors       "T9s-54s", "J9s-64s", "KQo-JTo"
+    weights          "AKo:0.5, AA"   -> parse_weighted: {combo: weight}
 
 "+" fixes the higher card and raises the kicker up to one below it (so "ATs+" is
-ATs, AJs, AQs, AKs; "TT+" is TT..AA). A "X-Y" range walks between the endpoints.
-This is standard hand notation, not GTO frequency data — it just enumerates
-combos.
+ATs, AJs, AQs, AKs; "TT+" is TT..AA). A "X-Y" range walks between the endpoints:
+pairs walk the pair, endpoints with the same high card walk the kicker, and
+connectors walk both cards down together, which needs the same gap and the same
+suitedness at both ends. A token may end in ":w" with w in (0, 1]; when a combo
+appears twice the larger weight wins. This is standard hand notation, not GTO
+frequency data — it just enumerates combos.
 """
 
 from __future__ import annotations
@@ -98,10 +103,18 @@ def _parse_dash(token: str) -> set[Combo]:
         for idx in range(min(ea.hi, eb.hi), max(ea.hi, eb.hi) + 1):
             out |= _pair_combos(idx)
         return out
-    if ea.hi != eb.hi or ea.suited != eb.suited:
+    if ea.is_pair or eb.is_pair or ea.suited != eb.suited:
         raise ValueError(f"endpoints don't line up: {token!r}")
-    for lo in range(min(ea.lo, eb.lo), max(ea.lo, eb.lo) + 1):
-        out |= _expand(ea.hi, lo, ea.suited)
+    if ea.hi == eb.hi:  # a kicker walk: "A5s-A2s"
+        for lo in range(min(ea.lo, eb.lo), max(ea.lo, eb.lo) + 1):
+            out |= _expand(ea.hi, lo, ea.suited)
+        return out
+    # A connector walk: "T9s-54s" steps both cards down together, keeping the gap.
+    if ea.hi - ea.lo != eb.hi - eb.lo:
+        raise ValueError(f"connector endpoints need the same gap: {token!r}")
+    top = ea if ea.hi > eb.hi else eb
+    for step in range(abs(ea.hi - eb.hi) + 1):
+        out |= _expand(top.hi - step, top.lo - step, ea.suited)
     return out
 
 
@@ -124,12 +137,44 @@ def parse_token(token: str) -> set[Combo]:
     return _expand(ep.hi, ep.lo, ep.suited)
 
 
-def parse_range(text: str) -> set[Combo]:
-    """Parse a comma-separated range string into a set of concrete combos."""
-    combos: set[Combo] = set()
+def _split_weight(token: str) -> tuple[str, float]:
+    """``"AKo:0.5"`` -> ``("AKo", 0.5)``; a token without ``:w`` weighs 1.0."""
+    if ":" not in token:
+        return token, 1.0
+    core, _, text = token.rpartition(":")
+    try:
+        weight = float(text)
+    except ValueError:
+        raise ValueError(f"bad weight in range token: {token!r}") from None
+    if not 0.0 < weight <= 1.0:  # also rejects nan and inf
+        raise ValueError(f"a weight must be in (0, 1]: {token!r}")
+    core = core.strip()
+    if not core:
+        raise ValueError(f"bad range token: {token!r}")
+    return core, weight
+
+
+def parse_weighted(text: str) -> dict[Combo, float]:
+    """Parse a comma-separated range string whose tokens may end in ``:w``, with
+    w in (0, 1] (default 1.0), into ``{combo: weight}``. A combo named twice keeps
+    the larger weight. The order is the tokens' order, combos sorted within each
+    token, so it never depends on Python's string hash."""
+    out: dict[Combo, float] = {}
     for raw in text.split(","):
-        combos |= parse_token(raw)
-    return combos
+        raw = raw.strip()
+        if not raw:
+            continue
+        core, weight = _split_weight(raw)
+        for combo in sorted(parse_token(core)):
+            if weight > out.get(combo, 0.0):
+                out[combo] = weight
+    return out
+
+
+def parse_range(text: str) -> set[Combo]:
+    """Parse a comma-separated range string into a set of concrete combos (the
+    weighted syntax is accepted; every combo with a weight is in the set)."""
+    return set(parse_weighted(text))
 
 
 def combos_in_range(text: str, dead: tuple[str, ...] = ()) -> set[Combo]:

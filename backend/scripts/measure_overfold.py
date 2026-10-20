@@ -16,7 +16,9 @@ import argparse
 from collections import defaultdict
 
 from poker.engine import ActionType
-from poker.math import MadeTier, classify
+from poker.math import MadeTier
+# The v1 bots' own (frozen) classifier: this measures v1 knobs.
+from poker.math.classify_legacy import classify
 from poker.sim.runner import run
 
 

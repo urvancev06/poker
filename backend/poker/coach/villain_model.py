@@ -29,7 +29,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..math.cards import Combo
-from ..math.classify import Draw, MadeTier, classify
+from ..math.classify import Draw, MadeTier
+# BET_COMPOSITION was measured with this labeller (scripts/measure_bet_ranges.py).
+# P2.8 moves both to the hole-aware classify and re-measures.
+from ..math.classify_legacy import classify
 from ..math.ranges import parse_token
 from ..bots.preflop_strength import top_fraction
 
