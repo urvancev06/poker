@@ -35,3 +35,16 @@ def test_pyproject_references_only_files_inside_the_project():
         path = (BACKEND / rel).resolve()
         assert path.is_relative_to(BACKEND), f"{rel} is outside {BACKEND}"
         assert path.is_file(), f"{rel} does not exist"
+
+
+def test_pokerkit_is_pinned_to_the_version_installed():
+    """The engine leans on how one PokerKit version behaves inside (it replaces
+    the state's deck and relies on the burn order), and the frozen v1 fingerprint
+    was taken on it: an upgrade must be a deliberate change, never a resolver's."""
+    import re
+    from importlib.metadata import version
+
+    project = tomllib.loads((BACKEND / "pyproject.toml").read_text())["project"]
+    pins = [d for d in project["dependencies"] if re.split(r"[\s<>=!~;\[]", d, maxsplit=1)[0] == "pokerkit"]
+    assert pins == ["pokerkit==0.7.6"], pins
+    assert version("pokerkit") == "0.7.6"

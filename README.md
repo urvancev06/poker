@@ -180,23 +180,23 @@ Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_
 
 ## What the tests assert
 
-**217 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+**234 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
 majority check a specific numeric or structural property:
 
 | Area | Tests | Examples of what is asserted |
 |---|---|---|
 | `test_math.py` | 30 | AA vs KK preflop equity, flush-draw equity, made flush dominance, win/tie/lose fractions summing to 1, required-equity worked examples, range parsing and blocker removal, no combo containing a duplicate card |
 | `test_engine.py` | 19 | hand-ranking order, split pots when the board plays, three-way side-pot distribution, legal actions by position and facing bets, short-stack all-in, illegal actions rejected, and **chip conservation across randomised complete hands** |
-| `test_ledger.py` | 20 | the chip ledger against PokerKit's own pot at every step, the uncalled bet returned to the right seat, an all-in for less, the big blind's walk, **conservation over randomised short-stack hands**, what a call can win once side pots cap it, and the decision facts (who acts after a call, whether it ends the betting) |
+| `test_ledger.py` | 25 | the chip ledger against PokerKit's own pot at every step and against its own record of what each seat put in and took out, with and without rake, the uncalled bet returned to the right seat (also when the blinds alone end the betting), an all-in for less, the big blind's walk, **conservation over randomised short-stack hands**, what a call can win once side pots cap it, and the decision facts (who acts after a call, whether it ends the betting) |
 | `test_lab_and_cfr.py` | 14 | the three CFR checks above, plus the lab's report structure, hand caps, and that loosening a calldown knob actually raises the measured WTSD |
-| `test_jobs.py`, `test_lab_jobs_api.py` | 19 | Lab runs as background jobs: lifecycle, progress, cancel, a 404 once the server has forgotten a job, input validation, a job in a real process pool, and `/health` answering quickly while a job runs |
+| `test_jobs.py`, `test_lab_jobs_api.py` | 28 | Lab runs as background jobs: lifecycle, progress, cancel, a 404 once the server has forgotten a job, input validation (2 to 6 seats), a job in a real process pool, a killed worker (during a job or between jobs) that leaves later jobs working, a failed job that drops its other shards, and `/health` answering quickly while a job runs |
 | `test_api.py` | 11 | endpoint contracts end to end |
 | `test_coach.py` | 12 | that a hand well ahead raises rather than just calling - judged on equity, not on the made tier alone - that the coach never suggests a bet or raise the engine would reject, that a marginal out-of-position call flips to a fold once equity is realised rather than raw, and that every verdict string carries a tone |
 | `test_prices_b6_b7.py` | 11 | a short stack priced on what it can win, an all-in call priced exactly while a player still acts behind, "no more betting" said only when nobody can bet again, the coach and the review agreeing on every priced decision, and old 1/2 rows reviewed exactly as before |
-| `test_rng.py`, `test_sim_streams.py`, `test_sim_shards.py`, `test_v1_frozen.py` | 20 | seeded streams: a pinned shuffle, no dependence on the global RNG, a sharded run equal to one process for any worker count, and the pinned fingerprint of the v1 bots |
+| `test_rng.py`, `test_sim_streams.py`, `test_sim_shards.py`, `test_v1_frozen.py` | 21 | seeded streams: a pinned shuffle, no dependence on the global RNG, a sharded run equal to one process for any worker count, Lab workers at low CPU priority, and the pinned fingerprint of the v1 bots |
 | `test_session_*.py`, `test_stats_mixed_blinds.py` | 18 | a seeded session replays exactly, the stored pot is the ledger pot, the seed never leaves the server, concurrent requests on one session, the 5/10 defaults, and bb/100 counted in each hand's own big blinds across 1/2 and 5/10 |
 | `test_villain_model.py` | 8 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, the river bluff slice is low and ordered by archetype, and the measured composition matches the recorded one |
-| remainder | 35 | bot/sim behaviour, implied-odds spots, leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging |
+| remainder | 37 | bot/sim behaviour, implied-odds spots (the set-value note in bb), leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging and the PokerKit pin |
 
 Chip conservation is the one I would point at first: it plays randomised hands to
 completion and asserts that chips are neither created nor destroyed, which catches a
@@ -227,7 +227,7 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"     # the poker package (editable), pytest, httpx
-.venv/bin/python -m pytest                        # 217 tests, about 4 minutes
+.venv/bin/python -m pytest                        # 234 tests, about 4 minutes
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
@@ -243,7 +243,8 @@ The frontend expects the API at `http://localhost:8000`; point it elsewhere with
 
 Sessions are held in process memory, so the API must run with **exactly one worker**; it
 refuses to start otherwise. Lab simulations run beside it in a pool of two worker
-processes, so a long run does not hold up the table; their job registry is in memory too,
+processes at low CPU priority, so a long run does not hold up the table; if a worker
+dies, that run fails and the next one starts a fresh pool. Their job registry is in memory too,
 so a restart forgets a running job and the Lab says so. The database path is set with
 `POKER_DB_URL` and defaults to `sqlite:///poker.db`.
 

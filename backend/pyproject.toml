@@ -16,7 +16,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "pokerkit",   # game-state machine + hand evaluation (do not hand-roll)
+    "pokerkit==0.7.6",  # game-state machine + hand evaluation (do not hand-roll); pinned:
+                        # the engine relies on its internals (deck replacement, burn
+                        # order) and the frozen v1 fingerprint was taken on it
     "treys",      # fast pure-Python evaluator for Monte Carlo equity
     "fastapi",    # the API the frontend talks to
     "uvicorn",    # ASGI server (plain build; uvloop/httptools extras skipped for 3.14 wheel safety)
