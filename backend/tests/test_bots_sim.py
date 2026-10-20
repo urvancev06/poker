@@ -11,6 +11,7 @@ import pytest
 
 from poker.bots import Bot, archetypes, build_context
 from poker.engine import Hand
+from poker.rng import shuffled_deck, stream
 from poker.sim import StatsAccumulator, play_hand, run
 
 
@@ -28,9 +29,11 @@ def test_strategy_always_returns_a_legal_action():
     """Fuzz: every decision the bots make must be legal in the engine."""
     bots = [Bot(archetypes.make(n)) for n in ["nit", "tag", "lag", "station", "maniac", "tag"]]
     rng = random.Random(0)
-    random.seed(0)
-    for _ in range(300):
-        hand = Hand.new(table_size=6, blinds=(1, 2), starting_stacks=200)
+    for i in range(300):
+        hand = Hand.new(
+            table_size=6, blinds=(1, 2), starting_stacks=200,
+            deck=shuffled_deck(stream(0, "deck", i)),
+        )
         guard = 0
         while not hand.is_over and guard < 500:
             guard += 1
@@ -53,9 +56,8 @@ def test_strategy_always_returns_a_legal_action():
 def test_simulation_conserves_chips():
     bots = [Bot(archetypes.make(n)) for n in ["nit", "tag", "lag", "station", "maniac", "tag"]]
     rng = random.Random(1)
-    random.seed(1)
     for h in range(200):
-        summaries = play_hand(bots, button=h % 6, rng=rng)
+        summaries = play_hand(bots, button=h % 6, rng=rng, deck=shuffled_deck(stream(1, "deck", h)))
         assert sum(s.net for s in summaries) == 0  # zero-sum each hand
 
 

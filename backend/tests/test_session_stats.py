@@ -10,6 +10,7 @@ from poker.bots import Bot, archetypes, build_context
 from poker.engine import Action, ActionType, Hand
 from poker.game import GameSession
 from poker.game.session import HUD_MIN_HANDS
+from poker.rng import shuffled_deck, stream
 from poker.sim.hero_stats import hero_report
 from poker.sim.stats import StatsAccumulator
 from poker.sim.summarize import summarize_hand
@@ -18,13 +19,15 @@ from poker.sim.summarize import summarize_hand
 def test_summarizer_reproduces_archetype_ordering():
     lineup = ["nit", "tag", "lag", "station", "maniac", "tag"]
     bots = [Bot(archetypes.make(x)) for x in lineup]
-    random.seed(0)
     rng = random.Random(123)
     acc = StatsAccumulator()
     n = 6
     for h in range(1500):
         s2p = [(h % n + 1 + k) % n for k in range(n)]
-        hand = Hand.new(table_size=n, blinds=(1, 2), starting_stacks=200)
+        hand = Hand.new(
+            table_size=n, blinds=(1, 2), starting_stacks=200,
+            deck=shuffled_deck(stream(0, "deck", h)),
+        )
         while not hand.is_over and hand.actor is not None:
             hand.apply(bots[s2p[hand.actor]].act(build_context(hand, 2), rng))
         summ = summarize_hand(hand, s2p, n)

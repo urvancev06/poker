@@ -10,6 +10,7 @@ players to seats per hand: seat k holds player ``(button + 1 + k) % n``.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from ..bots import Bot, build_context
@@ -47,21 +48,39 @@ class PlayerHandSummary:
     net: int = 0
 
 
+# Decision randomness: one shared generator, or a factory giving decision k of
+# player p its own stream (``(p, k) -> Random``).
+DecisionRng = random.Random | Callable[[int, int], random.Random]
+
+
 def play_hand(
     bots: list[Bot],
     button: int,
-    rng: random.Random,
+    rng: DecisionRng,
     blinds: tuple[int, int] = (1, 2),
     starting_stack: int = 200,
     seed: int | None = None,
     observer=None,
+    deck: Sequence[str] | None = None,
 ) -> list[PlayerHandSummary]:
+    """Play one hand. The deal comes from ``deck`` (or ``seed``, see
+    ``Hand.new``); decisions draw from ``rng``."""
     n = len(bots)
     bb = blinds[1]
     seat_to_player = [(button + 1 + k) % n for k in range(n)]
     player_to_seat = {p: s for s, p in enumerate(seat_to_player)}
+    decisions_made = [0] * n
 
-    hand = Hand.new(table_size=n, blinds=blinds, starting_stacks=starting_stack, seed=seed)
+    def rng_for(player: int) -> random.Random:
+        if isinstance(rng, random.Random):
+            return rng
+        k = decisions_made[player]
+        decisions_made[player] += 1
+        return rng(player, k)
+
+    hand = Hand.new(
+        table_size=n, blinds=blinds, starting_stacks=starting_stack, seed=seed, deck=deck
+    )
     summ = {p: PlayerHandSummary(player=p, archetype=bots[p].name) for p in range(n)}
 
     opener_position: str | None = None
@@ -74,7 +93,7 @@ def play_hand(
             break
         player = seat_to_player[seat]
         ctx = build_context(hand, bb)
-        action = bots[player].act(ctx, rng)
+        action = bots[player].act(ctx, rng_for(player))
         # Optional measurement hook (e.g. bet-range composition); it must stay
         # read-only, since the validation gate runs with it off.
         if observer is not None:

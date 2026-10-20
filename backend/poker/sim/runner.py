@@ -1,15 +1,18 @@
 """Run a headless simulation of N hands among a fixed lineup, accumulating stats.
 
-Deals come from Python's global RNG (seeded once for reproducibility); bot
-decisions use a separate RNG so the two streams are independent and stable.
+Every random draw comes from a seeded stream (``poker.rng``): hand h is dealt
+from ``stream(seed, "deck", h)`` and decision k of player p in hand h draws from
+``stream(seed, "decision", h, p, k)``. A run therefore depends only on its
+arguments, never on the global ``random`` state or on anything else running in
+the process, and any hand can be replayed on its own.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import random
 
 from ..bots import Bot, archetypes
+from ..rng import shuffled_deck, stream
 from .stats import StatsAccumulator
 from .table import play_hand
 
@@ -48,15 +51,17 @@ def run(
     bots = [build(name) for name in lineup]
     n = len(bots)
 
-    random.seed(seed)               # deal stream
-    decision_rng = random.Random(seed ^ 0x9E3779B9)  # bot-decision stream
     acc = StatsAccumulator(big_blind=blinds[1])
 
     for h in range(hands):
         button = h % n
+
+        def decision_rng(player: int, k: int, h: int = h):
+            return stream(seed, "decision", h, player, k)
+
         summaries = play_hand(
             bots, button, decision_rng, blinds=blinds, starting_stack=starting_stack,
-            observer=observer,
+            observer=observer, deck=shuffled_deck(stream(seed, "deck", h)),
         )
         acc.add_hand(summaries)
         if progress_every and (h + 1) % progress_every == 0:
