@@ -20,7 +20,6 @@ means the error shrank; a negative one means it only moved into over-folding.
 from __future__ import annotations
 
 import argparse
-import random
 from collections import defaultdict
 
 from treys import Card, Evaluator
@@ -29,6 +28,7 @@ from poker.bots import Bot, archetypes, build_context
 from poker.coach.villain_model import condition_range, static_range, villain_line
 from poker.engine import Hand
 from poker.math.equity import equity
+from poker.rng import shuffled_deck, stream
 
 _EVAL = Evaluator()
 _LINEUP = ["nit", "tag", "lag", "station", "maniac", "tag"]
@@ -43,14 +43,15 @@ def _won(hero, villain, board) -> float:
 def run_probe(hands: int, seed: int = 0, eq_trials: int = 400):
     bots = [Bot(archetypes.make(n)) for n in _LINEUP]
     n = len(bots)
-    decision_rng = random.Random(seed ^ 0x9E3779B9)
-    random.seed(seed)  # deal stream (PokerKit shuffles the global RNG)
-
     rows = []                                   # (archetype, actual, old, new)
     for h in range(hands):
         button = h % n
         seat_to_player = [(button + 1 + k) % n for k in range(n)]
-        hand = Hand.new(table_size=n, blinds=(1, 2), starting_stacks=200)
+        decisions = [0] * n  # per-player decision number k, for the decision stream
+        hand = Hand.new(
+            table_size=n, blinds=(1, 2), starting_stacks=200,
+            deck=shuffled_deck(stream(seed, "deck", h)),
+        )
         while not hand.is_over:
             seat = hand.actor
             if seat is None:
@@ -72,7 +73,10 @@ def run_probe(hands: int, seed: int = 0, eq_trials: int = 400):
                         cr = condition_range(varch, board, role, postflop, dead)
                         new = equity(hero, board, [cr.combos], trials=eq_trials, seed=0).equity
                         rows.append((varch, _won(hero, vhole, board), old, new))
-            hand.apply(bots[seat_to_player[seat]].act(ctx, decision_rng))
+            player = seat_to_player[seat]
+            rng = stream(seed, "decision", h, player, decisions[player])
+            decisions[player] += 1
+            hand.apply(bots[player].act(ctx, rng))
     return rows
 
 
