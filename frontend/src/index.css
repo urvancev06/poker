@@ -24,6 +24,7 @@
   --dust: #86868b; /* tertiary text, 5.8:1 */
   --dust-sheet: #98989d; /* tertiary text on the #1c1c1e sheet, 5.9:1 */
   --signal: #2997ff; /* interactive, focus, and the atmosphere's light, 6.96:1 */
+  --limb-light: 180 216 255; /* the limb's light catching an edge, as channels: rgb(var(--limb-light) / a); lib/slabLight LIMB_LIGHT */
   --win: #30d158; /* 10.4:1 */
   --loss: #ff453a; /* 6.2:1 */
   --close: #ffd60a; /* 14.9:1 */

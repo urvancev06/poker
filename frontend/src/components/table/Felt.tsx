@@ -10,7 +10,8 @@
  */
 import { memo, useId, useMemo, type RefObject } from 'react'
 import type { SeatModel } from '../../lib/tableModel'
-import { acrossStops, edgeLight, lightAcross, wallFills, wallShade } from '../../lib/slabLight'
+import { useDeck } from '../../lib/prefsContext'
+import { acrossStops, edgeLight, LIMB_LIGHT, lightAcross, wallFills, wallShade } from '../../lib/slabLight'
 import { boardU, slabSide, type TableLayout, type UV, VILLAIN_SLOTS } from '../../lib/tableLayout'
 import { Card } from '../Card'
 
@@ -29,12 +30,11 @@ export function FlipCard({ code }: { code: string }) {
   )
 }
 
-const WALL_BANDS = 14
+/** Bands down the wall: enough that each is under a pixel at the middle of the near rim
+ * (so the ramp reads smooth, not stepped); each is stroked in its own fill, so the edges
+ * where they meet overlap and leave no anti-aliasing seam. */
+const WALL_BANDS = 36
 const WALL_FILLS = wallFills(WALL_BANDS)
-
-/** The browser draws the slab's superellipse only where corner-shape is supported;
- * elsewhere it is a plain ellipse, and the side must follow the same outline. */
-const ELLIPSE_ONLY = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && !CSS.supports('corner-shape', 'superellipse(1.35)')
 
 /**
  * The slab's side wall, drawn in viewport px under the 3D object (the top paints over all
@@ -45,7 +45,8 @@ const ELLIPSE_ONLY = typeof CSS !== 'undefined' && typeof CSS.supports === 'func
  */
 export const SlabSide = memo(function SlabSide({ L, lightX }: { L: TableLayout; lightX: number }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
-  const side = useMemo(() => slabSide(L, WALL_BANDS, ELLIPSE_ONLY ? 2 : undefined), [L])
+  // the outline the browser draws (L.outline: a rounded rectangle without corner-shape)
+  const side = useMemo(() => slabSide(L, WALL_BANDS), [L])
   const { x, y, w, h } = side.box
   const pad = 3
   const lx = lightAcross(lightX, x, w)
@@ -61,12 +62,12 @@ export const SlabSide = memo(function SlabSide({ L, lightX }: { L: TableLayout; 
         </linearGradient>
         <linearGradient id={`${uid}e`} gradientUnits="userSpaceOnUse" x1={x} y1={0} x2={x + w} y2={0}>
           {edge.map(([o, a]) => (
-            <stop key={o} offset={o} stopColor="#b4dcff" stopOpacity={a} />
+            <stop key={o} offset={o} stopColor={LIMB_LIGHT} stopOpacity={a} />
           ))}
         </linearGradient>
       </defs>
       {side.bands.map((d, k) => (
-        <path key={k} d={d} fill={WALL_FILLS[k]} />
+        <path key={k} d={d} fill={WALL_FILLS[k]} stroke={WALL_FILLS[k]} strokeWidth={0.6} strokeLinejoin="round" />
       ))}
       <path d={side.bands[0]} fill={`url(#${uid}f)`} />
       <path d={side.edge} fill="none" stroke={`url(#${uid}e)`} strokeWidth={0.9 + 0.6 * L.s} strokeLinecap="round" />
@@ -99,6 +100,7 @@ export interface FeltProps {
 export function Felt({ L, board, villains, hero, ghosts }: FeltProps) {
   const g = L.g
   const n = board.length
+  const reveal = useDeck().reveal
   return (
     <div className="felt-top">
       {board.map((code, i) => (
@@ -111,7 +113,13 @@ export function Felt({ L, board, villains, hero, ghosts }: FeltProps) {
         const shown = !!v?.cards
         const sg = g.seats[k]
         return (
-          <div key={k} className={`on vcards ${shown ? 'is-shown' : ''}`} data-backs={k} hidden={!v || (v.folded && !shown)} style={at(shown ? sg.rev : sg.cards)}>
+          <div
+            key={k}
+            className={`on vcards ${shown ? 'is-shown' : ''}`}
+            data-backs={k}
+            hidden={!v || (v.folded && !shown)}
+            style={{ ...at(shown ? sg.rev : sg.cards), ['--reveal' as string]: reveal }}
+          >
             {v?.cards ? (
               v.cards.map((c) => <FlipCard key={c} code={c} />)
             ) : (

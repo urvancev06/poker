@@ -7,8 +7,9 @@
 // never scale or blur. Everything scales linearly with one number, s.
 //
 // Ported from the approved Stage prototype (round2/stage/table.js, section 2), plus:
-//   - bets sit on the seat-to-pot vector, clear of the full board, the backs and the pot
-//     block (betAnchors);
+//   - bets sit on the seat-to-pot vector, clear of the full board and the pot block, with
+//     their air from the backs and from each other kept on screen (betAnchor, betAir);
+//   - the slab's outline as the browser draws it (a rounded rectangle without corner-shape);
 //   - the street label has one fixed place (just above the pot block), in every state;
 //   - the top-centre seat's showdown reveal sits higher, so it never meets the board;
 //   - every seat lays its two backs the same distance inside the rim (backsBox);
@@ -64,19 +65,19 @@ export const GEO: Readonly<Record<GeoKind, Geo>> = {
     aspect: 0.56,
     persp: 1800,
     thick: 34,
-    card: 0.114,
+    card: 0.11,
     gap: 0.011,
     board: [0.5, 0.43],
     pot: [0.5, 0.72],
-    back: 0.05,
-    chip: 0.026,
+    back: 0.046,
+    chip: 0.024,
     rev: 0.068,
     heroBet: [0.5, 0.9],
     seats: {
       1: { side: 'left', cards: [0.054, 0.5], rev: [0.08, 0.5], betSide: 'right', bet: [0.235, 0.66] },
-      2: { side: 'top', u: 0.25, cards: [0.25, 0.15], rev: [0.25, 0.16], betSide: 'right', bet: [0.34, 0.24] },
-      3: { side: 'top', u: 0.5, cards: [0.5, 0.112], rev: [0.5, 0.115], betSide: 'right', bet: [0.6, 0.2] },
-      4: { side: 'top', u: 0.75, cards: [0.75, 0.15], rev: [0.75, 0.16], betSide: 'left', bet: [0.66, 0.24] },
+      2: { side: 'top', u: 0.25, cards: [0.25, 0.15], rev: [0.26, 0.165], betSide: 'right', bet: [0.34, 0.24] },
+      3: { side: 'top', u: 0.5, cards: [0.5, 0.108], rev: [0.5, 0.125], betSide: 'right', bet: [0.6, 0.2] },
+      4: { side: 'top', u: 0.75, cards: [0.75, 0.15], rev: [0.74, 0.165], betSide: 'left', bet: [0.66, 0.24] },
       5: { side: 'right', cards: [0.946, 0.5], rev: [0.92, 0.5], betSide: 'left', bet: [0.765, 0.66] },
     },
   },
@@ -87,19 +88,19 @@ export const GEO: Readonly<Record<GeoKind, Geo>> = {
     thick: 36,
     card: 0.168,
     gap: 0.016,
-    board: [0.5, 0.45],
+    board: [0.5, 0.465],
     pot: [0.5, 0.72],
-    back: 0.08,
-    chip: 0.05,
+    back: 0.074,
+    chip: 0.044,
     rev: 0.125,
     heroBet: [0.5, 0.905],
     seats: {
-      1: { side: 'corner-left', cards: [0.2, 0.8], rev: [0.22, 0.75], betSide: 'right', bet: [0.12, 0.64] },
-      2: { side: 'top', u: 0.16, cards: [0.26, 0.16], rev: [0.29, 0.155], betSide: 'right', bet: [0.31, 0.25] },
-      3: { side: 'top', u: 0.5, cards: [0.5, 0.105], rev: [0.5, 0.11], betSide: 'right', bet: [0.62, 0.2] },
+      1: { side: 'corner-left', cards: [0.198, 0.802], rev: [0.225, 0.735], betSide: 'right', bet: [0.12, 0.655] },
+      2: { side: 'top', u: 0.16, cards: [0.28, 0.148], rev: [0.3, 0.185], betSide: 'right', bet: [0.31, 0.25] },
+      3: { side: 'top', u: 0.5, cards: [0.5, 0.105], rev: [0.5, 0.135], betSide: 'right', bet: [0.62, 0.2] },
       // the top three sit close on a phone: every top label reads to the right of its chip
-      4: { side: 'top', u: 0.84, cards: [0.74, 0.16], rev: [0.71, 0.155], betSide: 'right', bet: [0.69, 0.25] },
-      5: { side: 'corner-right', cards: [0.8, 0.8], rev: [0.78, 0.75], betSide: 'left', bet: [0.88, 0.64] },
+      4: { side: 'top', u: 0.84, cards: [0.72, 0.148], rev: [0.7, 0.185], betSide: 'right', bet: [0.69, 0.25] },
+      5: { side: 'corner-right', cards: [0.802, 0.802], rev: [0.775, 0.735], betSide: 'left', bet: [0.88, 0.655] },
     },
   },
 }
@@ -108,13 +109,34 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 /* ---------- the camera ---------- */
 
-/** The slab's corner: superellipse(1.35), |x|^n + |y|^n = 1. */
-const N_SUPER = Math.pow(2, 1.35)
+/**
+ * The slab's outline. Where the browser has corner-shape it is superellipse(1.35),
+ * |x|^n + |y|^n = 1; elsewhere a rounded rectangle (border-radius 37% / 50%), which follows
+ * the superellipse within a few px everywhere a card lies (a plain ellipse's corners are far
+ * rounder and would push the corner seats' cards over the rim).
+ */
+export type Outline = 'superellipse' | 'rounded'
+
+export const N_SUPER = Math.pow(2, 1.35)
+/** The rounded rectangle's corner radius across, a share of the width (Stage.css). */
+export const ROUNDED_RX = 0.37
+
+/** The outline the browser draws (Stage.css: the superellipse only under @supports). */
+export const slabOutline = (): Outline =>
+  typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && !CSS.supports('corner-shape', 'superellipse(1.35)') ? 'rounded' : 'superellipse'
 
 /** The far rim's v at u (the near rim is 1 - rimV(u)). */
-export function rimV(u: number): number {
+export function rimV(u: number, outline: Outline = 'superellipse'): number {
+  if (outline === 'rounded') {
+    const d = Math.max(0, ROUNDED_RX - u, u - (1 - ROUNDED_RX)) / ROUNDED_RX
+    return 0.5 - 0.5 * Math.sqrt(Math.max(0, 1 - d * d))
+  }
   return 0.5 - 0.5 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(2 * u - 1), N_SUPER)), 1 / N_SUPER)
 }
+
+/** The rim nearest the middle at u, of either outline: what a bet keeps clear of, so the bets
+ * lie the same in every browser. */
+const rimIn = (u: number) => Math.max(rimV(u, 'superellipse'), rimV(u, 'rounded'))
 
 /**
  * Table space (u, v, and z in px of the plane above it) to viewport px, for a plane at
@@ -261,37 +283,172 @@ export function betBox(g: Geo, at: UV, side: BetSide, labelU: number): BoxUV {
   return side === 'right' ? { ...chip, u1: chip.u1 + labelU } : { ...chip, u0: chip.u0 - labelU }
 }
 
-/** The widest bet label ("1,168"), 15 px type on a desktop, 14 on a phone. */
+/** The widest bet label ("1,168"), 15 px type on a desktop, 14 on a phone, and half the
+ * height of its ink (digits: about 0.36 em). */
 export const BET_LABEL_PX: Readonly<Record<GeoKind, number>> = { desk: 42, phone: 36 }
+export const BET_LABEL_INK_PX: Readonly<Record<GeoKind, number>> = { desk: 5.5, phone: 5 }
 
 /** Clearance kept between a bet and the board (table units across; v scales by aspect). */
 export const BET_CLEAR_U = 0.02
 
-/** Whether a bet (chip + label) at `at` clears the board, the backs, the pot block and the rim. */
-export function betClear(g: Geo, slot: VillainSlot, at: UV, pot: BoxUV, labelU: number): boolean {
+/* On screen, the far rim squashes table units (the tilt and the perspective), so the air
+   between a bet and the backs is kept in viewport px, as the camera draws them: the chip's
+   whole stack (its top disc stands above the felt) and the upright label's ink, against
+   the exact pair of backs and the lit near edge under them. */
+
+/** How high a chip's stack stands above the felt, px (Stage.css .chip__top translateZ). */
+export const chipStackZ = (s: number) => 4.8 * s + 1.2
+
+/** Air kept on screen, px: between a bet's chip (its whole stack) and any seat's backs, and
+ * its footprint on the felt (what the chip element's box measures) and any backs; between
+ * its label and any backs; between two bets; and the most asked of the board (where the
+ * table-space clearance would ask more, the far rim's squash makes it waste). */
+export const CHIP_AIR_PX = 6
+export const FOOT_AIR_PX = 8
+export const LABEL_AIR_PX = 4
+export const BET_AIR_PX = 4
+export const BOARD_AIR_PX = 4
+
+export interface ScreenRect {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** A box on the felt as the camera draws it (about the scene origin), raised by each z. */
+function screenRect(g: Geo, s: number, b: BoxUV, zs: readonly number[]): ScreenRect {
+  const r = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }
+  for (const z of zs)
+    for (const u of [b.u0, b.u1])
+      for (const v of [b.v0, b.v1]) {
+        const [x, y] = projectWith(g, s, 0, 0, u, v, z)
+        r.x0 = Math.min(r.x0, x)
+        r.x1 = Math.max(r.x1, x)
+        r.y0 = Math.min(r.y0, y)
+        r.y1 = Math.max(r.y1, y)
+      }
+  return r
+}
+
+/** Screen px between two rects: the distance between their nearest points (negative, the
+ * depth of the overlap, where they overlap). */
+export function rectGap(a: ScreenRect, b: ScreenRect): number {
+  const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1)
+  const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1)
+  return dx > 0 && dy > 0 ? Math.hypot(dx, dy) : Math.max(dx, dy)
+}
+
+/** A seat's two backs on screen, the lit near edge under them included. */
+export function backsRect(g: Geo, s: number, at: UV): ScreenRect {
+  const hu = (g.back * (1 + BACKS_OFFSET)) / 2
+  const hv = (g.back * 1.4) / g.aspect / 2
+  const r = screenRect(g, s, { u0: at[0] - hu, u1: at[0] + hu, v0: at[1] - hv, v1: at[1] + hv }, [0.6])
+  return { ...r, y1: r.y1 + 0.5 + 0.5 * s }
+}
+
+/** What a bet must keep clear of, at a layout's scale: the pot block, the label's size,
+ * every seat's backs and the bets already placed (on screen). */
+export interface BetRoom {
+  s: number
+  pot: BoxUV
+  /** The widest label and half its ink's height, px. */
+  label: number
+  ink: number
+  backs: readonly ScreenRect[]
+  taken?: readonly ScreenRect[]
+}
+
+export const betRoom = (L: Pick<TableLayout, 'g' | 'gk' | 's' | 'pot'>, taken?: readonly ScreenRect[]): BetRoom => ({
+  s: L.s,
+  pot: L.pot.box,
+  label: BET_LABEL_PX[L.gk],
+  ink: BET_LABEL_INK_PX[L.gk],
+  backs: VILLAIN_SLOTS.map((k) => backsRect(L.g, L.s, L.g.seats[k].cards)),
+  taken,
+})
+
+/** A bet on screen: its chip, from the base disc on the felt to the top of the stack, and
+ * its upright label on one side. */
+export function betRects(g: Geo, at: UV, side: BetSide, room: BetRoom): { chip: ScreenRect; foot: ScreenRect; label: ScreenRect } {
+  const { s } = room
+  const ru = g.chip / 2
+  const rv = g.chip / 2 / g.aspect
+  const disc = { u0: at[0] - ru, u1: at[0] + ru, v0: at[1] - rv, v1: at[1] + rv }
+  const chip = screenRect(g, s, disc, [0.6, 0.6 + chipStackZ(s)])
+  const foot = screenRect(g, s, disc, [0.6])
+  const [x, y] = projectWith(g, s, 0, 0, at[0], at[1], 0.6)
+  const off = (1000 * s * g.chip) / 2 + 8 // Stage.css .bet-label --gap
+  const x0 = side === 'right' ? x + off : x - off - room.label
+  return { chip, foot, label: { x0, x1: x0 + room.label, y0: y - room.ink, y1: y + room.ink } }
+}
+
+/** The least on-screen air between a bet's chip (its stack, and its footprint), and its
+ * label, and any seat's backs. */
+export function betAir(g: Geo, slot: VillainSlot, at: UV, room: BetRoom): { chip: number; foot: number; label: number } {
+  const { chip, foot, label } = betRects(g, at, g.seats[slot].betSide, room)
+  const out = { chip: Infinity, foot: Infinity, label: Infinity }
+  for (const b of room.backs) {
+    out.chip = Math.min(out.chip, rectGap(chip, b))
+    out.foot = Math.min(out.foot, rectGap(foot, b))
+    out.label = Math.min(out.label, rectGap(label, b))
+  }
+  return out
+}
+
+/** The board's clearance in v at a scale: the table-space one, but never more than
+ * BOARD_AIR_PX on screen at its far edge. */
+function boardClearV(g: Geo, s: number): number {
+  const v0 = boardBox(g).v0
+  const pxPerV = (projectWith(g, s, 0, 0, 0.5, v0)[1] - projectWith(g, s, 0, 0, 0.5, v0 - 0.01)[1]) / 0.01
+  return Math.min(BET_CLEAR_U / g.aspect, BOARD_AIR_PX / pxPerV)
+}
+
+/** Whether a bet (chip + label) at `at` clears the board, the pot block, the rim (of either
+ * outline the browser draws) and, on screen, every seat's backs and the bets already placed. */
+export function betClear(g: Geo, slot: VillainSlot, at: UV, room: BetRoom): boolean {
   const sg = g.seats[slot]
   const clearV = BET_CLEAR_U / g.aspect
-  const box = betBox(g, at, sg.betSide, labelU)
-  if (overlaps(box, grow(boardBox(g), BET_CLEAR_U, clearV))) return false
-  if (overlaps(box, grow(pot, BET_CLEAR_U * 0.5, clearV * 0.5))) return false
-  if (overlaps(box, grow(backsBox(g, sg.cards), BET_CLEAR_U * 0.5, clearV * 0.5))) return false
-  // inside the slab, with a margin from either rim
+  const box = betBox(g, at, sg.betSide, room.label / (1000 * room.s))
+  if (overlaps(box, grow(boardBox(g), BET_CLEAR_U, boardClearV(g, room.s)))) return false
+  if (overlaps(box, grow(room.pot, BET_CLEAR_U * 0.5, clearV * 0.5))) return false
   if (box.u0 < 0.03 || box.u1 > 0.97) return false
-  if (box.v0 < Math.max(rimV(box.u0), rimV(box.u1)) + 0.02) return false
-  if (box.v1 > 1 - Math.max(rimV(box.u0), rimV(box.u1)) - 0.03) return false
+  const rim = Math.max(rimIn(box.u0), rimIn(box.u1))
+  if (box.v0 < rim + 0.02) return false
+  if (box.v1 > 1 - rim - 0.03) return false
+  const air = betAir(g, slot, at, room)
+  if (air.chip < CHIP_AIR_PX || air.foot < FOOT_AIR_PX || air.label < LABEL_AIR_PX) return false
+  if (room.taken?.length) {
+    const { chip, label } = betRects(g, at, sg.betSide, room)
+    for (const t of room.taken) if (rectGap(chip, t) < BET_AIR_PX || rectGap(label, t) < BET_AIR_PX) return false
+  }
   return true
 }
+
+/** The seat laid out as this one's mirror image (desk: 2 and 4, 1 and 5), if any: its bet
+ * is then this one's, mirrored, so the table stays symmetric. */
+export function twinOf(g: Geo, slot: VillainSlot): VillainSlot | null {
+  const k = (6 - slot) as VillainSlot
+  if (k === slot) return null
+  const a = g.seats[slot]
+  const b = g.seats[k]
+  const same = Math.abs(a.cards[0] + b.cards[0] - 1) < 1e-9 && a.cards[1] === b.cards[1] && a.betSide !== b.betSide
+  return same ? k : null
+}
+
+const mirror = ([u, v]: UV): UV => [round4(1 - u), v]
 
 /**
  * A seat's bet: on the vector from where its cards lie toward the pot, as close to the
  * seat as the clearances allow (the backs, the full five-card board, the pot block, the
- * rim). Where the board leaves no room on the vector itself (the side seats: the board
- * spans the felt), it steps off it by the least it must. The full board is used on every
- * street, so a bet never moves when a card lands. Falls back to the hand-placed anchor.
+ * rim, the bets already placed). Where there is no room on the vector itself (the side
+ * seats: the board spans the felt; the top centre: its backs and the board leave too
+ * little), it steps off it by the least it must. The full board is used on every street,
+ * so a bet never moves when a card lands. With a twin (twinOf), the spot must suit the
+ * twin mirrored too. Falls back to the hand-placed anchor.
  */
-export function betAnchor(g: Geo, slot: VillainSlot, s: number, pot: BoxUV, labelPx = 44): UV {
+export function betAnchor(g: Geo, slot: VillainSlot, room: BetRoom, twin: VillainSlot | null = null): UV {
   const sg = g.seats[slot]
-  const labelU = labelPx / (1000 * s)
   const ph = g.aspect // plane px per table unit, relative to u
   const a = sg.cards
   const p: UV = [g.pot[0], g.pot[1] - 0.03]
@@ -305,17 +462,25 @@ export function betAnchor(g: Geo, slot: VillainSlot, s: number, pot: BoxUV, labe
   let bestCost = Infinity
   // in front of the seat (at least clear of its backs along the line), then the least
   // total of distance from the seat and distance off the line
-  for (let i = 0; i <= 80; i++) {
-    const t = Math.max(0.05, (i / 100) * len)
-    for (let j = -16; j <= 16; j++) {
+  for (let i = 0; i <= 160; i++) {
+    const t = Math.max(0.05, (i / 200) * len)
+    if (t >= bestCost) break
+    for (let j = -24; j <= 24; j++) {
       const d = j * 0.005
       const cost = t + 2 * Math.abs(d)
       if (cost >= bestCost) continue
       const x = a[0] + ux * t - uy * d
       const y = a[1] + (uy * t + ux * d) / ph
-      const at: UV = [x, y]
-      if (!betClear(g, slot, at, pot, labelU)) continue
-      best = [round4(x), round4(y)]
+      const at: UV = [round4(x), round4(y)]
+      if (!betClear(g, slot, at, room)) continue
+      if (twin) {
+        const m = mirror(at)
+        if (!betClear(g, twin, m, room)) continue
+        const a = betRects(g, at, sg.betSide, room)
+        const b = betRects(g, m, g.seats[twin].betSide, room)
+        if ([a.chip, a.label].some((r) => rectGap(r, b.chip) < BET_AIR_PX || rectGap(r, b.label) < BET_AIR_PX)) continue
+      }
+      best = at
       bestCost = cost
     }
   }
@@ -341,12 +506,16 @@ export interface LayoutInput {
   topSeatH: number
   /** Widest side-seat label (px). */
   sideSeatW: number
+  /** The outline the browser draws (slabOutline). */
+  outline?: Outline
 }
 
 export interface TableLayout {
   kind: LayoutKind
   gk: GeoKind
   g: Geo
+  /** The slab's outline as this browser draws it. */
+  outline: Outline
   W: number
   H: number
   /** Width left for the table (minus a desktop side panel). */
@@ -387,11 +556,15 @@ export interface TableLayout {
 
 const PANEL_W = 360
 
+/** The order the bets are placed in: the top-centre seat first (its bet has the least room,
+ * between its backs and the board), then its neighbours, then the sides. */
+const BET_ORDER: readonly VillainSlot[] = [3, 2, 4, 1, 5]
+
 /** The coach's ring size beside the hand (the coach builder draws 112 px). */
 export const COACH_RING_SIDE = 112
 
 export function computeLayout(input: LayoutInput): TableLayout {
-  const { w: W, h: H, kind, panelOpen, limb, safeBottom = 0, topSeatH, sideSeatW } = input
+  const { w: W, h: H, kind, panelOpen, limb, safeBottom = 0, topSeatH, sideSeatW, outline = 'superellipse' } = input
   const phone = kind === 'phone'
   const gk: GeoKind = phone ? 'phone' : 'desk'
   const g = GEO[gk]
@@ -464,16 +637,26 @@ export function computeLayout(input: LayoutInput): TableLayout {
   }
 
   const pot = potBlock({ g, s, ox, oy, kind })
-  const label = BET_LABEL_PX[gk]
-  const bets = {
-    1: betAnchor(g, 1, s, pot.box, label),
-    2: betAnchor(g, 2, s, pot.box, label),
-    3: betAnchor(g, 3, s, pot.box, label),
-    4: betAnchor(g, 4, s, pot.box, label),
-    5: betAnchor(g, 5, s, pot.box, label),
-  }
   const heroBet = heroBetAnchor(g, pot.box)
-  return { kind, gk, g, W, H, Weff, panelW, s, axis, ox, oy, tableW, tableH, objTop, objBottom, hw, lift, barH, dockBottom, dockH, coachAt, tight, heroTop, coach, pot, bets, heroBet }
+  // one at a time, each keeping clear (on screen) of the bets already placed
+  const bets = {} as Record<VillainSlot, UV>
+  const taken: ScreenRect[] = []
+  const place = (at: UV, side: BetSide) => {
+    const r = betRects(g, at, side, betRoom({ g, gk, s, pot }))
+    taken.push(r.chip, r.label)
+  }
+  place(heroBet, 'right')
+  for (const k of BET_ORDER) {
+    if (bets[k]) continue
+    const twin = twinOf(g, k)
+    bets[k] = betAnchor(g, k, betRoom({ g, gk, s, pot }, taken), twin)
+    place(bets[k], g.seats[k].betSide)
+    if (twin) {
+      bets[twin] = mirror(bets[k])
+      place(bets[twin], g.seats[twin].betSide)
+    }
+  }
+  return { kind, gk, g, outline, W, H, Weff, panelW, s, axis, ox, oy, tableW, tableH, objTop, objBottom, hw, lift, barH, dockBottom, dockH, coachAt, tight, heroTop, coach, pot, bets, heroBet }
 }
 
 /** The hero's bet: straight up from your hand toward the pot, just below the pot block,
@@ -521,7 +704,7 @@ export function placeSeats(L: TableLayout, sizes: Readonly<Partial<Record<Villai
     const sl = g.seats[k]
     if (sl.side === 'top') {
       const u = sl.u ?? 0.5
-      const a = project(L, u, rimV(u), 0)
+      const a = project(L, u, rimV(u, L.outline), 0)
       if (phone && u !== 0.5) out[k] = { x: u < 0.5 ? 16 : L.W - 16, y: a[1] - 8, side: u < 0.5 ? 'top-left' : 'top-right', maxWidth: null }
       else out[k] = { x: a[0], y: a[1] - (phone ? 8 : 14), side: 'top', maxWidth: null }
     } else if (sl.side === 'left') {
@@ -571,21 +754,33 @@ export function placeSeats(L: TableLayout, sizes: Readonly<Partial<Record<Villai
 
 /* ---------- the slab's side, in viewport px ---------- */
 
-/** A point on the slab's outline at angle t (0 the right end, pi/2 the middle of the near
- * rim, pi the left end), for a corner exponent n (N_SUPER, or 2 for a plain ellipse). */
-function outlineUV(t: number, n: number): UV {
-  const cx = Math.cos(t)
-  const sy = Math.sin(t)
-  const r = Math.pow(Math.pow(Math.abs(cx), n) + Math.pow(Math.abs(sy), n), -1 / n)
-  return [0.5 + 0.5 * cx * r, 0.5 + 0.5 * sy * r]
+/** A point on the slab's outline at angle t from its centre (0 the right end, pi/2 the
+ * middle of the near rim, pi the left end). */
+function outlineUV(t: number, outline: Outline): UV {
+  const c = Math.abs(Math.cos(t))
+  const sn = Math.abs(Math.sin(t))
+  let r: number
+  if (outline === 'superellipse') r = Math.pow(Math.pow(c, N_SUPER) + Math.pow(sn, N_SUPER), -1 / N_SUPER)
+  else {
+    // in -1..1 across and down: a flat run in the middle, quarter ellipses (a across, 1 down)
+    const a = 2 * ROUNDED_RX
+    if (sn > 0 && c / sn <= 1 - a) r = 1 / sn
+    else {
+      const A = (c * c) / (a * a) + sn * sn
+      const B = (2 * c * (1 - a)) / (a * a)
+      const C = ((1 - a) * (1 - a)) / (a * a) - 1
+      r = (B + Math.sqrt(B * B - 4 * A * C)) / (2 * A)
+    }
+  }
+  return [0.5 + 0.5 * Math.cos(t) * r, 0.5 + 0.5 * Math.sin(t) * r]
 }
 
 /** The near rim at a depth below the top (0..1 of the thickness), left end to right end. */
-function nearRim(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy'>, depth: number, n: number, steps: number): [number, number][] {
+function nearRim(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy'>, depth: number, outline: Outline, steps: number): [number, number][] {
   const z = -L.g.thick * L.s * depth
   const out: [number, number][] = []
   for (let i = 0; i <= steps; i++) {
-    const [u, v] = outlineUV(Math.PI - (i / steps) * Math.PI, n)
+    const [u, v] = outlineUV(Math.PI - (i / steps) * Math.PI, outline)
     out.push(project(L, u, v, z))
   }
   return out
@@ -608,17 +803,16 @@ export interface SlabSide {
 /**
  * The slab's side wall as the camera sees it: the band between the top's near rim and
  * the bottom's, projected exactly as CSS 3D draws the slab (the top face paints over the
- * rest). n is the corner exponent the browser actually draws (2 where corner-shape is
- * unsupported and the slab is a plain ellipse).
+ * rest), following the outline the browser actually draws.
  */
-export function slabSide(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy'>, bands = 12, n = N_SUPER, steps = 96): SlabSide {
-  const bottom = nearRim(L, 1, n, steps)
+export function slabSide(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy' | 'outline'>, bands = 12, outline = L.outline, steps = 96): SlabSide {
+  const bottom = nearRim(L, 1, outline, steps)
   const out: string[] = []
   for (let k = 0; k < bands; k++) {
-    const top = nearRim(L, k / bands, n, steps)
+    const top = nearRim(L, k / bands, outline, steps)
     out.push(`${pathOf([...top, ...bottom.slice().reverse()])}Z`)
   }
-  const all = [...nearRim(L, 0, n, steps), ...bottom]
+  const all = [...nearRim(L, 0, outline, steps), ...bottom]
   const xs = all.map((p) => p[0])
   const ys = all.map((p) => p[1])
   const x = Math.min(...xs)
@@ -629,6 +823,7 @@ export function slabSide(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy'>, bands = 
 /** Where the glint sits: the light source on the limb grazing the near rim. */
 export function glintAt(L: TableLayout, sunX: number): { u: number; v: number; deg: number } {
   const gu = clamp((sunX - (L.axis - L.tableW / 2)) / L.tableW, 0.56, 0.88)
-  const slope = ((rimV(gu + 0.002) - rimV(gu - 0.002)) / 0.004) * L.g.aspect
-  return { u: gu, v: 1 - rimV(gu), deg: (-Math.atan(slope) * 180) / Math.PI }
+  const o = L.outline
+  const slope = ((rimV(gu + 0.002, o) - rimV(gu - 0.002, o)) / 0.004) * L.g.aspect
+  return { u: gu, v: 1 - rimV(gu, o), deg: (-Math.atan(slope) * 180) / Math.PI }
 }

@@ -30,7 +30,7 @@ import { canAggress, aggroType, dockActions, PRESETS, presetAmount, presetIndexF
 import { limbHeight, sunPlacement, type Rect } from '../../lib/space'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { commandForKey, targetKind, type HotkeyFace } from '../../lib/tableHotkeys'
-import { BACKS_OFFSET, computeLayout, glintAt, placeSeats, project, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
+import { BACKS_OFFSET, computeLayout, glintAt, placeSeats, project, slabOutline, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
 import { boardSpeech, buildTableModel, identityOf, STREET_LABEL, statusLine, type TableModel } from '../../lib/tableModel'
 import { useEscape } from '../../lib/escapeStack'
 import type { TableSession, SessionErrorScope } from '../../lib/useTableSession'
@@ -45,6 +45,9 @@ import { HeroHand } from './HeroHand'
 import { SeatLabel } from './SeatLabel'
 import { useTableMotion } from './useTableMotion'
 import './Stage.css'
+
+/** The slab's outline as this browser draws it (a rounded rectangle without corner-shape). */
+const OUTLINE = slabOutline()
 
 export interface TableViewProps {
   table: TableSession
@@ -147,7 +150,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const model = useMemo(() => (session ? buildTableModel(session, reads, visibility) : null), [session, reads, visibility])
   const panelOpen = desk && (logShown || mathsShown)
   const topSeatH = TOP_SEAT_H[phone ? 'phone' : 'desk'][visibility === 'hud' && model ? 'three' : 'two']
-  const L = useMemo(() => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH, sideSeatW: 140 }), [W, H, kind, panelOpen, topSeatH])
+  const L = useMemo(() => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH, sideSeatW: 140, outline: OUTLINE }), [W, H, kind, panelOpen, topSeatH])
 
   // seat labels: their natural sizes push the top three apart (measured after each render)
   const seatEls = useRef<(HTMLDivElement | null)[]>([])

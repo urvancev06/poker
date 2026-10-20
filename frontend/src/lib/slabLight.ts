@@ -6,6 +6,11 @@
 
 type RGB = readonly [number, number, number]
 
+/** The limb's light where it catches an edge (the card backs' rim and engraving, the wall's
+ * lower bevel); index.css --limb-light is the same colour, as channels, for CSS. */
+export const LIMB_LIGHT_RGB: RGB = [180, 216, 255]
+export const LIMB_LIGHT = `#${LIMB_LIGHT_RGB.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+
 /** Down the wall, from just under the top's rim (0) to the bottom edge (1): a soft
  * highlight where the rounded top edge turns down, a deeper belly, then the lower bevel. */
 export const WALL_RAMP: readonly (readonly [number, RGB])[] = [

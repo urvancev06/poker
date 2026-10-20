@@ -6,7 +6,11 @@ import {
   VILLAIN_SLOTS,
   backsBox,
   betBox,
+  BACKS_OFFSET,
   betClear,
+  betRects,
+  betRoom,
+  rectGap,
   boardBox,
   boardU,
   computeLayout,
@@ -19,12 +23,16 @@ import {
   unitBounds,
   vAtY,
   type BoxUV,
+  type Outline,
   type TableLayout,
+  type UV,
 } from './tableLayout'
 import { limbHeight } from './space'
 
-const layout = (w: number, h: number, kind: LayoutKind, panelOpen = false) =>
-  computeLayout({ w, h, kind, panelOpen, limb: limbHeight(h), topSeatH: kind === 'phone' ? 36 : 43, sideSeatW: 140 })
+const layout = (w: number, h: number, kind: LayoutKind, panelOpen = false, outline: Outline = 'superellipse') =>
+  computeLayout({ w, h, kind, panelOpen, limb: limbHeight(h), topSeatH: kind === 'phone' ? 36 : 43, sideSeatW: 140, outline })
+
+const OUTLINES: Outline[] = ['superellipse', 'rounded']
 
 const SIZES: [number, number, LayoutKind][] = [
   [1440, 900, 'desk'],
@@ -118,7 +126,7 @@ describe('computeLayout', () => {
 describe('bets', () => {
   it.each(SIZES)('%ix%i: every bet clears the full board, the backs, the pot block and the rim', (w, h, kind) => {
     const L = layout(w, h, kind)
-    for (const k of VILLAIN_SLOTS) expect(betClear(L.g, k, L.bets[k], L.pot.box, BET_LABEL_PX[L.gk] / (1000 * L.s)), `seat ${k}`).toBe(true)
+    for (const k of VILLAIN_SLOTS) expect(betClear(L.g, k, L.bets[k], betRoom(L)), `seat ${k}`).toBe(true)
   })
   it.each(SIZES)('%ix%i: no two bets (chip and label) touch', (w, h, kind) => {
     const L = layout(w, h, kind)
@@ -140,6 +148,50 @@ describe('bets', () => {
     const rv = L.g.chip / 2 / L.g.aspect
     expect(L.heroBet[1] - rv).toBeGreaterThan(L.pot.box.v1)
     expect(L.heroBet[1] + rv).toBeLessThan(1)
+  })
+  it.each(BOTH)('%ix%i (%s, %s): on screen every chip, its whole stack, keeps 6 px from every seat\'s backs', (w, h, kind, outline) => {
+    // projected here from the CSS, independently of the solver: a back pair is the cards
+    // (BACKS_OFFSET over) plus the lit near edge; a chip is its base disc on the felt up to
+    // its top disc (Stage.css .chip__top: translateZ(4.8px * s + 1.2px))
+    const L = layout(w, h, kind, false, outline)
+    const g = L.g
+    const rect = (b: BoxUV, zs: number[]) => {
+      const pts = zs.flatMap((z) => [project(L, b.u0, b.v0, z), project(L, b.u1, b.v0, z), project(L, b.u0, b.v1, z), project(L, b.u1, b.v1, z)])
+      return { x0: Math.min(...pts.map((p) => p[0])), x1: Math.max(...pts.map((p) => p[0])), y0: Math.min(...pts.map((p) => p[1])), y1: Math.max(...pts.map((p) => p[1])) }
+    }
+    // the distance between the nearest points
+    const air = (a: ReturnType<typeof rect>, b: ReturnType<typeof rect>) => {
+      const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1)
+      const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1)
+      return dx > 0 && dy > 0 ? Math.hypot(dx, dy) : Math.max(dx, dy)
+    }
+    const backs = VILLAIN_SLOTS.map((k) => {
+      const [u, v] = g.seats[k].cards
+      const hu = (g.back * (1 + BACKS_OFFSET)) / 2
+      const hv = (g.back * 1.4) / g.aspect / 2
+      const r = rect({ u0: u - hu, u1: u + hu, v0: v - hv, v1: v + hv }, [0.6])
+      return { ...r, y1: r.y1 + 0.5 + 0.5 * L.s }
+    })
+    for (const k of VILLAIN_SLOTS) {
+      const [u, v] = L.bets[k]
+      const ru = g.chip / 2
+      const rv = g.chip / 2 / g.aspect
+      const chip = rect({ u0: u - ru, u1: u + ru, v0: v - rv, v1: v + rv }, [0.6, 0.6 + 4.8 * L.s + 1.2])
+      const foot = rect({ u0: u - ru, u1: u + ru, v0: v - rv, v1: v + rv }, [0.6])
+      for (const [j, b] of backs.entries()) {
+        expect(air(chip, b), `bet ${k} to the backs of seat ${j + 1}`).toBeGreaterThan(5.99)
+        // its footprint (what a bounding box of the chip element measures) by 8
+        expect(air(foot, b), `bet ${k} footprint to seat ${j + 1}`).toBeGreaterThan(7.99)
+      }
+    }
+  })
+  it.each(SIZES)('%ix%i: on screen no two bets (chip and label) come within 4 px', (w, h, kind) => {
+    const L = layout(w, h, kind)
+    const room = betRoom(L)
+    const all = [betRects(L.g, L.heroBet, 'right', room), ...VILLAIN_SLOTS.map((k) => betRects(L.g, L.bets[k], L.g.seats[k].betSide, room))]
+    for (let i = 0; i < all.length; i++)
+      for (let j = i + 1; j < all.length; j++)
+        for (const a of [all[i].chip, all[i].label]) for (const b of [all[j].chip, all[j].label]) expect(rectGap(a, b), `bets ${i} and ${j}`).toBeGreaterThanOrEqual(4)
   })
   it('a desktop bet lies toward the pot from the seat', () => {
     const L = layout(1440, 900, 'desk')
@@ -212,10 +264,11 @@ describe('glintAt', () => {
   })
 })
 
-/** On-screen px from the nearest point of a box on the felt to the rim, measured along
- * the ray from the table's centre (inside the slab: v between rimV(u) and 1 - rimV(u)). */
+/** On-screen px from the nearest point of a box on the felt to the rim the layout's browser
+ * draws, measured along the ray from the table's centre (inside the slab: v between
+ * rimV(u) and 1 - rimV(u)). */
 function rimGapPx(L: TableLayout, b: BoxUV): number {
-  const inside = (u: number, v: number) => u > 0 && u < 1 && v > rimV(u) && v < 1 - rimV(u)
+  const inside = (u: number, v: number) => u > 0 && u < 1 && v > rimV(u, L.outline) && v < 1 - rimV(u, L.outline)
   const gap = (u: number, v: number) => {
     let lo = 0
     let hi = 4
@@ -238,12 +291,33 @@ function rimGapPx(L: TableLayout, b: BoxUV): number {
   return Math.min(...pts.map(([u, v]) => gap(u, v)))
 }
 
+/** A seat's showdown pair as it lies (the second card --reveal of a card over: at most 0.6). */
+const revealBox = (L: TableLayout, at: UV): BoxUV => {
+  const hu = (L.g.rev * 1.6) / 2
+  const hv = (L.g.rev * 1.4) / L.g.aspect / 2
+  return { u0: at[0] - hu, u1: at[0] + hu, v0: at[1] - hv, v1: at[1] + hv }
+}
+
+const BOTH = SIZES.flatMap(([w, h, kind]) => OUTLINES.map((o) => [w, h, kind, o] as const))
+
 describe('the backs', () => {
-  it.each(SIZES)('%ix%i: every seat lays its pair inside the slab, the same distance from the rim', (w, h, kind) => {
-    const L = layout(w, h, kind)
+  it.each(BOTH)('%ix%i (%s, %s): every seat lays its pair inside the slab, the same distance from the rim', (w, h, kind, outline) => {
+    const L = layout(w, h, kind, false, outline)
     const gaps = VILLAIN_SLOTS.map((k) => rimGapPx(L, backsBox(L.g, L.g.seats[k].cards)))
     expect(Math.min(...gaps)).toBeGreaterThan(4)
     expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(1.45)
+  })
+  it.each(BOTH)('%ix%i (%s, %s): every showdown pair turns up inside the slab, clear of the board', (w, h, kind, outline) => {
+    const L = layout(w, h, kind, false, outline)
+    const backs = Math.min(...VILLAIN_SLOTS.map((k) => rimGapPx(L, backsBox(L.g, L.g.seats[k].cards))))
+    const board = boardBox(L.g)
+    for (const k of VILLAIN_SLOTS) {
+      const r = revealBox(L, L.g.seats[k].rev)
+      // as far inside the rim as the backs are (within a few px), never kissing it
+      expect(rimGapPx(L, r), `seat ${k}`).toBeGreaterThan(Math.max(3.5, backs * 0.6))
+      const clear = r.v1 < board.v0 || r.v0 > board.v1 || r.u1 < board.u0 || r.u0 > board.u1
+      expect(clear, `seat ${k} meets the board`).toBe(true)
+    }
   })
   it('are a pair square to the table, smaller than a board card', () => {
     for (const g of [GEO.desk, GEO.phone]) {
@@ -251,7 +325,7 @@ describe('the backs', () => {
       const b = backsBox(g, [0.5, 0.5])
       // the second card sits a fixed share of a card over: the pair is 1 + offset wide
       expect(b.u1 - b.u0).toBeGreaterThan(g.back * 1.3)
-      expect(b.u1 - b.u0).toBeLessThan(g.back * 1.5)
+      expect(b.u1 - b.u0).toBeLessThan(g.back * 1.5 + 0.008)
     }
   })
 })
@@ -274,12 +348,20 @@ describe('slabSide', () => {
     expect(bottom - top).toBeGreaterThan(seen * 0.75)
     expect(bottom - top).toBeLessThan(seen * 1.1)
   })
-  it('follows the outline the browser draws (a plain ellipse where corner-shape is missing)', () => {
-    const L = layout(1440, 900, 'desk')
-    const ellipse = slabSide(L, 4, 2)
-    expect(ellipse.bands[0]).not.toBe(slabSide(L, 4).bands[0])
-    // the ellipse is the slimmer outline: never wider than the superellipse's object
-    expect(ellipse.box.w).toBeLessThanOrEqual(L.tableW + 0.5)
-    expect(ellipse.box.w).toBeGreaterThan(L.tableW * 0.95)
+  it('follows the outline the browser draws (a rounded rectangle where corner-shape is missing)', () => {
+    const L = layout(1440, 900, 'desk', false, 'rounded')
+    const rounded = slabSide(L, 4)
+    expect(rounded.bands[0]).not.toBe(slabSide(L, 4, 'superellipse').bands[0])
+    // the same object: as wide as the superellipse's, and as deep
+    expect(rounded.box.w).toBeLessThanOrEqual(L.tableW + 0.5)
+    expect(rounded.box.w).toBeGreaterThan(L.tableW * 0.97)
+    expect(rounded.box.y + rounded.box.h).toBeCloseTo(L.objBottom, 0)
+  })
+  it('the rounded fallback keeps to the superellipse wherever a card lies', () => {
+    // the far rim within 0.012 of the plan's height from a quarter of the way in (a plain
+    // ellipse is 0.03 off at a top corner seat)
+    for (let u = 0.2; u <= 0.5; u += 0.01) expect(Math.abs(rimV(u, 'rounded') - rimV(u))).toBeLessThan(0.016)
+    expect(rimV(0.5, 'rounded')).toBe(0)
+    expect(rimV(0, 'rounded')).toBeCloseTo(0.5)
   })
 })

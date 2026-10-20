@@ -11,3 +11,8 @@
   font-weight: 650;
   font-optical-sizing: auto;
 }
+/* the back's shade: off, except on the under card of a pair lying on the felt (Stage.css) */
+.card__shade {
+  fill: #000;
+  fill-opacity: 0;
+}
