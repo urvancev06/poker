@@ -16,7 +16,10 @@ import argparse
 from collections import defaultdict
 
 from poker.engine import ActionType
-from poker.math import Draw, MadeTier, classify
+from poker.math import Draw, MadeTier
+# The labeller the coach's villain model uses (poker/coach/villain_model.py);
+# P2.8 moves both to the hole-aware classify and re-measures.
+from poker.math.classify_legacy import classify
 from poker.sim.runner import DEFAULT_LINEUP, run
 
 _STREETS = ("flop", "turn", "river")

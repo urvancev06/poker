@@ -26,7 +26,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..math.classify import Draw, MadeTier, PairStrength, classify, pair_strength
+from ..math.classify import Draw, MadeTier, PairStrength
+# The labeller the current coach, review and BET_COMPOSITION were measured with.
+# P2.8 moves the coach, the review, the villain model and
+# scripts/measure_bet_ranges.py to the hole-aware classify together (with
+# _REVIEW_VERSION 4 and a re-measured BET_COMPOSITION), so coach and review
+# never disagree in between.
+from ..math.classify_legacy import classify, pair_strength
 from ..math.equity import equity
 from ..math.odds import analyze_call, implied_required_equity, required_equity
 from .villain_model import BET_COMPOSITION, condition_range, villain_line

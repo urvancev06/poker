@@ -23,7 +23,10 @@ from ..bots.preflop_strength import hand_class
 from ..engine.ledger import DecisionFacts
 from ..engine.types import positions_for
 from ..math.cards import canonical_combo
-from ..math.classify import Draw, MadeTier, PairStrength, classify, pair_strength
+from ..math.classify import Draw, MadeTier, PairStrength
+# The live coach's labeller (see coach.py): P2.8 moves both to the hole-aware
+# classify at once and bumps _REVIEW_VERSION.
+from ..math.classify_legacy import classify, pair_strength
 from ..math.equity import equity
 from ..math.odds import implied_required_equity, required_equity
 # The price model is shared with the live coach ON PURPOSE: the reviewer must judge a

@@ -12,7 +12,9 @@ from __future__ import annotations
 from collections import defaultdict
 
 from poker.engine import ActionType
-from poker.math import MadeTier, PairStrength, classify, pair_strength
+from poker.math import MadeTier, PairStrength
+# The v1 bots' own (frozen) classifier: this tunes v1 knobs.
+from poker.math.classify_legacy import classify, pair_strength
 from poker.sim.report import TARGETS
 from poker.sim.runner import run
 

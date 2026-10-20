@@ -16,7 +16,10 @@ import random
 from dataclasses import dataclass, field
 
 from ..engine import Action, ActionType, LegalActions
-from ..math import Draw, MadeTier, PairStrength, classify, pair_strength
+from ..math import Draw, MadeTier, PairStrength
+# FROZEN for the v1 bots until phase 5: they keep the classifier they were measured
+# with (tests/test_classify_legacy.py, tests/test_v1_frozen.py).
+from ..math.classify_legacy import classify, pair_strength
 from .context import DecisionContext
 from .preflop_strength import hand_class, percentile
 
