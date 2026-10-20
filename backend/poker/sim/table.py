@@ -57,14 +57,16 @@ def play_hand(
     bots: list[Bot],
     button: int,
     rng: DecisionRng,
-    blinds: tuple[int, int] = (1, 2),
-    starting_stack: int = 200,
+    blinds: tuple[int, int] = (5, 10),
+    starting_stack: int = 1000,
     seed: int | None = None,
     observer=None,
     deck: Sequence[str] | None = None,
+    on_end: Callable[[Hand, list[int]], None] | None = None,
 ) -> list[PlayerHandSummary]:
     """Play one hand. The deal comes from ``deck`` (or ``seed``, see
-    ``Hand.new``); decisions draw from ``rng``."""
+    ``Hand.new``); decisions draw from ``rng``. ``on_end(hand, seat_to_player)``
+    sees the finished hand (read-only, like ``observer``)."""
     n = len(bots)
     bb = blinds[1]
     seat_to_player = [(button + 1 + k) % n for k in range(n)]
@@ -144,6 +146,9 @@ def play_hand(
                     s.cbet_flop = True
 
         hand.apply(action)
+
+    if on_end is not None:
+        on_end(hand, seat_to_player)
 
     # --- end-of-hand summary ---
     final = hand.snapshot(reveal_all=True)

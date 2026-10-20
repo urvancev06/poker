@@ -66,6 +66,20 @@ def test_lab_hands_capped():
     assert res["hands"] == 25_000  # MAX_LAB_HANDS
 
 
+def test_tiny_lab_run_reports_no_sample_as_none():
+    """B29: a one-hand run used to 500 on round(None). A stat with no sample is
+    reported as None (the UI renders "no sample"), never as a number."""
+    res = run_lab(lineup=["nit", "tag"], hands=1, seed=0)
+    assert res["hands"] == 1
+    values = [cell["value"] for row in res["rows"] for cell in row["stats"].values()]
+    assert None in values
+    assert all(v is None or isinstance(v, float) for v in values)
+
+
+def test_lab_hands_at_least_one():
+    assert run_lab(lineup=["tag", "nit"], hands=0, seed=0)["hands"] == 1
+
+
 def test_override_loosens_calldown_raises_wtsd():
     """Cranking a calling station's calldown should raise its WTSD: the stat is an
     output of the knob, never a setting."""

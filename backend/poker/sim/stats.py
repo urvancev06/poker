@@ -48,11 +48,36 @@ def _pct(num: int, den: int) -> float | None:
 
 
 class StatsAccumulator:
-    def __init__(self, big_blind: int = 2) -> None:
-        # bb/100 divides net chips by the big blind, so non-(1,2) games (the lab)
-        # need the real value stored here rather than a constant.
+    def __init__(self, big_blind: int = 10) -> None:
+        # bb/100 divides net chips by the big blind, so the real value is stored
+        # here rather than a constant (5/10 by default; the live DB holds 1/2).
         self._bb = big_blind
         self._c: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+    @property
+    def big_blind(self) -> int:
+        return self._bb
+
+    # --- shards: counts are plain integer sums, so merging is exact ------- #
+    def to_counts(self) -> dict[str, dict[str, int]]:
+        """The raw counters, per archetype (picklable and JSON-friendly)."""
+        return {name: dict(c) for name, c in self._c.items()}
+
+    @classmethod
+    def from_counts(cls, counts: dict[str, dict[str, int]], big_blind: int) -> StatsAccumulator:
+        acc = cls(big_blind=big_blind)
+        for name, c in counts.items():
+            acc._c[name].update(c)
+        return acc
+
+    def merge(self, other: StatsAccumulator | dict[str, dict[str, int]]) -> StatsAccumulator:
+        """Add another accumulator's (or shard's) counts into this one."""
+        counts = other.to_counts() if isinstance(other, StatsAccumulator) else other
+        for name, c in counts.items():
+            mine = self._c[name]
+            for key, value in c.items():
+                mine[key] += value
+        return self
 
     def add_hand(self, summaries: list[PlayerHandSummary]) -> None:
         for s in summaries:

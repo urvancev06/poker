@@ -14,11 +14,12 @@ import time
 
 from ..bots import archetypes
 from .report import TARGETS, evaluate, gate_passes
-from .runner import DEFAULT_LINEUP, run
-from .stats import StatLine
+from .runner import DEFAULT_BLINDS, DEFAULT_LINEUP, DEFAULT_STACK, run
+from .stats import StatLine, StatsAccumulator
 
-# Hard cap so an interactive request can't block the (single) worker for minutes.
-# The real validation gate (>=100k) runs offline via scripts/simulate.py.
+# Hard cap on one Lab run. Runs are background jobs now (``sim.jobs``), so this is
+# about the user's wait, not the server: the real validation gate (>=100k) runs
+# offline via scripts/simulate.py.
 MAX_LAB_HANDS = 25_000
 DEFAULT_LAB_HANDS = 5_000
 
@@ -92,25 +93,43 @@ def sanitize_overrides(raw: dict[str, dict[str, float]]) -> dict[str, dict[str, 
     return clean
 
 
+def clamp_hands(hands: int) -> int:
+    """A Lab run plays between 1 and ``MAX_LAB_HANDS`` hands."""
+    return max(1, min(int(hands), MAX_LAB_HANDS))
+
+
+def validate_lineup(lineup: list[str]) -> list[str]:
+    """The lineup as given, or ValueError for an empty one or an unknown name."""
+    if not lineup:
+        raise ValueError("lineup must have at least one seat")
+    for name in lineup:
+        archetypes.make(name)  # raises ValueError for an unknown archetype
+    return list(lineup)
+
+
+def _value(value: float | None) -> float | None:
+    """A stat for JSON: None for "no sample" (an empty denominator, which a tiny
+    run hits often, B29) and for an infinite AF, else rounded."""
+    if value is None or value == float("inf"):
+        return None
+    return round(value, 2)
+
+
 def _row(line: StatLine, checks: dict[str, object]) -> dict:
     name = line.archetype
     arch_checks = checks.get(name, {})
     stats = {}
     for s in _STATS:
-        value = getattr(line, s)
+        value = _value(getattr(line, s))
         cell = arch_checks.get(s)
         if cell is not None:
             stats[s] = {
-                "value": None if value == float("inf") else round(value, 2),
+                "value": value,
                 "band": list(cell.band) if cell.band else None,
                 "ok": cell.ok,
             }
         else:
-            stats[s] = {
-                "value": None if value == float("inf") else round(value, 2),
-                "band": None,
-                "ok": None,
-            }
+            stats[s] = {"value": value, "band": None, "ok": None}
     return {
         "archetype": name,
         "hands": line.hands,
@@ -119,16 +138,42 @@ def _row(line: StatLine, checks: dict[str, object]) -> dict:
     }
 
 
+def lab_report(
+    acc: StatsAccumulator,
+    lineup: list[str],
+    hands: int,
+    seed: int,
+    overrides: dict[str, dict[str, float]],
+    elapsed_ms: int,
+) -> dict:
+    """Measured-vs-target rows for an accumulated run, as JSON."""
+    checks = evaluate(acc)
+    # Report one row per archetype that actually appeared in the lineup.
+    present = {archetypes.make(name).name for name in lineup}
+    rows = [_row(acc.line(name), checks) for name in TARGETS if name in present]
+    return {
+        "hands": hands,
+        "seed": seed,
+        "lineup": list(lineup),
+        "overrides": overrides,
+        "gate_pass": gate_passes(acc),
+        "rows": rows,
+        "elapsed_ms": elapsed_ms,
+    }
+
+
 def run_lab(
     lineup: list[str],
     hands: int,
     seed: int = 0,
-    blinds: tuple[int, int] = (1, 2),
-    starting_stack: int = 200,
+    blinds: tuple[int, int] = DEFAULT_BLINDS,
+    starting_stack: int = DEFAULT_STACK,
     overrides: dict[str, dict[str, float]] | None = None,
+    on_progress=None,
+    cancelled=None,
 ) -> dict:
     """Run a capped simulation and return measured-vs-target rows as JSON."""
-    hands = max(1, min(int(hands), MAX_LAB_HANDS))
+    hands = clamp_hands(hands)
     clean_overrides = sanitize_overrides(overrides or {})
 
     start = time.perf_counter()
@@ -139,20 +184,8 @@ def run_lab(
         blinds=blinds,
         starting_stack=starting_stack,
         overrides=clean_overrides,
+        on_progress=on_progress,
+        cancelled=cancelled,
     )
     elapsed_ms = round((time.perf_counter() - start) * 1000)
-
-    checks = evaluate(acc)
-    # Report one row per archetype that actually appeared in the lineup.
-    present = {archetypes.make(name).name for name in lineup}
-    rows = [_row(acc.line(name), checks) for name in TARGETS if name in present]
-
-    return {
-        "hands": hands,
-        "seed": seed,
-        "lineup": list(lineup),
-        "overrides": clean_overrides,
-        "gate_pass": gate_passes(acc),
-        "rows": rows,
-        "elapsed_ms": elapsed_ms,
-    }
+    return lab_report(acc, lineup, hands, seed, clean_overrides, elapsed_ms)
