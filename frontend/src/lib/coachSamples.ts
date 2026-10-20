@@ -1046,7 +1046,7 @@ export const COACH_SAMPLES: readonly CoachSample[] = [
       "pot": 13,
       "required_equity_pct": 18.5,
       "required_direct_pct": 27.8,
-      "implied_note": "set value, 300 behind",
+      "implied_note": "set value, 150 bb behind",
       "pot_odds": "2.6 : 1",
       "call_ev": -1.0,
       "in_position": true,
@@ -1069,7 +1069,7 @@ export const COACH_SAMPLES: readonly CoachSample[] = [
         }
       ],
       "verdict": "Call.",
-      "rationale": "~31% raw → ~22% realized in position vs the ~19% you need to call. (price adjusted — set value, 300 behind) Note: 2 still to act behind you, so calling doesn't close the action.",
+      "rationale": "~31% raw → ~22% realized in position vs the ~19% you need to call. (price adjusted — set value, 150 bb behind) Note: 2 still to act behind you, so calling doesn't close the action.",
       "tone": "good",
       "basis": [
         "Hand classification and equity are computed (Monte Carlo, treys).",

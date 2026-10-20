@@ -319,6 +319,7 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                     pot=pot_for_call,
                     behind=effective_behind,
                     action_closed=price_closed,
+                    big_blind=bb,
                 )
                 required_direct = required_equity(to_call, pot_for_call)
                 required = implied_required_equity(to_call, pot_for_call, implied_adj)

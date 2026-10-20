@@ -68,3 +68,26 @@ def test_action_closed_river_has_no_implied_adjustment():
     assert c.action_closed is True
     assert c.required_equity_pct == c.required_direct_pct
     assert c.implied_note == ""
+
+
+def test_set_value_note_is_in_big_blinds():
+    """Every amount the coach writes is in bb: 77 calling a 2.5 bb open at 5/10
+    with 975 chips behind reads "97.5 bb behind", never the raw chips (the note
+    shows word for word in the maths sheet's explanation and its price row)."""
+    import re
+
+    from poker.coach import build_coaching
+    from poker.engine import Action, ActionType, Hand
+    from tests.helpers import HandSession
+
+    h = Hand.new(table_size=6, blinds=(5, 10), starting_stacks=1000, manual_deal=True)
+    for cards in ("2c3d", "4h5s", "AsKd", "9c9d", "Th2h", "7c7d"):
+        h.deal_hole(cards)
+    h.apply(Action(ActionType.RAISE, 25))  # UTG opens to 2.5 bb
+    h.apply(Action(ActionType.FOLD))
+    h.apply(Action(ActionType.FOLD))
+    archetypes = {0: "Nit", 1: "TAG", 2: "TAG", 3: "LAG", 4: "Maniac"}
+    c = build_coaching(HandSession(h, hero_seat=5, archetypes=archetypes), trials=400)
+    assert c.implied_note == "set value, 97.5 bb behind"
+    assert "97.5 bb behind" in c.rationale
+    assert not re.search(r"\b975\b", c.rationale)

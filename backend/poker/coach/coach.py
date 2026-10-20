@@ -52,21 +52,28 @@ _REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (do
 _VALUE_EQUITY = 0.72
 
 
+def _bb(chips: int, big_blind: int) -> str:
+    """Chips as big blinds for the coach's text, one decimal at most (exact for
+    whole chips at 1/2 and 5/10): 975 at 10 -> "97.5 bb", 1000 -> "100 bb"."""
+    return f"{chips / big_blind:,.1f}".removesuffix(".0") + " bb"
+
+
 def _implied_adjustment(
     *, street: str, is_pocket_pair: bool, is_draw: bool, made_tier: MadeTier,
-    pair_str: PairStrength, pot: int, behind: int, action_closed: bool,
+    pair_str: PairStrength, pot: int, behind: int, action_closed: bool, big_blind: int,
 ) -> tuple[int, str]:
     """Signed extra chips you expect to play for *beyond* the current pot, for the
     implied/reverse price adjustment, capped at the stack behind (you can't win what
     isn't there). Positive = implied odds, negative = reverse implied, 0 when the
-    action closes (river/all-in), where the raw price rule is already exact."""
+    action closes (river/all-in), where the raw price rule is already exact. The
+    note says why, with any amount in big blinds."""
     if action_closed or behind <= 0:
         return 0, ""
     if street == "preflop" and is_pocket_pair:
         # A pair wins a big pot when it flops a set (~1 in 8.5), so the credit scales
         # with the stack behind. The flip point lands near 11x the call: to "close"
         # rather than to a clear call, and tighter than the rule-of-15 shorthand.
-        return round(behind * _SET_MINE_RATE), f"set value, {behind} behind"
+        return round(behind * _SET_MINE_RATE), f"set value, {_bb(behind, big_blind)} behind"
     if is_draw:
         # The only branch where the stack cap actually binds: whenever the money
         # behind is less than half the pot.
@@ -463,6 +470,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
             street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
             made_tier=hc.made, pair_str=pair_str, pot=pot_for_call,
             behind=effective_behind, action_closed=price_closed,
+            big_blind=int(state.blinds[1]),
         )
         required_direct = required_equity(to_call, pot_for_call)
         required = implied_required_equity(to_call, pot_for_call, implied_adj)  # decision-relevant
