@@ -229,3 +229,74 @@ def test_snapshot_hides_other_hole_cards():
     assert snap.seats[2].hole_cards is not None
     assert all(snap.seats[i].hole_cards is None for i in range(6) if i != 2)
     assert all(s.hole_cards is not None for s in hand.snapshot(reveal_all=True).seats)
+
+
+# --------------------------------------------------------------------------- #
+# our own shuffle (P1.1): deals depend only on the deck or the seed
+# --------------------------------------------------------------------------- #
+from poker.rng import shuffled_deck, stream  # noqa: E402
+
+
+def _check_or_call_down(hand):
+    while not hand.is_over:
+        la = hand.legal_actions()
+        hand.apply(Action(ActionType.CHECK if la.can_check else ActionType.CALL))
+
+
+def test_deck_order_is_dealt_exactly_and_global_rng_is_not_an_input():
+    deck = shuffled_deck(stream(5, "deck", 0))
+    random.seed(1)
+    a = Hand.new(blinds=(5, 10), starting_stacks=1000, deck=deck)
+    random.seed(2)
+    b = Hand.new(blinds=(5, 10), starting_stacks=1000, deck=deck)
+    assert [a.hole_cards(s) for s in range(6)] == [b.hole_cards(s) for s in range(6)]
+    # Seat i gets deck[i] and deck[i + n]; burns come off our deck too.
+    assert a.hole_cards(0) == [deck[0], deck[6]]
+    assert a.hole_cards(5) == [deck[5], deck[11]]
+    _check_or_call_down(a)
+    assert a.board == deck[13:16] + [deck[17], deck[19]]
+
+
+def test_heads_up_deck_order():
+    deck = shuffled_deck(stream(8, "deck", 2))
+    h = Hand.new(table_size=2, blinds=(5, 10), starting_stacks=1000, deck=deck)
+    assert h.hole_cards(0) == [deck[0], deck[2]] and h.hole_cards(1) == [deck[1], deck[3]]
+    _check_or_call_down(h)
+    assert h.board == deck[5:8] + [deck[9], deck[11]]
+
+
+def test_all_in_runout_deals_from_our_deck():
+    deck = shuffled_deck(stream(3, "deck", 1))
+    h = Hand.new(table_size=3, blinds=(5, 10), starting_stacks=1000, deck=deck)
+    h.apply(Action(ActionType.RAISE, 1000))
+    h.apply(Action(ActionType.CALL))
+    h.apply(Action(ActionType.CALL))
+    assert h.is_over
+    assert h.board == deck[7:10] + [deck[11], deck[13]]
+    assert sum(h.results()) == 0
+
+
+def test_seed_reproduces_the_deal():
+    random.seed(3)
+    x = Hand.new(seed=11)
+    random.seed(4)
+    y = Hand.new(seed=11)
+    assert x.dealt_holes() == y.dealt_holes()
+    assert len(x.dealt_holes()) == 6 and all(len(c) == 2 for c in x.dealt_holes())
+
+
+def test_dealt_holes_survive_a_fold():
+    h = Hand.new(deck=shuffled_deck(stream(4, "deck", 0)))
+    utg = h.hole_cards(2)
+    h.apply(Action(ActionType.FOLD))  # UTG folds; PokerKit mucks the cards
+    assert h.dealt_holes()[2] == utg
+
+
+def test_wrong_deck_is_rejected():
+    deck = shuffled_deck(stream(1, "deck", 0))
+    with pytest.raises(ValueError):
+        Hand.new(deck=deck[:51])
+    with pytest.raises(ValueError):
+        Hand.new(deck=deck[:51] + [deck[0]])
+    with pytest.raises(ValueError):
+        Hand.new(deck=deck, manual_deal=True)

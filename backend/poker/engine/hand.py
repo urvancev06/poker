@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import random
 import warnings
+from collections import deque
 from collections.abc import Sequence
 
-from pokerkit import Automation, Mode, NoLimitTexasHoldem, State
+from pokerkit import Automation, Card, Mode, NoLimitTexasHoldem, State
 
 # PokerKit emits advisory UserWarnings that are irrelevant to our controlled use:
 # a hint when a player folds while a free check is available (we allow it; it's
@@ -27,6 +28,8 @@ from pokerkit import Automation, Mode, NoLimitTexasHoldem, State
 warnings.filterwarnings("ignore", message="There is no reason for this player to fold")
 warnings.filterwarnings("ignore", message="A card being dealt")
 
+from ..math.cards import FULL_DECK
+from ..rng import shuffled_deck
 from .types import (
     Action,
     ActionType,
@@ -39,7 +42,8 @@ from .types import (
     positions_for,
 )
 
-# Normal play: PokerKit handles every mechanical step, including random dealing.
+# Every mechanical step PokerKit can automate. Normal play automates all of them
+# except the deal: we deal from our own shuffled deck (see ``Hand.new``).
 _AUTO_RANDOM = (
     Automation.ANTE_POSTING,
     Automation.BET_COLLECTION,
@@ -54,8 +58,9 @@ _AUTO_RANDOM = (
     Automation.RUNOUT_COUNT_SELECTION,
 )
 
-# Manual dealing (deterministic tests): same, but the caller deals hole + board
-# cards so specific scenarios (side pots, known showdowns) can be constructed.
+# Hole and board dealing are left to us: ``Hand`` deals from its own deck, or the
+# caller deals exact cards (``manual_deal=True``) to construct specific scenarios
+# (side pots, known showdowns).
 _AUTO_MANUAL_DEAL = tuple(
     a
     for a in _AUTO_RANDOM
@@ -92,6 +97,10 @@ class Hand:
         self._history: list[HistoryEntry] = []
         self._folded: set[int] = set()
         self._last_street_index = 0
+        # Every seat's cards as dealt. PokerKit clears them on a fold or a muck.
+        self._dealt: list[list[str]] = [[] for _ in range(table_size)]
+        # True when this hand deals from its own deck (not the manual-deal path).
+        self._self_dealing = False
 
     # ---- construction -----------------------------------------------------
 
@@ -103,12 +112,19 @@ class Hand:
         starting_stacks: int | Sequence[int] = 200,
         seed: int | None = None,
         manual_deal: bool = False,
+        deck: Sequence[str] | None = None,
     ) -> "Hand":
         """Start a fresh hand.
 
         ``starting_stacks`` is either one int (same for everyone) or a per-seat
-        sequence in PokerKit seat order (seat 0 = SB). ``seed`` makes the random
-        deal reproducible. ``manual_deal=True`` leaves dealing to the caller.
+        sequence in PokerKit seat order (seat 0 = SB).
+
+        The deal comes from ``deck`` (52 distinct cards, dealt in order: seat i
+        gets ``deck[i]`` and ``deck[i + n]``, then a burn before each street),
+        or from ``shuffled_deck(random.Random(seed))``. Nothing reads the global
+        ``random`` state: PokerKit still shuffles its own copy of the deck with
+        it, but that copy is replaced before any card is dealt.
+        ``manual_deal=True`` leaves dealing to the caller (tests).
         """
         sb, bb = blinds
         if isinstance(starting_stacks, int):
@@ -119,11 +135,14 @@ class Hand:
                 raise ValueError(
                     f"got {len(stacks)} stacks for a {table_size}-handed table"
                 )
-        if seed is not None:
-            random.seed(seed)
-        automations = _AUTO_MANUAL_DEAL if manual_deal else _AUTO_RANDOM
+        if manual_deal and deck is not None:
+            raise ValueError("a manual-deal hand takes no deck")
+        if not manual_deal:
+            deck = list(deck) if deck is not None else shuffled_deck(random.Random(seed))
+            if len(deck) != 52 or set(deck) != set(FULL_DECK):
+                raise ValueError("deck must hold each of the 52 cards exactly once")
         state = NoLimitTexasHoldem.create_state(
-            automations,
+            _AUTO_MANUAL_DEAL,
             False,         # ante_trimming_status
             0,             # antes
             (sb, bb),      # blinds
@@ -132,13 +151,41 @@ class Hand:
             table_size,
             mode=Mode.CASH_GAME,
         )
-        return cls(state, stacks, blinds, table_size)
+        hand = cls(state, stacks, blinds, table_size)
+        if not manual_deal:
+            state.deck_cards = deque(Card.parse("".join(deck)))
+            hand._self_dealing = True
+            hand._deal_pending()
+        return hand
+
+    def _deal_pending(self) -> None:
+        """Deal every card the state is waiting for, from our deck (burns are
+        automated and come off the same deck). No-op on manual-deal hands."""
+        if not self._self_dealing:
+            return
+        s = self._state
+        while s.can_deal_hole():
+            s.deal_hole(1)
+        self._capture_holes()
+        while s.can_deal_board():
+            s.deal_board(s.board_dealing_count)
+
+    def _capture_holes(self) -> None:
+        for seat in range(self.table_size):
+            cards = self._state.hole_cards[seat]
+            if len(cards) > len(self._dealt[seat]):
+                self._dealt[seat] = [_card_str(c) for c in cards]
+
+    def dealt_holes(self) -> list[list[str]]:
+        """Every seat's hole cards as dealt, kept after folds and mucks."""
+        return [list(c) for c in self._dealt]
 
     # ---- manual dealing (tests) ------------------------------------------
 
     def deal_hole(self, cards: str) -> None:
         """Deal one player's hole cards, e.g. ``"AhKs"`` (manual-deal hands)."""
         self._state.deal_hole(cards)
+        self._capture_holes()
 
     def deal_board(self, cards: str) -> None:
         """Deal board cards for the current street (manual-deal hands)."""
@@ -269,6 +316,8 @@ class Hand:
                 hole_cards=hole,
             )
         )
+        # Deal whatever the action unlocked: the next street, or an all-in runout.
+        self._deal_pending()
 
     # ---- snapshot ---------------------------------------------------------
 
