@@ -30,7 +30,7 @@ import { canAggress, aggroType, dockActions, PRESETS, presetAmount, presetIndexF
 import { limbHeight, sunPlacement, type Rect } from '../../lib/space'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { commandForKey, targetKind, type HotkeyFace } from '../../lib/tableHotkeys'
-import { computeLayout, glintAt, placeSeats, project, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
+import { BACKS_OFFSET, computeLayout, glintAt, placeSeats, project, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
 import { boardSpeech, buildTableModel, identityOf, STREET_LABEL, statusLine, type TableModel } from '../../lib/tableModel'
 import { useEscape } from '../../lib/escapeStack'
 import type { TableSession, SessionErrorScope } from '../../lib/useTableSession'
@@ -39,7 +39,7 @@ import { CoachGlance } from '../coach/CoachGlance'
 import { MathsSheet } from '../coach/MathsSheet'
 import { Dock } from './Dock'
 import { ActionsFace, ErrorFace, ResultFace, SizingFace, StatusFace } from './DockFaces'
-import { Felt, Slab } from './Felt'
+import { Felt, Slab, SlabSide } from './Felt'
 import { HandLog } from './HandLog'
 import { HeroHand } from './HeroHand'
 import { SeatLabel } from './SeatLabel'
@@ -99,6 +99,7 @@ function stageVars(L: TableLayout): CSSProperties {
     ['--thick0' as string]: g.thick,
     ['--card' as string]: g.card,
     ['--back' as string]: g.back,
+    ['--backs-off' as string]: BACKS_OFFSET,
     ['--chip' as string]: g.chip,
     ['--rev' as string]: g.rev,
     ['--hw' as string]: `${L.hw}px`,
@@ -187,7 +188,8 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
     if (key !== sizesKey) setSizesKey(key)
   }, [seatText, fontsReady, kind, sizesKey])
   const places = useMemo(() => placeSeats(L, sizes), [L, sizes])
-  const glint = useMemo(() => glintAt(L, sunPlacement(W, H).left), [L, W, H])
+  const sunX = sunPlacement(W, H).left
+  const glint = useMemo(() => glintAt(L, sunX), [L, sunX])
 
   /* ---------- the decision ---------- */
   const legal = model?.legal ?? null
@@ -435,6 +437,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
       <h1 className="sr-only">Table</h1>
       <div ref={stageRef} className="stage" data-geo={L.gk} style={stageVars(L)}>
         <div className="table-obj" aria-hidden="true">
+          <SlabSide L={L} lightX={sunX} />
           <div className="scene" style={{ left: L.ox, top: L.oy }}>
             <div className="plane">
               <Slab glint={glint} focus={!!model?.heroTurn} />

@@ -8,9 +8,10 @@
  * Elements carry data attributes so the motion hook can find them: data-board, data-backs,
  * data-chip, data-pot, data-deck, and a ghosts layer it may write into.
  */
-import { memo, type RefObject } from 'react'
+import { memo, useId, useMemo, type RefObject } from 'react'
 import type { SeatModel } from '../../lib/tableModel'
-import { boardU, type TableLayout, type UV, VILLAIN_SLOTS } from '../../lib/tableLayout'
+import { acrossStops, edgeLight, lightAcross, wallFills, wallShade } from '../../lib/slabLight'
+import { boardU, slabSide, type TableLayout, type UV, VILLAIN_SLOTS } from '../../lib/tableLayout'
 import { Card } from '../Card'
 
 const pct = (n: number) => `${n * 100}%`
@@ -27,6 +28,51 @@ export function FlipCard({ code }: { code: string }) {
     </div>
   )
 }
+
+const WALL_BANDS = 14
+const WALL_FILLS = wallFills(WALL_BANDS)
+
+/** The browser draws the slab's superellipse only where corner-shape is supported;
+ * elsewhere it is a plain ellipse, and the side must follow the same outline. */
+const ELLIPSE_ONLY = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && !CSS.supports('corner-shape', 'superellipse(1.35)')
+
+/**
+ * The slab's side wall, drawn in viewport px under the 3D object (the top paints over all
+ * but the visible band), lit as lib/slabLight says: a ramp down the wall (one fill per
+ * band, the bands following the curve), a falloff across it toward the ends and away from
+ * the light source (lightX), and a faint lower edge all the way round, so the silhouette
+ * reads against the void at the ends too.
+ */
+export const SlabSide = memo(function SlabSide({ L, lightX }: { L: TableLayout; lightX: number }) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const side = useMemo(() => slabSide(L, WALL_BANDS, ELLIPSE_ONLY ? 2 : undefined), [L])
+  const { x, y, w, h } = side.box
+  const pad = 3
+  const lx = lightAcross(lightX, x, w)
+  const fall = acrossStops(wallShade, lx)
+  const edge = acrossStops(edgeLight, lx)
+  return (
+    <svg className="slab-side" viewBox={`${x - pad} ${y - pad} ${w + 2 * pad} ${h + 2 * pad}`} style={{ left: x - pad, top: y - pad, width: w + 2 * pad, height: h + 2 * pad }}>
+      <defs>
+        <linearGradient id={`${uid}f`} gradientUnits="userSpaceOnUse" x1={x} y1={0} x2={x + w} y2={0}>
+          {fall.map(([o, a]) => (
+            <stop key={o} offset={o} stopColor="#000" stopOpacity={a} />
+          ))}
+        </linearGradient>
+        <linearGradient id={`${uid}e`} gradientUnits="userSpaceOnUse" x1={x} y1={0} x2={x + w} y2={0}>
+          {edge.map(([o, a]) => (
+            <stop key={o} offset={o} stopColor="#b4dcff" stopOpacity={a} />
+          ))}
+        </linearGradient>
+      </defs>
+      {side.bands.map((d, k) => (
+        <path key={k} d={d} fill={WALL_FILLS[k]} />
+      ))}
+      <path d={side.bands[0]} fill={`url(#${uid}f)`} />
+      <path d={side.edge} fill="none" stroke={`url(#${uid}e)`} strokeWidth={0.9 + 0.6 * L.s} strokeLinecap="round" />
+    </svg>
+  )
+})
 
 export const Slab = memo(function Slab({ glint, focus }: { glint: { u: number; v: number; deg: number }; focus: boolean }) {
   return (

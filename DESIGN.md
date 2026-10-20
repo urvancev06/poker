@@ -194,12 +194,14 @@ The one memorable thing: the table is a product shot (`components/table/Stage.cs
 
 **The camera.** A plane 1000·s px wide and 1000·s·aspect tall, under `rotateX(tilt)` inside a
 `perspective` of persp·s px. Everything scales linearly with one number, `s` (capped at 1.05; it
-is 0.9 at 1440 × 900, where a board card is 103 px wide).
+is 0.88 at 1440 × 900, where a board card is 100 px wide). The perspective is strong enough that the
+far rim visibly recedes (at 1440 × 900 a far-rim card is drawn at about 80% of a near-rim one's
+scale), so the slab reads as an object in depth, not an ellipse.
 
 | | Tilt | Aspect | Perspective | Thickness | Board card |
 |---|---|---|---|---|---|
-| desk and tablet | 50° | 0.56 | 2600 | 24 | 0.114 of the plan width |
-| phone | 38° | 0.9 | 2600 | 30 | 0.168 |
+| desk and tablet | 50° | 0.56 | 1800 | 34 | 0.114 of the plan width |
+| phone | 38° | 0.9 | 2000 | 36 | 0.168 |
 
 `project(u, v, z)` is the same camera written as arithmetic: CSS `rotateX`, then perspective,
 centred on the scene origin. That is what lets upright 2D things (seat type, the pot, bet labels,
@@ -207,17 +209,31 @@ your hand) sit at projected points, so type is never scaled, skewed or blurred b
 check it against the closed form and check that it scales linearly with `s`.
 
 **The slab.** The superellipse lies flat on the plane. Its top is obsidian: a near-black gradient
-(`#121318` → `#040506`), a crisp specular on the far rim, a faint softbox sheen along the far third,
-the atmosphere's blue reflected on the near half, and a blue line on the near rim. The wall sits at
-`translateZ(−thickness·s)`, black at the top and lit limb-blue at the bottom. One glint marks where
-the light source grazes the near rim (`glintAt`). On your turn a pool of the same blue gathers on
-the near rim in front of you.
+(`#17181e` → `#040506`) that falls off from a softbox sheen along the far third to a deep middle,
+the atmosphere's blue reflected on the near half, and darker toward the ends where the surface
+turns away; a crisp specular on the far rim, a faint hairline and soft bevel inside the whole rim,
+and a blue line on the near rim. **The side wall** is a solid you can see all the way round: an
+inline SVG under the 3D object (`SlabSide`), the band between the top's near rim and the bottom
+edge projected by the same camera (`slabSide`, so it meets the CSS 3D top exactly; it follows a
+plain ellipse where `corner-shape` is missing). It is lit as `lib/slabLight.ts` says, from the planet
+below and in front: down its height a soft highlight where the rounded top edge turns down, a
+deeper belly, then a lower bevel that faces the light; across it brightest under the light source
+and darker toward the ends; and a faint lower edge line all the way round, so the silhouette reads
+against the void at the ends. The bottom face, at `translateZ(−thickness·s)`, keeps only the soft
+blue glow under the near wall. One glint marks where the light source grazes the near rim
+(`glintAt`). On your turn a pool of the same blue gathers on the near rim in front of you.
 
-**On the felt.** Cards land on bare obsidian: there are no slots or placeholders. The board
-centres on the cards dealt so far, and on the turn the flop slides over to make room. A chip is three
+**On the felt.** Cards land on bare obsidian: there are no slots or placeholders. Every card on the
+felt lies square to the table, like the board, with a tight contact shadow, a soft one under it,
+and a near edge that catches the limb's blue. The board centres on the cards dealt so far, and on
+the turn the flop slides over to make room. **A live opponent's two backs** follow one rule at every
+seat: a pair square to the table, the second a fixed 34% of a card over (`BACKS_OFFSET`), so a
+sliver of the first shows; about 44% of a board card's width (48% on a phone); and laid the same
+distance inside the rim at every seat (a test keeps the on-screen gaps within 1.45× of each other
+at every size). Folded seats lose their pair (it slides to the muck). A chip is three
 discs stacked in z, so its edge shows at the tilt and its near edge catches the blue. A bet sits on
 the vector from the seat toward the pot, as close to the seat as it can while clearing the full
-five-card board, the pot block, the seat's backs and the rim (`betAnchor`), so it never moves when a
+five-card board, the pot block, the seat's backs (with air) and the rim (`betAnchor`), so it never moves when a
 card lands. The street label has one fixed place, above the pot.
 
 **Seats** are floating type, not panels: the name and stack on one line, the position and the
@@ -255,12 +271,15 @@ above the dock.
   corners and a centre pip). Suit colours clear 4.5:1 on the white face; the tightest is red at 4.53:1 against
   the bottom of the fall-off. The pre-Stage deck ids migrate (`lib/deckIds.ts`), so nobody loses a
   four-colour choice.
-- **One back** for every deck: the scene in miniature, a sky of the atmosphere's blue rising to a
-  bright limb, the planet's black body, and the mark as fine orbits. It is deliberately lit, not
-  near-black, so a live opponent's cards read against the obsidian (3.67:1, median pixel, measured
-  on the prototype).
-- **At a showdown** the backs turn face up where they lay, fanned so both indices read, and anchored
-  to clear the far rim and the board.
+- **One back** for every deck, quiet so a table of them never outshouts the board: deep navy
+  graphite (`#25375a` → `#1a2843` → `#1f3963`), the limb engraved as fine concentric orbits inside a
+  thin frame, the mark small and faint at the centre, and a thin light rim drawn as a 1.15 px
+  screen hairline at any size (`non-scaling-stroke`), brightest along the bottom edge because the
+  light comes from below. The rim is what reads against the obsidian (about 4–7:1 at 1440 × 900,
+  measured on screenshots); the body sits only just above the felt (about 1.2–1.5:1), and a
+  folded seat also says "Folded" in words.
+- **At a showdown** the backs turn face up where they lay, square to the table, the second far
+  enough over (58% of a card) that both indices read, anchored to clear the far rim and the board.
 
 ---
 
@@ -417,11 +436,13 @@ in a proportional font that the reader might compare down a column.
 - **SF Pro and Inter are not identical.** Apple devices render SF Pro; the screenshots in the README
   are Inter on Linux.
 - **Board indices are foreshortened** by cos 50° because the cards lie on the tilted felt. At
-  1280 × 720 (height-limited) a board card is 65 px wide: it reads, but that is the limit.
+  1280 × 720 (height-limited) a board card is 64 px wide: it reads, but that is the limit.
 - **The phone table is small at 390 × 664**: the slab is about 288 px across on screen and a board
   card 43 px wide. Its 38° tilt is gentler than the desktop's 50°.
-- **Showdown reveals are small**, because they must clear the far rim and the board: 61 px wide at
-  1440 × 900, 39 px at 1280 × 720, 32–40 px on a phone.
+- **Showdown reveals are small**, because they must clear the far rim and the board: 60 px wide at
+  1440 × 900, 38 px at 1280 × 720, 32–40 px on a phone.
+- **Opponents' backs are small on a phone**: 25 px wide at 390 × 844 and 20 px at 390 × 664, so
+  the phone's top row has room for three seats' bets between the backs and the board.
 - **The dock's rim still resizes.** The glass does not, but its 1 px light rim animates width and
   height during a morph.
 - **The backend's rationale is shown verbatim**, so it reads like a log line in places

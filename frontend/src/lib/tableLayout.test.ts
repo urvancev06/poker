@@ -4,6 +4,7 @@ import {
   GEO,
   BET_LABEL_PX,
   VILLAIN_SLOTS,
+  backsBox,
   betBox,
   betClear,
   boardBox,
@@ -14,8 +15,11 @@ import {
   project,
   projectWith,
   rimV,
+  slabSide,
   unitBounds,
   vAtY,
+  type BoxUV,
+  type TableLayout,
 } from './tableLayout'
 import { limbHeight } from './space'
 
@@ -205,5 +209,77 @@ describe('glintAt', () => {
     expect(gl.u).toBeGreaterThan(0.5)
     expect(gl.v).toBeCloseTo(1 - rimV(gl.u))
     expect(gl.deg).toBeLessThan(0) // the rim turns up toward the right
+  })
+})
+
+/** On-screen px from the nearest point of a box on the felt to the rim, measured along
+ * the ray from the table's centre (inside the slab: v between rimV(u) and 1 - rimV(u)). */
+function rimGapPx(L: TableLayout, b: BoxUV): number {
+  const inside = (u: number, v: number) => u > 0 && u < 1 && v > rimV(u) && v < 1 - rimV(u)
+  const gap = (u: number, v: number) => {
+    let lo = 0
+    let hi = 4
+    for (let i = 0; i < 40; i++) {
+      const m = (lo + hi) / 2
+      if (inside(0.5 + (u - 0.5) * m, 0.5 + (v - 0.5) * m)) lo = m
+      else hi = m
+    }
+    const a = project(L, u, v, 0)
+    const r = project(L, 0.5 + (u - 0.5) * lo, 0.5 + (v - 0.5) * lo, 0)
+    return Math.sign(lo - 1) * Math.hypot(a[0] - r[0], a[1] - r[1])
+  }
+  const pts: [number, number][] = []
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8
+    const u = b.u0 + (b.u1 - b.u0) * t
+    const v = b.v0 + (b.v1 - b.v0) * t
+    pts.push([u, b.v0], [u, b.v1], [b.u0, v], [b.u1, v])
+  }
+  return Math.min(...pts.map(([u, v]) => gap(u, v)))
+}
+
+describe('the backs', () => {
+  it.each(SIZES)('%ix%i: every seat lays its pair inside the slab, the same distance from the rim', (w, h, kind) => {
+    const L = layout(w, h, kind)
+    const gaps = VILLAIN_SLOTS.map((k) => rimGapPx(L, backsBox(L.g, L.g.seats[k].cards)))
+    expect(Math.min(...gaps)).toBeGreaterThan(4)
+    expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(1.45)
+  })
+  it('are a pair square to the table, smaller than a board card', () => {
+    for (const g of [GEO.desk, GEO.phone]) {
+      expect(g.back).toBeLessThan(g.card * 0.55)
+      const b = backsBox(g, [0.5, 0.5])
+      // the second card sits a fixed share of a card over: the pair is 1 + offset wide
+      expect(b.u1 - b.u0).toBeGreaterThan(g.back * 1.3)
+      expect(b.u1 - b.u0).toBeLessThan(g.back * 1.5)
+    }
+  })
+})
+
+describe('slabSide', () => {
+  it.each(SIZES)('%ix%i: the wall spans the object, from the near rim down by the thickness', (w, h, kind) => {
+    const L = layout(w, h, kind)
+    const side = slabSide(L, 8)
+    expect(side.bands).toHaveLength(8)
+    for (const d of side.bands) expect(d).toMatch(/^M[^Z]+Z$/)
+    expect(side.edge.startsWith('M')).toBe(true)
+    // the same extent as the projected object: its width, and its bottom is the wall's
+    expect(side.box.w).toBeCloseTo(L.tableW, 0)
+    expect(side.box.y + side.box.h).toBeCloseTo(L.objBottom, 0)
+    // in the middle of the near rim the wall is the thickness seen at the tilt (its bottom
+    // edge is farther from the camera, so a little smaller)
+    const top = project(L, 0.5, 1, 0)[1]
+    const bottom = project(L, 0.5, 1, -L.g.thick * L.s)[1]
+    const seen = L.g.thick * L.s * Math.sin((L.g.tilt * Math.PI) / 180)
+    expect(bottom - top).toBeGreaterThan(seen * 0.75)
+    expect(bottom - top).toBeLessThan(seen * 1.1)
+  })
+  it('follows the outline the browser draws (a plain ellipse where corner-shape is missing)', () => {
+    const L = layout(1440, 900, 'desk')
+    const ellipse = slabSide(L, 4, 2)
+    expect(ellipse.bands[0]).not.toBe(slabSide(L, 4).bands[0])
+    // the ellipse is the slimmer outline: never wider than the superellipse's object
+    expect(ellipse.box.w).toBeLessThanOrEqual(L.tableW + 0.5)
+    expect(ellipse.box.w).toBeGreaterThan(L.tableW * 0.95)
   })
 })
