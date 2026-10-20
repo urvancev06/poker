@@ -72,3 +72,28 @@ def test_bluff_slice_matches_measured_reality():
             assert measured_air == pytest.approx(encoded_air, abs=tol), (
                 f"{archetype} {street}: encoded {encoded_air:.3f} vs measured {measured_air:.3f}"
             )
+
+
+def test_ranges_and_equity_do_not_depend_on_the_hash_seed():
+    """The coach and the review sample equity from these combo lists with a fixed
+    seed, so the list order must not depend on Python's per-process string hash
+    (set iteration order), or the same hand reviews differently in each process."""
+    import subprocess
+    import sys
+
+    code = (
+        "import json;"
+        "from poker.coach.villain_model import condition_range;"
+        "from poker.math.equity import equity;"
+        "b=['Ah','7d','2c','Ks','9h'];"
+        "r=condition_range('TAG', b, 'raise', {'flop': 'bet'}, set(b) | {'Qs','Qd'});"
+        "print(json.dumps([r.combos[:40], equity(['Qs','Qd'], b, [r.combos], trials=300, seed=0).equity]))"
+    )
+    outs = {
+        subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True,
+            env={**__import__("os").environ, "PYTHONHASHSEED": str(h), "PYTHONPATH": "."},
+        ).stdout
+        for h in (1, 2, 3)
+    }
+    assert len(outs) == 1

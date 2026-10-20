@@ -138,7 +138,9 @@ def _base_combos(pct: float, dead: set[str]) -> list[Combo]:
     combos: set = set()
     for name in top_fraction(pct):
         combos |= parse_token(name)
-    return [c for c in combos if c[0] not in dead and c[1] not in dead]
+    # Sorted: equity samples these lists with a fixed seed, so their order must not
+    # depend on set iteration (Python's per-process string hash).
+    return sorted(c for c in combos if c[0] not in dead and c[1] not in dead)
 
 
 def static_range(archetype: str, dead: set[str]) -> list[Combo]:
