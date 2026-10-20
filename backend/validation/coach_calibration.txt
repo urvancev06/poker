@@ -1,17 +1,21 @@
 COACH CALIBRATION PROBE
   command : backend/.venv/bin/python scripts/coach_calibration.py --hands 6000 --seed 0
+  date    : 2026-10-20
+  commit  : 3d2e1ad + P1.12 (5/10 probe, BET_COMPOSITION re-measured)
+  table   : 5/10 blinds, 1,000-chip (100bb) stacks, lineup [nit, tag, lag, station, maniac, tag]
+  rng     : seeded streams (deck of hand h; decision k of player p in hand h)
 
 CALIBRATION PROBE — hero faces a single villain's river bet
   bias = mean(predicted equity) - mean(actual win rate);  >0 means the model OVER-rates the call
 ============================================================================================
 villain              n   actual  old_pred  new_pred  bias_old  bias_new  MAE_old  MAE_new
 --------------------------------------------------------------------------------------------
-Nit                 60    0.333     0.337     0.284    +0.004    -0.050    0.288    0.245
-TAG                195    0.423     0.474     0.396    +0.051    -0.027    0.299    0.270
-LAG                233    0.472     0.523     0.438    +0.051    -0.034    0.296    0.272
-Calling Station    394    0.506     0.559     0.473    +0.053    -0.033    0.314    0.287
-Maniac             323    0.526     0.577     0.491    +0.050    -0.035    0.336    0.326
+Nit                 57    0.281     0.413     0.347    +0.133    +0.066    0.285    0.238
+TAG                228    0.399     0.442     0.372    +0.043    -0.027    0.300    0.277
+LAG                231    0.422     0.472     0.406    +0.050    -0.016    0.289    0.268
+Calling Station    340    0.546     0.565     0.480    +0.020    -0.066    0.297    0.277
+Maniac             346    0.536     0.579     0.495    +0.043    -0.041    0.314    0.304
 --------------------------------------------------------------------------------------------
-ALL               1205    0.483     0.532     0.449    +0.049    -0.034    0.313    0.290
+ALL               1202    0.479     0.521     0.443    +0.042    -0.036    0.300    0.281
 ============================================================================================
-overall: static over-rates by +0.049; conditioned bias -0.034  ->  error REDUCED
+overall: static over-rates by +0.042; conditioned bias -0.036  ->  error REDUCED

@@ -1,0 +1,90 @@
+{
+ "_note": "BET_COMPOSITION as it was when legacy_reviews.json was snapshotted (commit 6c63f02); test_review_of_a_legacy_row_is_unchanged reviews with it, so a re-measured composition does not move the snapshot.",
+ "bet_composition": {
+  "Nit": {
+   "flop": {
+    "value": 0.854,
+    "draw": 0.037,
+    "air": 0.109
+   },
+   "turn": {
+    "value": 0.961,
+    "draw": 0.023,
+    "air": 0.016
+   },
+   "river": {
+    "value": 0.993,
+    "draw": 0.0,
+    "air": 0.007
+   }
+  },
+  "TAG": {
+   "flop": {
+    "value": 0.705,
+    "draw": 0.087,
+    "air": 0.209
+   },
+   "turn": {
+    "value": 0.891,
+    "draw": 0.068,
+    "air": 0.041
+   },
+   "river": {
+    "value": 0.965,
+    "draw": 0.0,
+    "air": 0.035
+   }
+  },
+  "LAG": {
+   "flop": {
+    "value": 0.682,
+    "draw": 0.089,
+    "air": 0.229
+   },
+   "turn": {
+    "value": 0.903,
+    "draw": 0.063,
+    "air": 0.033
+   },
+   "river": {
+    "value": 0.964,
+    "draw": 0.0,
+    "air": 0.036
+   }
+  },
+  "Calling Station": {
+   "flop": {
+    "value": 0.93,
+    "draw": 0.037,
+    "air": 0.032
+   },
+   "turn": {
+    "value": 0.961,
+    "draw": 0.033,
+    "air": 0.006
+   },
+   "river": {
+    "value": 0.995,
+    "draw": 0.0,
+    "air": 0.005
+   }
+  },
+  "Maniac": {
+   "flop": {
+    "value": 0.66,
+    "draw": 0.104,
+    "air": 0.236
+   },
+   "turn": {
+    "value": 0.828,
+    "draw": 0.11,
+    "air": 0.062
+   },
+   "river": {
+    "value": 0.936,
+    "draw": 0.0,
+    "air": 0.064
+   }
+  }
+ }
+}

@@ -15,6 +15,9 @@ so it over-rates hero equity (bias > 0) -> over-calling. A NEW bias near zero
 means the error shrank; a negative one means it only moved into over-folding.
 
     backend/.venv/bin/python scripts/coach_calibration.py --hands 6000
+
+Hands are dealt at 5/10 with 100bb stacks from seeded streams (deck of hand h,
+decision k of player p in hand h), so a run depends only on --hands and --seed.
 """
 
 from __future__ import annotations
@@ -32,6 +35,9 @@ from poker.rng import shuffled_deck, stream
 
 _EVAL = Evaluator()
 _LINEUP = ["nit", "tag", "lag", "station", "maniac", "tag"]
+# Decision 1: the table's chip unit, 5/10 blinds and 1,000-chip (100bb) stacks.
+_BLINDS = (5, 10)
+_STACK = 1000
 
 
 def _won(hero, villain, board) -> float:
@@ -49,14 +55,14 @@ def run_probe(hands: int, seed: int = 0, eq_trials: int = 400):
         seat_to_player = [(button + 1 + k) % n for k in range(n)]
         decisions = [0] * n  # per-player decision number k, for the decision stream
         hand = Hand.new(
-            table_size=n, blinds=(1, 2), starting_stacks=200,
+            table_size=n, blinds=_BLINDS, starting_stacks=_STACK,
             deck=shuffled_deck(stream(seed, "deck", h)),
         )
         while not hand.is_over:
             seat = hand.actor
             if seat is None:
                 break
-            ctx = build_context(hand, 2)
+            ctx = build_context(hand, _BLINDS[1])
             if ctx.street == "river" and ctx.to_call > 0 and len(ctx.board) == 5:
                 snap = hand.snapshot(reveal_all=True)
                 bettors = {e.seat for e in snap.history if e.street == "river" and e.action in ("bet", "raise")}

@@ -74,6 +74,29 @@ def test_bluff_slice_matches_measured_reality():
             )
 
 
+def test_bet_composition_is_the_recorded_measurement():
+    """BET_COMPOSITION is the BET-RANGE COMPOSITION table in the committed gate record
+    (validation/phase3_gate.txt, written by scripts.gen_baseline), to the rounding of
+    the record. Regenerating the record without copying the table here fails."""
+    from pathlib import Path
+
+    record = (Path(__file__).resolve().parent.parent / "validation" / "phase3_gate.txt").read_text()
+    table = record.split("BET-RANGE COMPOSITION", 1)[1]
+    rows = {}
+    for line in table.splitlines():
+        parts = line.rsplit(None, 5)
+        if len(parts) == 6 and parts[1] in ("flop", "turn", "river"):
+            arch, street, value, draw, air, _bets = parts
+            rows[(arch.strip(), street)] = (float(value), float(draw), float(air))
+    assert len(rows) == 15
+    for (arch, street), (value, draw, air) in rows.items():
+        comp = BET_COMPOSITION[arch][street]
+        for key, pct in (("value", value), ("draw", draw), ("air", air)):
+            assert comp[key] == pytest.approx(pct / 100, abs=0.00051), (
+                f"{arch} {street} {key}: BET_COMPOSITION {comp[key]:.3f} vs recorded {pct:.1f}%"
+            )
+
+
 def test_ranges_and_equity_do_not_depend_on_the_hash_seed():
     """The coach and the review sample equity from these combo lists with a fixed
     seed, so the list order must not depend on Python's per-process string hash

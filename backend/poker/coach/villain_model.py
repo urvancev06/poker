@@ -53,34 +53,35 @@ _THREEBET_PCT = {
 # Measured bet-range composition per archetype per street: of the hands the bot
 # actually bets/raises with, the fractions that are value (made pair+) / draw / air.
 # The air fraction is the bluff slice. Source: scripts/measure_bet_ranges.py over the
-# locked baseline (backend/validation/phase3_gate.txt), 60k hands, seed 0.
-# test_villain_model re-measures and asserts these still match within tolerance, so
-# they can't silently drift into fiction.
+# locked baseline (backend/validation/phase3_gate.txt), 60k hands, seed 0, at 5/10
+# with 100bb stacks and the seeded streams (re-measured in P1.12).
+# test_villain_model checks these equal the recorded table and re-measures them at
+# another seed within tolerance, so they can't silently drift into fiction.
 BET_COMPOSITION: dict[str, dict[str, dict[str, float]]] = {
     "Nit": {
-        "flop": {"value": 0.854, "draw": 0.037, "air": 0.109},
-        "turn": {"value": 0.961, "draw": 0.023, "air": 0.016},
-        "river": {"value": 0.993, "draw": 0.000, "air": 0.007},
+        "flop": {"value": 0.867, "draw": 0.035, "air": 0.098},
+        "turn": {"value": 0.967, "draw": 0.028, "air": 0.005},
+        "river": {"value": 0.985, "draw": 0.000, "air": 0.015},
     },
     "TAG": {
-        "flop": {"value": 0.705, "draw": 0.087, "air": 0.209},
-        "turn": {"value": 0.891, "draw": 0.068, "air": 0.041},
-        "river": {"value": 0.965, "draw": 0.000, "air": 0.035},
+        "flop": {"value": 0.717, "draw": 0.083, "air": 0.200},
+        "turn": {"value": 0.897, "draw": 0.069, "air": 0.035},
+        "river": {"value": 0.969, "draw": 0.000, "air": 0.031},
     },
     "LAG": {
-        "flop": {"value": 0.682, "draw": 0.089, "air": 0.229},
-        "turn": {"value": 0.903, "draw": 0.063, "air": 0.033},
-        "river": {"value": 0.964, "draw": 0.000, "air": 0.036},
+        "flop": {"value": 0.699, "draw": 0.081, "air": 0.220},
+        "turn": {"value": 0.894, "draw": 0.069, "air": 0.037},
+        "river": {"value": 0.958, "draw": 0.000, "air": 0.042},
     },
     "Calling Station": {
-        "flop": {"value": 0.930, "draw": 0.037, "air": 0.032},
-        "turn": {"value": 0.961, "draw": 0.033, "air": 0.006},
+        "flop": {"value": 0.931, "draw": 0.043, "air": 0.026},
+        "turn": {"value": 0.960, "draw": 0.034, "air": 0.007},
         "river": {"value": 0.995, "draw": 0.000, "air": 0.005},
     },
     "Maniac": {
-        "flop": {"value": 0.660, "draw": 0.104, "air": 0.236},
-        "turn": {"value": 0.828, "draw": 0.110, "air": 0.062},
-        "river": {"value": 0.936, "draw": 0.000, "air": 0.064},
+        "flop": {"value": 0.653, "draw": 0.108, "air": 0.239},
+        "turn": {"value": 0.829, "draw": 0.112, "air": 0.060},
+        "river": {"value": 0.938, "draw": 0.000, "air": 0.062},
     },
 }
 # Neutral fallback if an (archetype, street) is missing.

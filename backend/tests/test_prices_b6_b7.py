@@ -113,10 +113,16 @@ def test_review_reports_the_hands_big_blind():
     assert review_hand(any_row, equity_trials=200)["big_blind"] == 2
 
 
-def test_review_of_a_legacy_row_is_unchanged():
+def test_review_of_a_legacy_row_is_unchanged(monkeypatch):
     """Rows stored before the ledger existed are reviewed exactly as before. The
     snapshot was taken by running review_hand on these rows before the ledger
-    path was added."""
+    path was added. The review's equity reads the villain ranges, which follow the
+    measured BET_COMPOSITION, so the review runs with the composition of the
+    snapshot: a re-measured composition (P1.12, P2.8) moves equities, not this path."""
+    from poker.coach import villain_model
+
+    era = json.loads((FIXTURES / "legacy_reviews_bet_composition.json").read_text())["bet_composition"]
+    monkeypatch.setattr(villain_model, "BET_COMPOSITION", era)
     legacy = json.loads((FIXTURES / "legacy_reviews.json").read_text())
     for name, case in legacy.items():
         assert "ledger" not in case["data"]

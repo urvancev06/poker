@@ -28,6 +28,29 @@ def test_conditioned_range_reduces_river_overcall_bias():
     assert bias_new > -0.08, f"conditioned must not over-correct into over-folding ({bias_new:+.3f})"
 
 
+def test_probe_plays_at_5_10_and_100bb(monkeypatch):
+    """Decision 1: the probe deals the table's chip unit (5/10, 1,000-chip stacks),
+    and the bots size from the 10-chip big blind, as in the simulator and sessions."""
+    import scripts.coach_calibration as probe
+
+    hands, bigs = [], []
+    real_new, real_ctx = probe.Hand.new, probe.build_context
+
+    def spy_new(*args, **kwargs):
+        hands.append((kwargs.get("blinds"), kwargs.get("starting_stacks")))
+        return real_new(*args, **kwargs)
+
+    def spy_ctx(hand, big_blind):
+        bigs.append(big_blind)
+        return real_ctx(hand, big_blind)
+
+    monkeypatch.setattr(probe.Hand, "new", staticmethod(spy_new))
+    monkeypatch.setattr(probe, "build_context", spy_ctx)
+    probe.run_probe(hands=3, seed=0, eq_trials=20)
+    assert hands and set(hands) == {((5, 10), 1000)}
+    assert bigs and set(bigs) == {10}
+
+
 def test_probe_is_reproducible_and_ignores_global_rng():
     import random
 
