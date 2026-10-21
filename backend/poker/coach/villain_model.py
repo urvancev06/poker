@@ -35,8 +35,10 @@ from ..math.classify import Draw, MadeTier
 # it here: re-measured with the hole-aware classify, a bot's bet whose only pair is
 # the board's counts as air, the air shares rise several-fold (most on paired
 # boards), and the coach's known-spot invariants (the maniac-vs-nit river
-# bluff-catch, the reverse-implied fold) no longer hold. That is an owner decision,
-# recorded in the P2.8 report; the coach's own hand reads are hole-aware already.
+# bluff-catch, the reverse-implied fold) no longer hold: the v1 bots bet board pairs
+# as pairs (they use classify_legacy), so this model labels their bets their way.
+# validation/bet_composition_hole_aware.txt has the measurement; owner decision
+# pending. The coach's own hand reads are hole-aware.
 from ..math.classify_legacy import classify
 from ..math.ranges import parse_token
 from ..bots.preflop_strength import top_fraction

@@ -30,7 +30,8 @@ from treys import Card, Evaluator
 from poker.bots import Bot, archetypes, build_context
 from poker.coach.villain_model import condition_range, static_range, villain_line
 from poker.engine import Hand
-from poker.math.equity import equity
+# The coach's own equity (exact on a heads-up river), so the probe measures what it shows.
+from poker.coach.villains import villain_equity
 from poker.rng import shuffled_deck, stream
 
 _EVAL = Evaluator()
@@ -75,10 +76,12 @@ def run_probe(hands: int, seed: int = 0, eq_trials: int = 400):
                         dead = set(hero) | set(board)
                         varch = bots[seat_to_player[vseat]].name
                         role, postflop = villain_line(snap.history, vseat)
-                        old = equity(hero, board, [static_range(varch, dead)], trials=eq_trials, seed=0).equity
+                        key = f"calibration:{seed}:{h}"
+                        old = villain_equity(hero, board, [static_range(varch, dead)], key=key, samples=eq_trials)
                         cr = condition_range(varch, board, role, postflop, dead)
-                        new = equity(hero, board, [cr.combos], trials=eq_trials, seed=0).equity
-                        rows.append((varch, _won(hero, vhole, board), old, new))
+                        new = villain_equity(hero, board, [cr.combos], key=key, samples=eq_trials)
+                        if old is not None and new is not None:
+                            rows.append((varch, _won(hero, vhole, board), old.equity, new.equity))
             player = seat_to_player[seat]
             rng = stream(seed, "decision", h, player, decisions[player])
             decisions[player] += 1

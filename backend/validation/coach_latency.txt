@@ -1,0 +1,13 @@
+COACH LATENCY (one measurement, P2.10)
+  command : PYTHONPATH=. .venv/bin/python scripts/coach_latency.py
+  date    : 2026-10-21, this container, one process, flop matrix not pre-warmed
+  spots   : 60 seeded hands (seed 5, lineup nit tag lag station maniac), hero checks or calls
+  methods : exact 202, sampled 2
+
+street  n    p50     max     (build_coaching wall time)
+flop    76   58 ms   246 ms
+turn    70   46 ms   358 ms
+river   58   27 ms   131 ms
+
+coach vs review: 0 of 204 postflop decisions differ (equity within 0.05 pp, same price).
+§4.10 targets (informational in phase 2): p50 <= 80, p90 <= 250, max <= 400 ms.

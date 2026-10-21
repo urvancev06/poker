@@ -59,3 +59,27 @@ def test_probe_is_reproducible_and_ignores_global_rng():
     random.seed(2)
     b = run_probe(hands=200, seed=0, eq_trials=50)
     assert a and a == b
+
+
+def test_probe_prices_with_the_coachs_equity():
+    """P2.10: the probe reads the equity the coach shows (``villains.villain_equity``),
+    which is exact on a heads-up river, so its predicted columns carry no sampling noise."""
+    from poker.coach.villains import villain_equity
+
+    rows = run_probe(hands=200, seed=0)
+    assert rows
+    seen = []
+    import scripts.coach_calibration as cal
+
+    def spy(*a, **k):
+        res = villain_equity(*a, **k)
+        seen.append(res.method)
+        return res
+
+    orig = cal.villain_equity
+    cal.villain_equity = spy
+    try:
+        assert run_probe(hands=200, seed=0) == rows
+    finally:
+        cal.villain_equity = orig
+    assert seen and set(seen) == {"exact"}

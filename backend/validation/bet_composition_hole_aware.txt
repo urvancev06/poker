@@ -1,0 +1,44 @@
+BET-RANGE COMPOSITION BY THE HOLE-AWARE LABELLER (P2.8 measurement, NOT adopted)
+  command : scripts/measure_bet_ranges.py with bet_category on poker.math.classify
+            (value = hole_tier >= PAIR, draw = flush draw / open-ender / gutshot of the hole)
+  date    : 2026-10-21
+  result  : the coach keeps classify_legacy for the villain model (villain_model.bet_category)
+            and the P1.12 BET_COMPOSITION. Owner decision pending.
+
+Why not adopted. The v1 bots choose bets with classify_legacy, so they bet board pairs as
+pairs. The hole-aware labeller files those bets as air, and the air share is pooled over all
+boards, so on an unpaired board the conditioned range then holds bluffs the bot does not
+have (a nit's river air goes from 1.5% to 12.9%). With this table and labeller patched in,
+these known-spot invariants fail (tests unchanged, as the plan requires):
+  test_coach_spots::test_bluffcatch_flips_on_villain_bluff_rate   (nit: Call. instead of Fold.)
+  test_coach_spots::test_bluffcatch_flips_on_price                (maniac pot bet: Call.)
+  test_implied_spots::test_reverse_implied_folds_a_dominated_hand
+The villain model describes the v1 bots, so it labels their bets with their own labeller;
+the hero's hand read (coach, review) is hole-aware. Revisit with the v2 bots (phase 3), or
+condition the composition on board pairing.
+BET-RANGE COMPOSITION  (of the hands each archetype bets/raises with)
+  source: 60,000 hands, seed 0, lineup ['nit', 'tag', 'lag', 'station', 'maniac', 'tag']
+======================================================================
+archetype       street    value%   draw%    air%     bets
+----------------------------------------------------------------------
+Nit             flop        77.7     4.7    17.5     1586
+Nit             turn        87.7     4.9     7.4     1028
+Nit             river       87.1     0.0    12.9      754
+----------------------------------------------------------------------
+TAG             flop        61.6     9.5    29.0     7291
+TAG             turn        74.5    11.5    14.1     4223
+TAG             river       78.8     0.0    21.2     2895
+----------------------------------------------------------------------
+LAG             flop        58.3     9.5    32.3     6049
+LAG             turn        70.1    12.6    17.3     3578
+LAG             river       71.7     0.0    28.3     2611
+----------------------------------------------------------------------
+Calling Station flop        72.1     6.3    21.5     5179
+Calling Station turn        71.7    10.1    18.3     4798
+Calling Station river       73.3     0.0    26.7     4000
+----------------------------------------------------------------------
+Maniac          flop        49.5    12.4    38.1    13426
+Maniac          turn        58.0    18.3    23.8     7843
+Maniac          river       66.0     0.0    34.0     4892
+----------------------------------------------------------------------
+air% on the river = the bluff fraction a bluff-catcher beats.

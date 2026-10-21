@@ -1,21 +1,27 @@
 COACH CALIBRATION PROBE
   command : backend/.venv/bin/python scripts/coach_calibration.py --hands 6000 --seed 0
-  date    : 2026-10-20
-  commit  : 3d2e1ad + P1.12 (5/10 probe, BET_COMPOSITION re-measured)
+  date    : 2026-10-21
+  commit  : engine-v2 phase 2 (P2.10): the coach's equity (villains.villain_equity, exact on
+            a heads-up river) replaces 400-trial Monte Carlo; villain model and BET_COMPOSITION
+            unchanged (classify_legacy, see bet_composition_hole_aware.txt)
   table   : 5/10 blinds, 1,000-chip (100bb) stacks, lineup [nit, tag, lag, station, maniac, tag]
   rng     : seeded streams (deck of hand h; decision k of player p in hand h)
+  before  : P1.12 record (MC): ALL bias_old +0.042, bias_new -0.036, MAE 0.300 -> 0.281, REDUCED
+  note    : the verdict line's mean-bias rule (|new| < |old| - 0.005) misses by 0.001 here, so it
+            reads CHECK; the paired error (the guard, tests/test_coach_calibration.py) still
+            falls 0.300 -> 0.281 and the guard passes.
 
 CALIBRATION PROBE — hero faces a single villain's river bet
   bias = mean(predicted equity) - mean(actual win rate);  >0 means the model OVER-rates the call
 ============================================================================================
 villain              n   actual  old_pred  new_pred  bias_old  bias_new  MAE_old  MAE_new
 --------------------------------------------------------------------------------------------
-Nit                 57    0.281     0.413     0.347    +0.133    +0.066    0.285    0.238
-TAG                228    0.399     0.442     0.372    +0.043    -0.027    0.300    0.277
-LAG                231    0.422     0.472     0.406    +0.050    -0.016    0.289    0.268
-Calling Station    340    0.546     0.565     0.480    +0.020    -0.066    0.297    0.277
-Maniac             346    0.536     0.579     0.495    +0.043    -0.041    0.314    0.304
+Nit                 57    0.281     0.410     0.342    +0.129    +0.062    0.284    0.237
+TAG                228    0.399     0.441     0.369    +0.042    -0.030    0.299    0.276
+LAG                231    0.422     0.473     0.401    +0.051    -0.021    0.290    0.267
+Calling Station    340    0.546     0.564     0.477    +0.019    -0.069    0.298    0.278
+Maniac             346    0.536     0.581     0.494    +0.045    -0.042    0.314    0.303
 --------------------------------------------------------------------------------------------
-ALL               1202    0.479     0.521     0.443    +0.042    -0.036    0.300    0.281
+ALL               1202    0.479     0.521     0.440    +0.042    -0.038    0.300    0.281
 ============================================================================================
-overall: static over-rates by +0.042; conditioned bias -0.036  ->  error REDUCED
+overall: static over-rates by +0.042; conditioned bias -0.038  ->  error CHECK
