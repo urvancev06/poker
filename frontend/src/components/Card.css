@@ -16,3 +16,14 @@
   fill: #000;
   fill-opacity: 0;
 }
+/* the back's lift and its hairline edge all round: off, except a phone's backs (Stage.css) */
+.card__lift {
+  fill: #8eaae6;
+  fill-opacity: 0;
+}
+.card__edge {
+  fill: none;
+  stroke: #dbe5f7;
+  stroke-opacity: 0;
+  stroke-width: 1px;
+}

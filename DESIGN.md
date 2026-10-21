@@ -242,12 +242,16 @@ phone); and laid the same distance inside the rim at every seat (a test keeps th
 within 1.45× of each other at every size, on both outlines). Folded seats lose their pair (it
 slides to the muck). A chip is three discs stacked in z, so its edge shows at the tilt and its
 near edge catches the blue. A bet sits on the vector from the seat toward the pot, as close to the
-seat as it can while clearing the full five-card board, the pot block and the rim (`betAnchor`),
-so it never moves when a card lands. Its air from the backs is kept on screen, as the camera draws
-it, because the far rim squashes table units: the chip's whole stack keeps 6 px from every seat's
-backs and its footprint 8 px, its label 4 px, and no two bets come within 4 px. Where the board
-leaves no room straight in front of a top seat (the smaller desktops, a phone), the bet steps
-beside its backs instead; the two side seats of a desktop mirror each other (`twinOf`). The
+seat as it can while clearing the full five-card board, the pot block and the rim (`betSpot`,
+`placeBets`), so it never moves when a card lands. Its air from the backs is kept on screen, as the
+camera draws it, because the far rim squashes table units: the chip's whole stack keeps 6 px from
+every seat's backs and its footprint 8 px, its label 4 px. Where the board leaves no room straight
+in front of a top seat (the smaller desktops, a phone), the bet steps beside its backs instead; the
+two side seats of a desktop mirror each other (`twinOf`). On a small table (s under about 0.5: a
+portrait tablet, a laptop with a panel open) the fixed-px label and air can outgrow the felt, so a
+bet gives up the least of its air from the backs it must (`AIR_STEPS`, down to touching), and its
+label may read on the other side; two bets never come within 4 px, at any supported size (a
+600 px wide tablet is below that range: its pot block alone runs past the near rim). The
 street label has one fixed place, above the pot.
 
 **Seats** are floating type, not panels: the name and stack on one line, the position and the

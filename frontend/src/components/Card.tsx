@@ -40,7 +40,9 @@ function CardFace({ card, deck, uid }: { card: ParsedCard; deck: DeckDef; uid: s
  * engraving reads as ribbing), a thin frame, and a thin rim lit only along the near
  * (bottom) edge, where the planet's light catches it, as it catches a chip's. Quiet, so a
  * table of backs never outshouts the board. `.card__shade` darkens the under card of a
- * pair (Stage.css), so the pair reads as two cards, the front one lying on the other. */
+ * pair (Stage.css), so the pair reads as two cards, the front one lying on the other;
+ * `.card__lift` and `.card__edge` (off by default) lift a phone's small backs a step and
+ * edge them all round, so they read as cards rather than dark squares. */
 function CardBack({ uid }: { uid: string }) {
   return (
     <>
@@ -62,9 +64,11 @@ function CardBack({ uid }: { uid: string }) {
       </defs>
       <path d={CARD_OUTLINE} fill={`url(#${uid}s)`} />
       <path d={CARD_OUTLINE} fill={`url(#${uid}l)`} />
+      <path className="card__lift" d={CARD_OUTLINE} />
       <rect x="9" y="9" width="82" height="122" rx="8" fill="none" stroke={LIMB_LIGHT} strokeOpacity=".14" strokeWidth="1.3" />
       {/* the rim is a screen-px hairline at any size, so it stays crisp on a phone's small backs */}
       <path d={CARD_INSET} fill="none" stroke={`url(#${uid}r)`} strokeWidth="1.15" vectorEffect="non-scaling-stroke" />
+      <path className="card__edge" d={CARD_INSET} vectorEffect="non-scaling-stroke" />
       <path className="card__shade" d={CARD_OUTLINE} />
     </>
   )

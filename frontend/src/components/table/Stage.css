@@ -2,7 +2,7 @@
    Only what Tailwind cannot say well lives here: the CSS 3D camera and slab, cards and
    chips lying on the felt, the hand's lift and light pool, and the upright labels' anchors.
    Geometry comes from lib/tableLayout.ts as CSS variables on .stage:
-     --s scale, --tilt, --aspect, --persp0, --thick0, --card, --back, --chip, --rev, --hw.
+     --s scale, --tilt, --aspect, --persp0, --thick0, --card, --back, --chip, --rev, --hw, --backs-off, --reveal.
    State is drawn by classes and attributes; motion only ever runs from the previous look
    to the state already on screen (element.animate, fill: backwards), so an interrupted
    animation can never hide a bet, a card or a seat. */
@@ -199,6 +199,15 @@
 }
 .felt-top .vcards > .card:first-child .card__shade {
   fill-opacity: 0.22;
+}
+/* on a phone the backs are 19-24 px wide, so the navy reads as a dark square: lift it a step
+   and give each card a thin light edge all round, so the pair reads as two playing cards
+   (still well under the board's white faces) */
+.stage[data-geo='phone'] .vcards .card__lift {
+  fill-opacity: 0.12;
+}
+.stage[data-geo='phone'] .vcards .card__edge {
+  stroke-opacity: 0.5;
 }
 
 /* a live villain's two backs: one rule at every seat. Both lie square to the table, like
