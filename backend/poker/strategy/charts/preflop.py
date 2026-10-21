@@ -181,23 +181,39 @@ def vs_open_probs(
     callers: int = 0,
 ) -> dict[str, tuple[float, float]]:
     """(P(3-bet), P(call)) per class facing one open; with ``callers`` it is a squeeze."""
+    value = set(SQUEEZE_VALUE if callers else VALUE_3BET[opener])
+    light_cut, cut = vs_open_cuts(hero, opener, threebet=threebet, call=call, k=k, callers=callers)
     if callers:
-        value = set(SQUEEZE_VALUE)
         light_p = min(1.0, SQUEEZE_BLUFF_P * threebet)
         p3 = {c: 1.0 if c in value else (light_p if c in SQUEEZE_BLUFF else 0.0) for c in CLASSES}
-        flat_mult = SQUEEZE_FLAT
     else:
-        value = set(VALUE_3BET[opener])
-        light_cut = LIGHT_BASE[(hero, opener)] * threebet * k
         p3 = {c: 1.0 if c in value else p_in(c, LIGHT_3BET_ORDER, light_cut) for c in CLASSES}
-        flat_mult = 1.0
+    base = BB_DEFEND_ORDER if hero == "BB" else flat_order(opener)
+    order = tuple(c for c in base if c not in value)
+    return {c: (p3[c], (1.0 - p3[c]) * p_in(c, order, cut)) for c in CLASSES}
+
+
+def vs_open_cuts(
+    hero: str,
+    opener: str,
+    *,
+    threebet: float = 1.0,
+    call: float = 1.0,
+    k: float = 1.0,
+    callers: int = 0,
+) -> tuple[float, float]:
+    """(light 3-bet cut, flat cut) in combos facing one open (``vs_open_probs``).
+    With callers the light cut is 0: a squeeze bluffs from its own short list."""
+    if callers:
+        value, light_cut, flat_mult = SQUEEZE_VALUE, 0.0, SQUEEZE_FLAT
+    else:
+        value, flat_mult = VALUE_3BET[opener], 1.0
+        light_cut = LIGHT_BASE[(hero, opener)] * threebet * k
     if hero == "BB":
-        order = tuple(c for c in BB_DEFEND_ORDER if c not in value)
         cut = BB_DEFEND_TARGET[opener] * 1326 * call * k * flat_mult - sum(COMBOS_OF[c] for c in value)
     else:
-        order = tuple(c for c in flat_order(opener) if c not in value)
         cut = FLAT_BASE[(hero, opener)] * call * k * flat_mult
-    return {c: (p3[c], (1.0 - p3[c]) * p_in(c, order, cut)) for c in CLASSES}
+    return light_cut, cut
 
 
 def vs_3bet_probs(
@@ -207,18 +223,33 @@ def vs_3bet_probs(
     open_mult: float = 1.0,
     call: float = 1.0,
     threebet: float = 1.0,
+    own_cut: float | None = None,
 ) -> dict[str, tuple[float, float]]:
     """(P(4-bet), P(call)) per class for the opener facing a 3-bet. The call cut is
-    a fraction of the opener's own opening cut, so a wide opener defends wider."""
+    a fraction of the opener's own opening cut (``own_cut``, by default its open
+    cut from ``opener`` folded to), so a wide opener defends wider."""
     value = set(FOURBET_VALUE_VS_EP if threebettor in EARLY else FOURBET_VALUE)
     bluff_p = min(FOURBET_BLUFF_CAP, FOURBET_BLUFF_RATE * threebet)
-    frac = CALL_3BET_FRAC["ip" if in_position(opener, threebettor) else "oop"]
-    cut = frac * open_cut(opener, open_mult) * call
+    cut = call_3bet_cut(opener, threebettor, open_mult=open_mult, call=call, own_cut=own_cut)
     out: dict[str, tuple[float, float]] = {}
     for c in CLASSES:
         p4 = 1.0 if c in value else (bluff_p if c in FOURBET_BLUFF else 0.0)
         out[c] = (p4, (1.0 - p4) * p_in(c, OPEN_ORDER, cut))
     return out
+
+
+def call_3bet_cut(
+    opener: str,
+    threebettor: str,
+    *,
+    open_mult: float = 1.0,
+    call: float = 1.0,
+    own_cut: float | None = None,
+) -> float:
+    """Combos along OPEN_ORDER that continue against a 3-bet (4-bets included)."""
+    frac = CALL_3BET_FRAC["ip" if in_position(opener, threebettor) else "oop"]
+    own = open_cut(opener, open_mult) if own_cut is None else own_cut
+    return frac * own * call
 
 
 def fold_to_3bet(
