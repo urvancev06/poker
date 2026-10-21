@@ -34,6 +34,7 @@ from dataclasses import asdict, dataclass, field
 from ..bots import Bot, archetypes, build_context
 from ..engine import Action, GameState, Hand
 from ..engine.ledger import LEDGER_VERSION
+from ..math.vector import flop_matrix, is_flop_warm
 from ..rng import new_seed, shuffled_deck, stream
 from ..sim.stats import StatsAccumulator
 from ..sim.summarize import summarize_hand
@@ -360,6 +361,22 @@ class GameSession:
                     if not snap.seats[s].hole_cards and s < len(self._dealt_holes) and self._dealt_holes[s]:
                         snap.seats[s].hole_cards = list(self._dealt_holes[s])
         return snap
+
+    def warm_coach_matrix(self) -> bool:
+        """Build the flop's equity matrix (``math.vector.flop_matrix``, cached per
+        flop) when the hand is on the flop and the hero is still in it, so the
+        coach's flop equity reads it warm (D18). Returns whether the matrix is warm
+        for this flop afterwards; False when there is no flop to warm."""
+        with self.lock:
+            h = self._hand
+            if h is None or h.is_over or len(h.board) != 3:
+                return False
+            if h.snapshot(reveal_all=True).seats[self._player_to_seat[HERO]].folded:
+                return False
+            board = tuple(h.board)
+            if not is_flop_warm(board):
+                flop_matrix(board)
+            return True
 
     def live_villain_seats(self) -> list[int]:
         """Seats of bots still in the hand (for coaching equity)."""

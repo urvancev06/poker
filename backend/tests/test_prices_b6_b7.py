@@ -156,12 +156,23 @@ def test_review_reports_the_hands_big_blind():
     assert review_hand(any_row, equity_trials=200)["big_blind"] == 2
 
 
-def test_review_of_a_legacy_row_is_unchanged(monkeypatch):
-    """Rows stored before the ledger existed are reviewed exactly as before. The
+# What the review accounts from a legacy row's action log, without the labeller or
+# the equity model: these must not move.
+_ACCOUNTING = ("street", "board", "pot", "to_call", "action", "to_amount", "required_direct_pct")
+
+
+def test_review_of_a_legacy_row_keeps_its_accounting(monkeypatch):
+    """Rows stored before the ledger existed are accounted exactly as before. The
     snapshot was taken by running review_hand on these rows before the ledger
     path was added. The review's equity reads the villain ranges, which follow the
     measured BET_COMPOSITION, so the review runs with the composition of the
-    snapshot: a re-measured composition (P1.12, P2.8) moves equities, not this path."""
+    snapshot: a re-measured composition (P1.12, P2.8) moves equities, not this path.
+
+    P2.8 moved every review to the hole-aware labeller, exact equity and the
+    coach's villain selection, so each decision's hand label, equity, realized
+    equity and the price the labeller moves (the implied term reads the hand) are
+    new by design. The pot, the call, the direct price, the streets, the result and
+    which leaks fire where are what this path accounts, and they are unchanged."""
     from poker.coach import villain_model
 
     era = json.loads((FIXTURES / "legacy_reviews_bet_composition.json").read_text())["bet_composition"]
@@ -171,10 +182,17 @@ def test_review_of_a_legacy_row_is_unchanged(monkeypatch):
         assert "ledger" not in case["data"]
         got = json.loads(json.dumps(review_hand(case["data"], equity_trials=600)))
         want = case["review"]
-        # Fields added since the snapshot: the review's big_blind and each
-        # decision's winnable (None without a ledger).
-        assert all(d.pop("winnable") is None for d in got["decisions"]), name
-        assert {k: got[k] for k in want} == want, name
+        for key in ("hand_index", "hero_cards", "board", "hero_net", "went_to_showdown", "streets"):
+            assert got[key] == want[key], (name, key)
+        assert [(x["street"], x["type"]) for x in got["leaks"]] == [(x["street"], x["type"]) for x in want["leaks"]], name
+        assert len(got["decisions"]) == len(want["decisions"]), name
+        for g, w in zip(got["decisions"], want["decisions"], strict=True):
+            assert {k: g[k] for k in _ACCOUNTING} == {k: w[k] for k in _ACCOUNTING}, name
+            assert [x["type"] for x in g["leaks"]] == [x["type"] for x in w["leaks"]], name
+            # Fields added since the snapshot: no winnable without a ledger, and the
+            # equity method wherever there is an equity.
+            assert g["winnable"] is None, name
+            assert (g["equity_method"] is None) == (g["equity_pct"] is None), name
 
 
 def test_review_legacy_heads_up_posts_the_blinds_by_position():

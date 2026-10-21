@@ -15,25 +15,13 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 
+# The coach's villain model's own labeller (poker/coach/villain_model.py), so
+# BET_COMPOSITION and the conditioned ranges split hands by one rule.
+from poker.coach.villain_model import bet_category as _category
 from poker.engine import ActionType
-from poker.math import Draw, MadeTier
-# The labeller the coach's villain model uses (poker/coach/villain_model.py);
-# P2.8 moves both to the hole-aware classify and re-measures.
-from poker.math.classify_legacy import classify
 from poker.sim.runner import DEFAULT_LINEUP, run
 
 _STREETS = ("flop", "turn", "river")
-_STRONG_DRAWS = (Draw.FLUSH_DRAW, Draw.OPEN_ENDED, Draw.GUTSHOT)
-
-
-def _category(hole, board) -> str:
-    """value (made pair+), draw (no pair but a real draw), or air."""
-    hc = classify(hole, board)
-    if hc.made >= MadeTier.PAIR:
-        return "value"
-    if any(d in hc.draws for d in _STRONG_DRAWS):
-        return "draw"
-    return "air"
 
 
 def measure(hands: int, seed: int = 0) -> dict[str, dict[str, dict[str, int]]]:

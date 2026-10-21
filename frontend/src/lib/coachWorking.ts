@@ -1,13 +1,19 @@
 // "Show working" in the maths sheet: the derivation, one row per step, each tagged with
 // where the number comes from. Pure; MathsSheet renders the rows.
 //
-//   Exact     arithmetic on the chips in the pot (the price, pot odds)
-//   Computed  Monte Carlo or arithmetic on an estimate (equity, Call EV, your hand)
+//   Exact     arithmetic on the chips in the pot (the price, pot odds), and equity counted
+//             over every runout (`equity_method` "exact")
+//   Computed  sampled or table equity, or arithmetic on an estimate (Call EV, your hand)
 //   Estimate  a rough model (realization, the implied / reverse-implied adjustment, and the
 //             Need it produces whenever the price was adjusted)
 //
 // B18 (render side): draws are never printed as raw enums (backdoor_flush_draw), and the
-// win / tie / lose split appears once.
+// win / tie / lose split appears once (none from the preflop table, where it only restates
+// the equity: the note says where the number comes from instead).
+//
+// "Your hand" is the backend's hole-aware label: the made part ("Board two pair, eight
+// kicker", "Top pair, good kicker") is the value, the draws ("Nut flush draw and gutshot")
+// the note. An older label that is only a draw ("flush draw") falls back to the tier.
 //
 // Amounts are in big blinds of the hand (`big_blind`, else 2 for an older answer). When a
 // side pot caps what a call can win (`winnable` < pot + call), the price says so.
@@ -15,6 +21,7 @@
 import type { Coaching } from '../api'
 import { bb, bigBlindOf, pct, signed } from './format'
 import { callEvBB, isPriced, priceAdjustment } from './coachView'
+import { equityMethodNote } from './equityMethod'
 
 export type Provenance = 'exact' | 'computed' | 'estimate'
 
@@ -85,6 +92,27 @@ export function humanizeDraws(draws: readonly string[]): string | null {
   return capitalize(phrase)
 }
 
+const DRAW_WORDS: ReadonlySet<string> = new Set([...Object.values(DRAW), 'nut flush draw'])
+
+/** The hand row: the label's made part as the value, its draws as the note. The draws come
+ *  from the enums (never raw), strongest first, so a flush draw leads and keeps the label's
+ *  "nut". */
+export function handRow(c: Pick<Coaching, 'hand_label' | 'made_tier' | 'draws'>): { value: string; note: string | null } {
+  const parts = c.hand_label.split(' + ').map((p) => p.trim())
+  const made = parts[0] && !DRAW_WORDS.has(parts[0].toLowerCase()) ? capitalize(parts[0]) : humanizeTier(c.made_tier)
+  let note = humanizeDraws(c.draws)
+  if (note && parts.some((p) => p.toLowerCase() === 'nut flush draw')) note = note.replace(/^Flush draw/, 'Nut flush draw')
+  return { value: made, note }
+}
+
+/** The equity row's note: the win / tie / lose split, then how it was computed. */
+function equityNote(c: Coaching): string {
+  const method = equityMethodNote(c)
+  if (c.equity_method === 'preflop_table') return method as string
+  const split = `Wins ${pct(c.win_pct)}, ties ${pct(c.tie_pct)}, loses ${pct(c.lose_pct)}`
+  return method ? `${split}. ${method}` : split
+}
+
 /** Plain words for which way the price moved. */
 export function adjustmentNote(delta: number, impliedNote: string): string {
   const why = impliedNote.trim() ? ` ${capitalize(impliedNote)}.` : ''
@@ -102,13 +130,13 @@ export function workingRows(c: Coaching): WorkingRow[] {
   const winnable = typeof c.winnable === 'number' ? c.winnable : c.pot + c.to_call
   const capped = winnable < c.pot + c.to_call
 
-  rows.push({ key: 'hand', label: 'Your hand', value: humanizeTier(c.made_tier), note: humanizeDraws(c.draws), kind: 'computed' })
+  rows.push({ key: 'hand', label: 'Your hand', ...handRow(c), kind: 'computed' })
   rows.push({
     key: 'equity',
     label: 'Equity',
     value: pct(c.equity_pct),
-    note: `Wins ${pct(c.win_pct)}, ties ${pct(c.tie_pct)}, loses ${pct(c.lose_pct)}`,
-    kind: 'computed',
+    note: equityNote(c),
+    kind: c.equity_method === 'exact' ? 'exact' : 'computed',
   })
 
   if (c.action_closed) {

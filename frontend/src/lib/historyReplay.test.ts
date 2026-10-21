@@ -25,6 +25,18 @@ describe('decisionView', () => {
     expect(priceNote(v)).toBe('')
     expect(figuresLabel(v)).toBe('Realized 46.8%, need 27.8%, raw equity 50.3%')
   })
+  it('tags the equity with how it was computed (phase 2 reviews)', () => {
+    const d = review(234).decisions[1]
+    const exact = decisionView({ ...d, equity_method: 'exact', equity_se_pct: null }, 'd1', 2)
+    expect(exact.method).toBe('Exact')
+    expect(figuresLabel(exact)).toBe('Realized 46.8%, need 27.8%, raw equity 50.3%, every runout counted')
+    const sampled = decisionView({ ...d, equity_method: 'sampled', equity_se_pct: 0.5 }, 'd1', 2)
+    expect(sampled.method).toBe('±1.0 pp')
+    expect(figuresLabel(sampled)).toBe('Realized 46.8%, need 27.8%, raw equity 50.3%, sampled, plus or minus 1.0 points')
+    // an older review sends no method, and a decision without equity gets no tag
+    expect(decisionView(d, 'd1', 2).method).toBeNull()
+    expect(decisionView({ ...review(234).decisions[0], equity_method: null }, 'd0', 2).method).toBeNull()
+  })
   it('names a price made dearer by the adjustment, and the pot odds it started from', () => {
     const v = decisionView(review(13).decisions[2], 'd2', 2)
     expect(v).toMatchObject({ need: 45.7, direct: 33.6, adjust: 'dearer', flagged: true, priceFlag: true })

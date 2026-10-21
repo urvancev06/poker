@@ -7,7 +7,9 @@ call, what a call could win (side pots included), who still acted after a call
 and whether a call ended the betting. The review prices those decisions from the
 facts, so it agrees with the live coach. Older rows have no ledger; for them the
 pot and price are accounted from the action amounts, as before. Equity is computed
-vs the same modelled villain ranges the live coach uses. Leaks are *computed*
+vs the same modelled villain ranges the live coach uses, against the same villains
+(``villains.select_villains``), seeded by the same decision key, so a decision the
+coach advised reviews with the coach's numbers. Leaks are *computed*
 judgements (range deviation vs the STRATEGY.md §2 baseline, or an EV error vs the
 price): never results-oriented, and labelled as math-based reads, not solver
 truth.
@@ -23,18 +25,16 @@ from ..bots.preflop_strength import hand_class
 from ..engine.ledger import DecisionFacts
 from ..engine.types import positions_for
 from ..math.cards import canonical_combo
-from ..math.classify import Draw, MadeTier, PairStrength
-# The live coach's labeller (see coach.py): P2.8 moves both to the hole-aware
-# classify at once and bumps _REVIEW_VERSION.
-from ..math.classify_legacy import classify, pair_strength
-from ..math.equity import equity
+# The live coach's hole-aware labeller (see coach.py).
+from ..math.classify import classify
 from ..math.odds import implied_required_equity, required_equity
 # The price model is shared with the live coach ON PURPOSE: the reviewer must judge a
 # decision by exactly the rule the coach advised it with, or the app contradicts itself
 # and books a call the coach called "Call." as a `call_no_odds` leak. These stay
 # private to the coach package.
-from .coach import _implied_adjustment, _realization_factor
+from .coach import _implied_adjustment, _realization_factor, hand_flags
 from .villain_model import condition_range, villain_line
+from .villains import decision_key, select_villains, villain_equity
 
 # Opens are judged by EXACT MEMBERSHIP in STRATEGY.md §2's positional hand lists, so
 # in-range and out-of-range are exact and no slack constant is needed. A percentile
@@ -60,13 +60,17 @@ class Decision:
     action: str
     to_amount: int | None
     hand_label: str
-    equity_pct: float | None            # raw Monte Carlo equity
+    equity_pct: float | None            # raw equity (exact, table or seeded sample)
     required_pct: float | None          # the DECISION price (implied/reverse-adjusted)
     realized_pct: float | None = None   # equity x realization factor — what the leak judges
     required_direct_pct: float | None = None  # raw pot odds, before the implied adjustment
     leaks: list[Leak] = field(default_factory=list)
     # What a call could win (side pots included); None on rows without a ledger.
     winnable: int | None = None
+    # How equity_pct was computed ("exact", "sampled", "preflop_table"), None
+    # without one; a sampled equity's standard error in percentage points.
+    equity_method: str | None = None
+    equity_se_pct: float | None = None
 
 
 def _board_prefix(street: str, board: list[str]) -> list[str]:
@@ -197,7 +201,10 @@ def _ledger_view(data: dict, n: int, start_stacks: list[int], actions: list[dict
     return view if len(view.facts) == len(actions) else None
 
 
-def review_hand(data: dict, equity_trials: int = 1800) -> dict:
+def review_hand(data: dict, equity_trials: int | None = None) -> dict:
+    """The street-by-street review of one stored hand. ``equity_trials`` is the
+    sample count of the sampled equity methods (default the coach's,
+    ``villains.EQUITY_SAMPLES``); exact methods ignore it."""
     lineup: list[str] = data["lineup"]
     n = len(lineup)
     hero_seat = data["hero_seat"]
@@ -260,20 +267,32 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
             pot_now = facts.pot if facts is not None else pot
             winnable = facts.winnable_if_call if facts is not None else None
             hc = classify(hero, board_now)
+            flags = hand_flags(hc, hero, board_now)
             live = [s for s in range(n) if s != hero_seat and s not in folded]
+            # The villains this decision is played against, by the coach's rule:
+            # the street bets as they stood (from the ledger, else accounted).
+            if facts is not None:
+                bets_now = led.street_bets[idx]
+                level = bets_now[hero_seat] + to_call if to_call > 0 else 0
+                contesting, players_behind = select_villains(live, bets_now, level, facts.to_act_after_call)
+            else:
+                level = street_max if to_call > 0 else 0
+                contesting, players_behind = select_villains(live, committed, level, None)
             eq_frac: float | None = None
-            if live and cur_street != "preflop":
+            eq = None
+            if contesting and cur_street != "preflop":
                 dead = set(hero) | set(board_now)
                 # Same model the live coach uses: each villain's range narrowed by
                 # the line they've actually taken this hand (not their static open).
                 ranges = []
-                for s in live:
+                for s in contesting:
                     role, postflop = villain_line(history_entries, s)
                     cr = condition_range(lineup[seat_to_player[s]], board_now, role, postflop, dead)
-                    if cr.combos:
-                        ranges.append(cr.combos)
-                if ranges:
-                    eq_frac = equity(hero, board_now, ranges, trials=equity_trials, seed=0).equity
+                    ranges.append(cr.combos)
+                key = decision_key(data.get("session_id") or "local", data.get("hand_index") or 0, idx)
+                eq = villain_equity(hero, board_now, ranges, key=key, samples=equity_trials)
+                if eq is not None:
+                    eq_frac = eq.equity
 
             # Price + realized equity, computed by the SAME rule the live coach used
             # when it advised this decision. Judging a call by a different rule than
@@ -281,33 +300,22 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
             required = required_direct = realized = None
             if to_call > 0:
                 if facts is not None:
-                    # Exact, from the ledger: stacks and street bets as they stood.
+                    # Exact, from the ledger: stacks as they stood.
                     stacks_now = led.stacks[idx]
-                    bets_now = led.street_bets[idx]
-                    level = bets_now[hero_seat] + to_call
                     hero_stack = stacks_now[hero_seat]
-                    contesting = [s for s in live if bets_now[s] >= level]
-                    players_behind = facts.to_act_after_call
-                    villain_stacks = [stacks_now[s] for s in (contesting or live)]
+                    villain_stacks = [stacks_now[s] for s in contesting]
                     action_closed = facts.betting_over_after_call
                     pot_for_call = winnable - to_call
                 else:
                     hero_stack = (start_stacks[hero_seat] - total_committed[hero_seat]) if start_stacks else 0
-                    contesting = [s for s in live if committed[s] >= street_max]
-                    players_behind = sum(1 for s in live if committed[s] < street_max)
                     villain_stacks = [
                         (start_stacks[s] - total_committed[s]) if start_stacks else 0
-                        for s in (contesting or live)
+                        for s in contesting
                     ]
                     is_river = len(board_full) == 5 and cur_street == "river"
                     all_villains_allin = bool(villain_stacks) and all(v == 0 for v in villain_stacks)
                     action_closed = is_river or to_call >= hero_stack or all_villains_allin
                     pot_for_call = pot
-
-                is_strong = hc.made >= MadeTier.TWO_PAIR
-                is_pair = hc.made == MadeTier.PAIR
-                is_draw = Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws
-                pair_str = pair_strength(hero, board_now) if is_pair else PairStrength.NONE
 
                 # An all-in call ends the hero's betting even when others can still
                 # bet a side pot: equity counts in full and no implied term applies.
@@ -316,9 +324,9 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 implied_adj, _note = _implied_adjustment(
                     street=cur_street,
                     is_pocket_pair=(hero[0][0] == hero[1][0]),
-                    is_draw=is_draw,
-                    made_tier=hc.made,
-                    pair_str=pair_str,
+                    is_draw=flags.is_draw,
+                    made_tier=flags.tier,
+                    pair_str=flags.pair_str,
                     pot=pot_for_call,
                     behind=effective_behind,
                     action_closed=price_closed,
@@ -328,11 +336,11 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 required = implied_required_equity(to_call, pot_for_call, implied_adj)
                 if eq_frac is not None:
                     r = _realization_factor(
-                        is_strong=is_strong,
-                        is_pair=is_pair,
-                        is_draw=is_draw,
-                        in_position=all(hero_seat > s for s in (contesting or live)),
-                        num_opponents=len(contesting or live),
+                        is_strong=flags.is_strong,
+                        is_pair=flags.is_pair,
+                        is_draw=flags.is_draw,
+                        in_position=all(hero_seat > s for s in contesting),
+                        num_opponents=len(contesting),
                         players_behind=players_behind,
                         street=cur_street,
                         action_closed=price_closed,
@@ -359,13 +367,16 @@ def review_hand(data: dict, equity_trials: int = 1800) -> dict:
                 required_direct_pct=None if required_direct is None else round(required_direct * 100, 1),
                 leaks=leaks,
                 winnable=winnable,
+                equity_method=None if eq is None else eq.method,
+                equity_se_pct=None if eq is None or eq.se is None else round(eq.se * 100, 2),
             )
             decisions.append(decision)
             # A checked strong hand is a missed-value candidate — but only if the
             # street checks THROUGH (no later bet/raise); resolved in a post-pass so
             # check-raises and check-calls aren't falsely flagged.
-            if cur_street != "preflop" and act == "check" and hc.made >= MadeTier.TWO_PAIR:
-                value_checks.append((decision, idx, cur_street, hc.made))
+            # Two pair or better of the hero's own: the board's pairs are everyone's.
+            if cur_street != "preflop" and act == "check" and flags.is_strong:
+                value_checks.append((decision, idx, cur_street, flags.tier))
 
         # advance the accounting
         if act in ("bet", "raise") and to is not None:
@@ -436,17 +447,17 @@ _CACHE_MAX = 5000
 # Bump when anything that changes a leak verdict changes (thresholds, price model,
 # ranges). Forgetting to bump serves stale verdicts; bumping needlessly only costs
 # one recomputation.
-_REVIEW_VERSION = 3
+_REVIEW_VERSION = 4
 
 
-def _cache_key(data: dict, equity_trials: int) -> tuple | None:
+def _cache_key(data: dict, equity_trials: int | None) -> tuple | None:
     sid, idx = data.get("session_id"), data.get("hand_index")
     if sid is None or idx is None:
         return None
     return (_REVIEW_VERSION, sid, idx, equity_trials)
 
 
-def review_hand_cached(data: dict, equity_trials: int = 1200) -> dict:
+def review_hand_cached(data: dict, equity_trials: int | None = None) -> dict:
     """``review_hand`` memoised on (session, hand index, trials, review version)."""
     key = _cache_key(data, equity_trials)
     if key is None:
@@ -461,7 +472,7 @@ def review_hand_cached(data: dict, equity_trials: int = 1200) -> dict:
     return result
 
 
-def leak_summary(records_data: list[dict], equity_trials: int = 1200) -> dict:
+def leak_summary(records_data: list[dict], equity_trials: int | None = None) -> dict:
     """Aggregate leaks across many hands into an honest report."""
     by_type: dict[str, dict] = {}
     examples: list[dict] = []

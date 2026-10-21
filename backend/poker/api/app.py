@@ -5,7 +5,8 @@ Endpoints:
     POST /session                      start a session (choose archetypes, blinds, stacks) + deal hand 1
     GET  /session/{id}                 current state (hero viewpoint) + session info
     POST /session/{id}/action          submit the hero's action; bots auto-respond
-    POST /session/{id}/advance         step one bot action (watch-the-hand pacing)
+    POST /session/{id}/advance         step one bot action (watch-the-hand pacing);
+                                       ?warm_coach=true builds the flop's equity matrix
     POST /session/{id}/next-hand       deal the next hand
     GET  /session/{id}/coach           computed coaching for the hero's current spot
     GET  /session/{id}/reads           per-bot HUD reads (past the sample threshold)
@@ -178,12 +179,18 @@ def create_app(
         return session_to_dict(gs)
 
     @app.post("/session/{session_id}/advance")
-    def advance(session_id: str, db: Session = Depends(get_db)) -> dict:
+    def advance(session_id: str, warm_coach: bool = False, db: Session = Depends(get_db)) -> dict:
         """Step a single pending bot action (for watch-the-hand pacing). No-op
-        when it's the hero's turn or the hand is over."""
+        when it's the hero's turn or the hand is over.
+
+        ``warm_coach`` (the client sends it while the coach is on, D18): once the
+        hand is on the flop with the hero in it, build the flop's equity matrix
+        here, inside the bots' pacing, so the hero's flop coach reads it warm."""
         gs = _session(session_id)
         with gs.lock:
             gs.advance_one()
+            if warm_coach:
+                gs.warm_coach_matrix()
             _persist_if_finished(gs, db)
             return session_to_dict(gs)
 
@@ -295,7 +302,7 @@ def create_app(
         record = get_hand(db, hand_id)
         if record is None:
             raise HTTPException(status_code=404, detail="hand not found")
-        return review_hand_cached(record.data, equity_trials=1800)
+        return review_hand_cached(record.data)
 
     @app.get("/stats/leaks")
     def leaks(session_id: str | None = None, limit: int = 1000, db: Session = Depends(get_db)) -> dict:

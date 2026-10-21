@@ -1,7 +1,10 @@
 """The coach: honest, computed advice for the hero's current spot.
 
-Everything here is *computed* (classifier + Monte Carlo equity + exact pot odds)
-and labelled by basis: computed math vs assumption about villain ranges. It never
+Everything here is *computed* (the hole-aware classifier, equity v2 and exact pot
+odds) and labelled by basis: computed math vs assumption about villain ranges. Equity
+is exact heads-up and two-way after the flop (every runout counted), comes from the
+precomputed preflop table heads-up preflop, and is sampled (seeded by the decision,
+with its standard error) otherwise; the basis names the method that ran. It never
 states exact GTO frequencies; where those matter it defers to GTO Wizard
 (STRATEGY.md §7).
 
@@ -25,17 +28,16 @@ betting, R = 1, and raw-equity-vs-pot-odds is exactly correct.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import combinations
 
-from ..math.classify import Draw, MadeTier, PairStrength
-# The labeller the current coach, review and BET_COMPOSITION were measured with.
-# P2.8 moves the coach, the review, the villain model and
-# scripts/measure_bet_ranges.py to the hole-aware classify together (with
-# _REVIEW_VERSION 4 and a re-measured BET_COMPOSITION), so coach and review
-# never disagree in between.
-from ..math.classify_legacy import classify, pair_strength
-from ..math.equity import equity
+from ..math.cards import FULL_DECK
+# The hole-aware labeller (P2.3), shared with the review, the villain model and
+# scripts/measure_bet_ranges.py (BET_COMPOSITION was measured with it). The v1 bots
+# keep classify_legacy.
+from ..math.classify import Draw, HandClass, MadeTier, PairStrength, classify, pair_strength
 from ..math.odds import analyze_call, implied_required_equity, required_equity
 from .villain_model import BET_COMPOSITION, condition_range, villain_line
+from .villains import EQUITY_SAMPLES, decision_key, select_villains, villain_equity
 
 # As later streets carry the "they're strong" signal in the action-conditioned
 # villain range, the realization discount shrinks toward 1 (don't double-count it).
@@ -56,6 +58,9 @@ _REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (do
 # overpair crushes a c-betting range as thoroughly as two pair does, and gating value
 # lines on tier alone talks the coach out of raising its own best hands.
 _VALUE_EQUITY = 0.72
+
+# Every two-card holding, for the fallback when no modelled combo is left open.
+_ANY_TWO = tuple(combinations(FULL_DECK, 2))
 
 
 def _bb(chips: int, big_blind: int) -> str:
@@ -90,6 +95,39 @@ def _implied_adjustment(
         # enough that this must never talk you off them.
         return -round(_REVERSE_MULT * pot), "reverse implied — dominated"
     return 0, ""
+
+
+@dataclass(frozen=True)
+class HandFlags:
+    """What the price model reads from the hero's hand, from the hole-aware class:
+    a board pair or a board-made hand is not the hero's. Shared with the review."""
+
+    is_strong: bool        # the hole makes two pair or better: a value hand
+    is_pair: bool          # the hole makes exactly one pair
+    is_draw: bool          # a flush draw or an open-ender that needs a hole card
+    pair_str: PairStrength  # where the hero's own pair sits (NONE without one)
+    tier: MadeTier         # the hole's own tier (``HandClass.hole_tier``)
+
+
+def hand_flags(hc: HandClass, hole, board) -> HandFlags:
+    is_pair = hc.hole_tier == MadeTier.PAIR
+    return HandFlags(
+        is_strong=hc.hole_tier >= MadeTier.TWO_PAIR,
+        is_pair=is_pair,
+        is_draw=Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws,
+        pair_str=pair_strength(hole, board) if is_pair else PairStrength.NONE,
+        tier=hc.hole_tier,
+    )
+
+
+def equity_basis(method: str, se_pct: float | None) -> str:
+    """The basis line for the equity method that ran. Sampled equity states its
+    95% interval, 1.96 standard errors in percentage points."""
+    if method == "exact":
+        return "Equity is exact: every runout is counted."
+    if method == "preflop_table":
+        return "Preflop equity comes from a precomputed table (±0.4 pp)."
+    return f"Equity is sampled (±{1.96 * (se_pct or 0.0):.1f} pp)."
 
 
 @dataclass
@@ -132,6 +170,12 @@ class Coaching:
     winnable: int | None = None
     big_blind: int = 2
     closes_on_call: bool | None = None  # nobody acts after a call (betting may go on)
+    # How the equity was computed: "exact" (every runout), "sampled" (seeded joint
+    # sampling, ``equity_se_pct`` its standard error in percentage points) or
+    # "preflop_table" (heads-up preflop; the table's own error is about 0.4 pp).
+    equity_method: str = "exact"
+    equity_se_pct: float | None = None
+    hole_tier: str = "HIGH_CARD"   # the hole's own part (``made_tier`` counts the board)
 
     def as_dict(self) -> dict:
         return {
@@ -162,6 +206,9 @@ class Coaching:
             "winnable": self.winnable,
             "big_blind": self.big_blind,
             "closes_on_call": self.closes_on_call,
+            "equity_method": self.equity_method,
+            "equity_se_pct": self.equity_se_pct,
+            "hole_tier": self.hole_tier,
         }
 
 
@@ -189,7 +236,8 @@ def verdict_tone(verdict: str) -> str:
 
 
 def _basis(
-    *, priced: bool, implied_applied: bool, realization_applied: bool, measured_ranges: bool
+    *, priced: bool, implied_applied: bool, realization_applied: bool, measured_ranges: bool,
+    equity_method: str = "exact", equity_se_pct: float | None = None,
 ) -> list[str]:
     """The honesty labels, bound to what this verdict ACTUALLY computed.
 
@@ -197,7 +245,7 @@ def _basis(
     don't: the implied term is 0 on every river, every all-in, and every hand that is
     not a preflop pair, a draw or a weak pair, and R is 1.0 whenever the action closes.
     A label that doesn't describe the number beside it defeats the point of labelling."""
-    out = ["Hand classification and equity are computed (Monte Carlo, treys)."]
+    out = ["Hand classification is computed from your cards and the board.", equity_basis(equity_method, equity_se_pct)]
     if priced:
         out.append("Pot odds and required equity are exact arithmetic.")
     if realization_applied:
@@ -356,8 +404,11 @@ def _suggest(
     return ("Fold.", f"{detail} Below the price once you account for how much of it you'll actually realize.{behind_note}")
 
 
-def build_coaching(session, trials: int = 4000) -> Coaching:
-    """Compute coaching for the hero's current decision. Requires the hero to act."""
+def build_coaching(session, trials: int | None = None) -> Coaching:
+    """Compute coaching for the hero's current decision. Requires the hero to act.
+
+    ``trials`` is the sample count of the sampled equity methods (default
+    ``villains.EQUITY_SAMPLES``, the review's too); exact methods ignore it."""
     if not session.hero_to_act:
         raise RuntimeError("coaching is only available when it's the hero's turn")
 
@@ -370,10 +421,8 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     assert legal is not None
 
     hc = classify(hole, board)
-    is_strong = hc.made.value >= MadeTier.TWO_PAIR  # two pair or better — a value hand
-    is_pair = hc.made == MadeTier.PAIR
-    is_draw = Draw.FLUSH_DRAW in hc.draws or Draw.OPEN_ENDED in hc.draws
-    pair_str = pair_strength(hole, board) if is_pair else PairStrength.NONE
+    flags = hand_flags(hc, hole, board)
+    is_strong, is_pair, is_draw = flags.is_strong, flags.is_pair, flags.is_draw
 
     dead = set(hole) | set(board)
 
@@ -388,18 +437,16 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
     # whether a call ends the betting, and the ledger says what a call can win
     # (side pots included). Spots built without an engine (the scripted coach
     # battery) carry no facts and fall back to deriving the same from the seats.
+    #
+    # The selection is shared with the review (``villains.select_villains``).
     facts = getattr(state, "facts", None)
-    all_live = session.live_villain_seats()
-    villain_seats = all_live
-    players_behind = 0
-    if legal.call_amount > 0:
-        level = state.seats[hero_seat].bet + legal.call_amount
-        contesting = [s for s in all_live if state.seats[s].bet >= level]
-        players_behind = sum(1 for s in all_live if state.seats[s].bet < level)
-        if contesting:
-            villain_seats = contesting
-    if facts is not None:
-        players_behind = facts.to_act_after_call
+    level = state.seats[hero_seat].bet + legal.call_amount if legal.call_amount > 0 else 0
+    villain_seats, players_behind = select_villains(
+        session.live_villain_seats(),
+        [seat.bet for seat in state.seats],
+        level,
+        facts.to_act_after_call if facts is not None else None,
+    )
 
     villain_models: list[VillainModel] = []
     ranges = []
@@ -418,12 +465,27 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
             )
         )
 
-    if ranges:
-        eq = equity(hole, board, ranges, trials=trials, seed=0)
+    # Seeded by the decision, so the review of this decision samples the same draws.
+    key = decision_key(
+        getattr(session, "session_id", None) or "local", getattr(session, "hand_index", 0), len(state.history)
+    )
+    measured_ranges = all(v.archetype in BET_COMPOSITION for v in villain_models)
+    eq = villain_equity(hole, board, ranges, key=key, samples=trials or EQUITY_SAMPLES)
+    if eq is None and villain_seats:
+        # No modelled combo is left open (every range blocked, or the ranges cannot
+        # all be held at once): fall back to any two cards for each villain, and
+        # say the ranges are not the modelled ones.
+        any_two = [list(_ANY_TWO)] * len(villain_seats)
+        eq = villain_equity(hole, board, any_two, key=key, samples=trials or EQUITY_SAMPLES)
+        measured_ranges = False
+    if eq is not None:
         equity_frac = eq.equity
         win, tie, lose = eq.win, eq.tie, eq.lose
+        equity_method = eq.method
+        equity_se_pct = None if eq.se is None else round(eq.se * 100, 2)
     else:  # no live villains (shouldn't happen when hero is to act) -> trivially ahead
         equity_frac, win, tie, lose = 1.0, 1.0, 0.0, 0.0
+        equity_method, equity_se_pct = "exact", None
 
     to_call = facts.to_call if facts is not None else legal.call_amount
     can_check = legal.can_check
@@ -474,7 +536,7 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         effective_behind = min(hero_stack, max((state.seats[s].stack for s in villain_seats), default=0))
         implied_adj, implied_note = _implied_adjustment(
             street=street, is_pocket_pair=(hole[0][0] == hole[1][0]), is_draw=is_draw,
-            made_tier=hc.made, pair_str=pair_str, pot=pot_for_call,
+            made_tier=flags.tier, pair_str=flags.pair_str, pot=pot_for_call,
             behind=effective_behind, action_closed=price_closed,
             big_blind=int(state.blinds[1]),
         )
@@ -523,10 +585,10 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
         hand_label=hc.label or hc.made.name.replace("_", " ").lower(),
         made_tier=hc.made.name,
         draws=[d.value for d in hc.draws],
-        # Whole percent only: the second decimal is noise, since equity is sampled
-        # and R is a rule of thumb.
-        equity_pct=round(equity_frac * 100),
-        realized_equity_pct=round(realized * 100),
+        # One decimal, as the review reports them: equity is exact or seeded by the
+        # decision, so the review of this decision shows the same figures.
+        equity_pct=round(equity_frac * 100, 1),
+        realized_equity_pct=round(realized * 100, 1),
         realization_pct=round(r * 100),
         win_pct=round(win * 100),
         tie_pct=round(tie * 100),
@@ -549,9 +611,14 @@ def build_coaching(session, trials: int = 4000) -> Coaching:
             priced=to_call > 0,
             implied_applied=bool(implied_note),
             realization_applied=abs(r - 1.0) > 1e-9,
-            measured_ranges=all(v.archetype in BET_COMPOSITION for v in villain_models),
+            measured_ranges=measured_ranges,
+            equity_method=equity_method,
+            equity_se_pct=equity_se_pct,
         ),
         winnable=winnable if facts is not None else None,
         big_blind=int(state.blinds[1]),
         closes_on_call=facts.closes_on_call if facts is not None else None,
+        equity_method=equity_method,
+        equity_se_pct=equity_se_pct,
+        hole_tier=hc.hole_tier.name,
     )

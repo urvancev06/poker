@@ -30,8 +30,13 @@ from dataclasses import dataclass
 
 from ..math.cards import Combo
 from ..math.classify import Draw, MadeTier
-# BET_COMPOSITION was measured with this labeller (scripts/measure_bet_ranges.py).
-# P2.8 moves both to the hole-aware classify and re-measures.
+# BET_COMPOSITION was measured with this labeller (``bet_category``, which
+# scripts/measure_bet_ranges.py imports, so both split hands by one rule). P2.8 kept
+# it here: re-measured with the hole-aware classify, a bot's bet whose only pair is
+# the board's counts as air, the air shares rise several-fold (most on paired
+# boards), and the coach's known-spot invariants (the maniac-vs-nit river
+# bluff-catch, the reverse-implied fold) no longer hold. That is an owner decision,
+# recorded in the P2.8 report; the coach's own hand reads are hole-aware already.
 from ..math.classify_legacy import classify
 from ..math.ranges import parse_token
 from ..bots.preflop_strength import top_fraction
@@ -154,18 +159,24 @@ def static_range(archetype: str, dead: set[str]) -> list[Combo]:
     return _base_combos(ARCHETYPE_RANGE_PCT.get(archetype, _DEFAULT_PCT), dead)
 
 
+def bet_category(hole, board) -> str:
+    """"value" (a made pair or better), "draw" (a flush draw, open-ender or gutshot)
+    or "air": the one rule for the conditioned ranges and for measuring
+    BET_COMPOSITION (scripts/measure_bet_ranges.py)."""
+    hc = classify(list(hole), board)
+    if hc.made >= MadeTier.PAIR:
+        return "value"
+    if any(d in hc.draws for d in _STRONG_DRAWS):
+        return "draw"
+    return "air"
+
+
 def _categorize(combos: list[Combo], board: list[str]) -> tuple[list, list, list]:
-    """Split combos into (value = made pair+, draw = real draw, air) on this board."""
-    value, draw, air = [], [], []
+    """Split combos into (value, draw, air) on this board by ``bet_category``."""
+    split: dict[str, list] = {"value": [], "draw": [], "air": []}
     for c in combos:
-        hc = classify(list(c), board)
-        if hc.made >= MadeTier.PAIR:
-            value.append(c)
-        elif any(d in hc.draws for d in _STRONG_DRAWS):
-            draw.append(c)
-        else:
-            air.append(c)
-    return value, draw, air
+        split[bet_category(c, board)].append(c)
+    return split["value"], split["draw"], split["air"]
 
 
 def _take(combos: list[Combo], n: int) -> list[Combo]:

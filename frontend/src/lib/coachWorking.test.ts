@@ -99,6 +99,55 @@ describe('workingRows', () => {
   })
 })
 
+describe('workingRows: phase-2 answers (hole-aware label, equity method)', () => {
+  const base = coachSample('spot_river_bluffcatch').coach
+
+  it('exact equity is tagged Exact and says every runout was counted', () => {
+    const r = byKey(workingRows({ ...base, equity_method: 'exact', equity_se_pct: null }))
+    expect(r.equity.kind).toBe('exact')
+    expect(r.equity.note).toMatch(/^Wins \d+%, ties \d+%, loses \d+%\. Every runout counted$/)
+  })
+
+  it('sampled equity is Computed and states its margin', () => {
+    const r = byKey(workingRows({ ...base, equity_method: 'sampled', equity_se_pct: 0.21 }))
+    expect(r.equity.kind).toBe('computed')
+    expect(r.equity.note).toMatch(/\. Sampled ±0\.4 pp$/)
+  })
+
+  it('the preflop table replaces the win/tie split with where the number comes from', () => {
+    const rs = workingRows({ ...coachSample('spot_preflop_unopened').coach, equity_method: 'preflop_table', equity_se_pct: null })
+    expect(byKey(rs).equity).toMatchObject({ note: 'From the preflop table', kind: 'computed' })
+    expect(rs.some((r) => /Wins/.test(r.note ?? ''))).toBe(false)
+  })
+
+  it('an answer from before the method was sent keeps the split alone', () => {
+    expect(byKey(workingRows(base)).equity).toMatchObject({ note: 'Wins 3%, ties 0%, loses 97%', kind: 'computed' })
+  })
+
+  it('"Your hand" reads the hole-aware label', () => {
+    const r = byKey(workingRows({ ...base, hand_label: 'board two pair, eight kicker', made_tier: 'TWO_PAIR', hole_tier: 'HIGH_CARD', draws: [] }))
+    expect(r.hand).toMatchObject({ value: 'Board two pair, eight kicker', note: null })
+  })
+
+  it('"Your hand" puts the made part in the value and the draws, nut included, in the note', () => {
+    const c = {
+      ...base,
+      hand_label: 'jack high + nut flush draw + open-ended straight draw',
+      made_tier: 'HIGH_CARD',
+      hole_tier: 'HIGH_CARD',
+      draws: ['flush_draw', 'open_ended_straight_draw'],
+    }
+    expect(byKey(workingRows(c)).hand).toMatchObject({ value: 'Jack high', note: 'Nut flush draw and open-ended straight draw' })
+    const plain = { ...c, hand_label: 'queen high + flush draw', draws: ['flush_draw'] }
+    expect(byKey(workingRows(plain)).hand).toMatchObject({ value: 'Queen high', note: 'Flush draw' })
+  })
+
+  it('an older label that is only a draw falls back to the made tier', () => {
+    expect(byKey(rows('spot_implied_draw')).hand).toMatchObject({ value: 'High card', note: 'Flush draw' })
+    expect(byKey(rows('coach_verdict_close__call_or_fold')).hand.value).toBe('A pair')
+  })
+})
+
 describe('words', () => {
   it('humanises tiers and draws, unknown ones too', () => {
     expect(humanizeTier('TWO_PAIR')).toBe('Two pair')

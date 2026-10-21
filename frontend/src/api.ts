@@ -4,6 +4,8 @@
 // the backend's readable detail; a network failure has status null and code 'network'.
 
 import { errorFromResponse, toApiError, ApiError } from './lib/apiError'
+import { advancePath } from './lib/apiPaths'
+import type { EquityMethod } from './lib/equityMethod'
 
 export { ApiError }
 
@@ -170,6 +172,15 @@ export interface Coaching {
   big_blind?: number
   /** Nobody acts after a call (the betting may still go on to a later street). */
   closes_on_call?: boolean | null
+  /** How the equity was computed (phase 2): every runout ("exact"), seeded sampling with
+   *  `equity_se_pct` as one standard error in points ("sampled"), or the heads-up preflop
+   *  table ("preflop_table", where win/tie/lose only restate the equity). Absent on older
+   *  answers. lib/equityMethod.ts words it. */
+  equity_method?: EquityMethod
+  equity_se_pct?: number | null
+  /** The part the hole cards play (a MadeTier name); `made_tier` counts the board's cards
+   *  too, so a board pair is "PAIR" there and "HIGH_CARD" here. */
+  hole_tier?: string
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -294,6 +305,10 @@ export interface ReviewDecision {
   required_direct_pct?: number | null
   /** What a call could win (side pots cap it); absent on hands from before the ledger. */
   winnable?: number | null
+  /** How `equity_pct` was computed, as the coach does (null without an equity; absent on
+   *  reviews from before phase 2). */
+  equity_method?: EquityMethod | null
+  equity_se_pct?: number | null
   leaks: Leak[]
 }
 export interface ReviewStreet {
@@ -417,7 +432,8 @@ export const api = {
         decision_ms: decisionMs ?? null,
       }),
     }),
-  advance: (id: string) => req<SessionState>(`/session/${id}/advance`, { method: 'POST' }),
+  /** One bot step; `warm` (the coach is on) has the server build the flop's equity matrix. */
+  advance: (id: string, warm = false) => req<SessionState>(advancePath(id, warm), { method: 'POST' }),
   nextHand: (id: string) =>
     req<SessionState>(`/session/${id}/next-hand`, { method: 'POST' }),
   coach: (id: string) => req<Coaching>(`/session/${id}/coach`),
