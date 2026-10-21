@@ -13,7 +13,6 @@ from poker.strategy.private import build_private
 from validation.spotbook import MEASURES, RANGE, SPOTS, TYPE_CODES, BY_ID, bounds_for, build, cases, evaluate_spot, within
 
 OWNER_REVIEW: dict[tuple[str, str], str] = {
-    ("sb04", "lag"): "measured 0.799",
 }
 
 

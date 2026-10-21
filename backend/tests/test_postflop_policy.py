@@ -226,6 +226,19 @@ def test_fold_never_increases_with_strength_across_the_suspicion_band():
         assert all(b <= a + 1e-12 for a, b in zip(folds, folds[1:])), (dials.suspicion, folds)
 
 
+def test_draw_hits_are_not_discounted_by_realization():
+    """R_bot discounts showdown equity (being bluffed off or out-played later);
+    the share that comes from hitting a clean draw is realised in full, so a
+    LAG no longer folds a flush draw to a half-pot c-bet 20% of the time (sb04)."""
+    s, priv = setup("Jh4h", "9h7h2c", hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.5"])
+    for dials in (TAG, LAG, NIT):
+        _, tr = decide_postflop(s, priv, dials)
+        f = tr["features"]
+        dt = f["draw_term"]
+        eq_sd = (tr["eq"] - dt) / (1 - dt)
+        assert f["m_raw"] == pytest.approx(eq_sd * f["R"] + (1 - eq_sd) * dt - tr["price"])
+
+
 def test_station_calls_top_pair_vs_pot():
     s, priv = setup("Kc8d", "Ks7c2d", hero_pos="BB", line=SRP + ["BB check", "BTN bet 1.0"])
     dist, tr = decide_postflop(s, priv, STATION)

@@ -14,7 +14,8 @@ rank made a BTN bet 92% of its air on K-7-2 where f_air is 65%). A hand with its
 own pair below V' is in the showdown band and never bluffs.
 
 Facing a bet: the bettor prior ``(v, β)`` (D34) gives the equity estimate, the
-price includes the bot's own implied odds for draws, and the continue margin
+price includes the bot's own implied odds for draws, the realization ``R_bot``
+discounts the showdown share of the equity (not the clean-draw hits), and the continue margin
 ``m`` goes through the D32 envelope so P(fold) never falls as the bet grows.
 Raises need ``h_used`` above the level's threshold; facing a raise (level 2+) a
 raise also needs two pair or better with both pairs in the hole, or a set.
@@ -210,7 +211,10 @@ def _margin(sp: Spot, h_used: float, dt: float, multiway: bool, d: Dials, imp: s
     frac = sp.facing_frac if sp.facing_frac is not None else 1.0
     v, beta = prior(street, sp.node, frac, multiway, d.price)
     eq = beta * min(1.0, h_used / K.BLUFF_H) + (1 - beta) * min(1.0, max(0.0, (h_used - v) / (1 - v)))
-    eq += (1 - eq) * dt
+    # R_bot discounts showdown equity (bluffed off or out-played later); the share
+    # from hitting a clean draw is realised in full.
+    hit = (1 - eq) * dt
+    eq_sd, eq = eq, eq + hit
     c = sp.to_call
     win = sp.facts.winnable_if_call if sp.facts is not None else sp.pot + c
     behind = _behind_after_call(sp)
@@ -231,7 +235,7 @@ def _margin(sp: Spot, h_used: float, dt: float, multiway: bool, d: Dials, imp: s
         band = 1.0 if h_used >= lo else 0.0
     else:
         band = 1.0 if h_used <= hi and imp not in ("nut", "draw") else 0.0
-    m = eq * realize - price_used + d.suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
+    m = eq_sd * realize + hit - price_used + d.suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
     return {"m": m, "prior": (v, beta), "eq": eq, "price": price_used, "r": r, "behind": behind, "R": realize}
 
 

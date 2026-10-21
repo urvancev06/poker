@@ -10,8 +10,8 @@ sb03  4s4h KsKh9d2c7s BB  raise  (the same fours never raise)
     nit       0.0000  in [0.000, 0.000]  ok
     lag       0.0000  in [0.000, 0.000]  ok
 sb04  Jh4h 9h7h2c BB  continue  (flush draw vs a half-pot c-bet)
-    tag       0.8842  in [0.850, 1.000]  ok
-    lag       0.7990  in [0.850, 1.000]  OUTSIDE
+    tag       0.9900  in [0.850, 1.000]  ok
+    lag       0.9644  in [0.850, 1.000]  ok
 sb05  Ah2c Kh9h6h3hJs BB  fold  (nut flush vs a min river bet (floor))
     nit       0.0000  in [0.000, 0.000]  ok
     tag       0.0000  in [0.000, 0.000]  ok
@@ -112,10 +112,10 @@ sb38  JsTs 6h7d8c9sKh BB  fold  (the nut straight never folds to a jam (floor))
     station   0.0000  in [0.000, 0.000]  ok
     maniac    0.0000  in [0.000, 0.000]  ok
 sb39  Th9h 8h7c2d BB  continue  (a combo draw continues vs a half-pot c-bet)
-    tag       0.9953  in [0.900, 1.000]  ok
-    lag       0.9796  in [0.900, 1.000]  ok
+    tag       1.0000  in [0.900, 1.000]  ok
+    lag       0.9990  in [0.900, 1.000]  ok
 sb40  Qh2h Ah9c5d3s BB  fold  (a nit gives up queen-high vs a turn barrel)
-    nit       0.9988  in [0.800, 1.000]  ok
+    nit       0.9984  in [0.800, 1.000]  ok
 sb41  2s2d AhKd8c5s3h BB  fold  (deuces fold to a river 2x overbet)
     tag       0.9774  in [0.800, 1.000]  ok
 sb42  AsQd AhJc7d4s2c BB  fold  (top pair folds to a river raise)
@@ -170,4 +170,4 @@ sb60  AsKs QcJhTd2s BB  fold  (Broadway never folds the turn (floor))
     station   0.0000  in [0.000, 0.000]  ok
     maniac    0.0000  in [0.000, 0.000]  ok
 
-1 (row, type) values outside their bounds
+0 (row, type) values outside their bounds
