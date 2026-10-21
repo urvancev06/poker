@@ -12,6 +12,7 @@
     postflop    the priced postflop policy
     sizing      texture sizing, preflop sizes, legal chip amounts
     leaks       the six named leaks
+    policy      the entry point (decide, leaks, floors), sample, explain, policy_hash
 
 The v1 bots (``poker.bots.archetypes`` / ``strategy``) stay frozen until phase 5;
 nothing here is imported by them.

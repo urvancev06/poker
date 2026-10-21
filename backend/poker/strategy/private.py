@@ -4,6 +4,10 @@
 type mean's likelihood of j's public preflop line, with card removal (D23); bots
 never use a seat's real type. ``s_all = Π h_j``, and on the flop and turn the
 clean-draw term lifts it: ``s = s_all + (1 − s_all)·p_hit·clean``.
+
+``bluff_q`` (D33) is read only by a first-in decision with air, so it is built
+only there (the board's ranking costs about 16 ms a board); elsewhere it is 1.0,
+the value a non-air holding has anyway.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ from collections.abc import Sequence
 
 from ..math.board import board_cache
 from ..math.cards import RANK_INDEX, RANKS
-from ..math.classify import classify
+from ..math.classify import MadeTier, classify
 from ..math.draws import NO_DRAWS, DrawSet
 from ..math.suits import class_of
 from . import constants as K
@@ -100,6 +104,9 @@ def build_private(spot: Spot, hole: tuple[str, str]) -> Private:
     for v in h.values():
         s_all *= v
     draws = bc.draws(hole)
+    hand = classify(hole, board)
+    air = hand.hole_tier < MadeTier.PAIR and not (draws.flush or draws.oesd or draws.gutshot)
+    bluff_q = bc.bluff_quantile(hole) if air and spot.to_call == 0 else 1.0
     s = s_all + (1 - s_all) * draw_term(draws, spot.street, board)
     return Private(
         hole=hole,
@@ -110,7 +117,7 @@ def build_private(spot: Spot, hole: tuple[str, str]) -> Private:
         s=s,
         draws=draws,
         nuts=bc.is_nuts(hole),
-        hand=classify(hole, board),
-        bluff_q=bc.bluff_quantile(hole),
+        hand=hand,
+        bluff_q=bluff_q,
         blockers=_blockers(hole, board),
     )
