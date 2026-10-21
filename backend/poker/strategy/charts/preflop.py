@@ -16,6 +16,7 @@ value 3-bets, so value plus flats lands on the target.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from ...bots.preflop_ranges import RFI_COMBOS
 from ...math.ranges import parse_range
@@ -257,3 +258,78 @@ def vs_4bet_probs(price: float) -> dict[str, tuple[float, float]]:
 def members(probs: Mapping[str, float], threshold: float = 0.5) -> tuple[str, ...]:
     """Classes with probability at least ``threshold``, best first."""
     return by_playability(c for c, p in probs.items() if p >= threshold)
+
+
+# --- Chart advice (the beta coach and History read the same chart) ---------------
+@dataclass(frozen=True)
+class ChartAdvice:
+    """The baseline chart's play for one class at one node (all dials 1.0).
+
+    ``action`` is ``"raise"`` (an open or iso), ``"3bet"``, ``"4bet"``, ``"jam"``,
+    ``"call"``, ``"check"`` or ``"fold"``; ``chart`` names the chart the hand is in
+    (``"UTG open"``, ``"value 3-bet vs CO"``, ...) and is ``""`` for a fold;
+    ``p`` is the chart probability of that action."""
+
+    action: str
+    chart: str
+    p: float
+
+
+def chart_advice(
+    cls: str,
+    hero: str,
+    node: str,
+    *,
+    opener: str | None = None,
+    threebettor: str | None = None,
+    limpers: int = 0,
+    callers: int = 0,
+    open_size_bb: float | None = None,
+    price: float | None = None,
+) -> ChartAdvice:
+    """The baseline chart action for ``cls`` at ``node`` (``"unopened"``,
+    ``"vs_open"``, ``"vs_3bet"``, ``"cold_vs_3bet"``, ``"vs_4bet"`` or ``"vs_5bet"``).
+    A hand mixing near a cut takes the likelier action."""
+    if node == "unopened":
+        p = unopened_probs(hero, limpers=limpers)[cls]
+        if hero == "BB":
+            return ChartAdvice("raise", "BB raise over limpers", 1.0) if p >= 0.5 else ChartAdvice("check", "", 1.0)
+        name = f"{hero} iso-raise over {limpers} limper{'s' if limpers > 1 else ''}" if limpers else f"{hero} open"
+        return ChartAdvice("raise", name, p) if p >= 0.5 else ChartAdvice("fold", "", 1.0 - p)
+    if node == "vs_open":
+        assert opener is not None
+        p3, p_call = vs_open_probs(hero, opener, k=size_factor(open_size_bb), callers=callers)[cls]
+        if callers:
+            label3 = "squeeze value" if cls in SQUEEZE_VALUE else "squeeze bluff"
+        else:
+            label3 = f"{'value' if cls in VALUE_3BET[opener] else 'light'} 3-bet vs {opener}"
+        label_call = f"BB defence vs {opener}" if hero == "BB" else f"flat vs {opener}"
+        return _likeliest(("3bet", label3, p3), ("call", label_call, p_call))
+    if node == "vs_3bet":
+        assert opener is not None and threebettor is not None
+        p4, p_call = vs_3bet_probs(opener, threebettor)[cls]
+        label4 = "4-bet bluff" if cls in FOURBET_BLUFF else "value 4-bet"
+        side = "in position" if in_position(opener, threebettor) else "out of position"
+        return _likeliest(("4bet", label4, p4), ("call", f"call a 3-bet {side}", p_call))
+    if node == "cold_vs_3bet":
+        p4, p_call = cold_vs_3bet_probs()[cls]
+        return _likeliest(("4bet", "cold 4-bet", p4), ("call", "cold call vs 3-bet", p_call))
+    if node in ("vs_4bet", "vs_5bet"):
+        p_jam, p_call = vs_4bet_probs(price if price is not None else 1.0)[cls]
+        if node == "vs_5bet":
+            p_call = 0.0
+        return _likeliest(("jam", "jam vs 4-bet", p_jam), ("call", "continue vs 4-bet", p_call))
+    raise ValueError(f"unknown preflop node {node!r}")
+
+
+def _likeliest(*options: tuple[str, str, float]) -> ChartAdvice:
+    fold = 1.0 - sum(p for _, _, p in options)
+    action, chart, p = max(options, key=lambda o: o[2])
+    if p >= fold:
+        return ChartAdvice(action, chart, p)
+    return ChartAdvice("fold", "", fold)
+
+
+# STRATEGY.md §2 markers (D28) for the rendered block.
+MD_START = "<!-- charts:v2:start -->"
+MD_END = "<!-- charts:v2:end -->"

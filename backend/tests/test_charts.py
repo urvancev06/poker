@@ -177,3 +177,52 @@ def test_reg_fold_to_3bet_lands_in_the_pool_band():
             (ip if preflop.in_position(opener, threebettor) else oop).append(f)
         if ip and oop:
             assert min(oop) >= max(ip) - 1e-9, (opener, ip, oop)
+
+
+def test_chart_advice_reads_the_baseline_charts():
+    adv = preflop.chart_advice
+    assert adv("AKo", "UTG", "unopened") == preflop.ChartAdvice("raise", "UTG open", pytest.approx(1.0))
+    assert adv("72o", "UTG", "unopened").action == "fold"
+    assert adv("98o", "BTN", "unopened").action == "raise"
+    assert adv("KQo", "BB", "unopened").action == "check"
+    assert adv("AQs", "BB", "unopened", limpers=1).action == "raise"
+    a = adv("A5s", "BTN", "vs_open", opener="CO")
+    assert (a.action, a.chart) == ("3bet", "light 3-bet vs CO")
+    a = adv("JJ", "BTN", "vs_open", opener="CO")
+    assert (a.action, a.chart) == ("3bet", "value 3-bet vs CO")
+    a = adv("KQs", "BTN", "vs_open", opener="CO")
+    assert (a.action, a.chart) == ("call", "flat vs CO")
+    assert adv("K7o", "BTN", "vs_open", opener="CO").action == "fold"
+    a = adv("K9s", "BB", "vs_open", opener="BTN")
+    assert (a.action, a.chart) == ("call", "BB defence vs BTN")
+    assert adv("72o", "BB", "vs_open", opener="BTN").action == "fold"
+    a = adv("QQ", "UTG", "vs_3bet", opener="UTG", threebettor="BTN")
+    assert (a.action, a.chart) == ("4bet", "value 4-bet")
+    a = adv("JJ", "UTG", "vs_3bet", opener="UTG", threebettor="BTN")
+    assert (a.action, a.chart) == ("call", "call a 3-bet out of position")
+    assert adv("22", "UTG", "vs_3bet", opener="UTG", threebettor="BTN").action == "fold"
+    assert adv("QQ", "UTG", "vs_4bet", price=0.35).action == "call"
+    assert adv("QQ", "UTG", "vs_4bet", price=0.45).action == "fold"
+    assert adv("KK", "UTG", "vs_4bet", price=0.45).action == "jam"
+    with pytest.raises(ValueError):
+        adv("AA", "UTG", "vs_cbet")
+
+
+def test_chart_advice_open_matches_rfi_exactly():
+    """The coach's "it's in your UTG chart" and History's open grading agree."""
+    for pos in ("UTG", "MP", "CO", "BTN", "SB"):
+        raised = {c for c in CLASSES if preflop.chart_advice(c, pos, "unopened").action == "raise"}
+        assert raised == _rfi_classes(pos), pos
+
+
+def test_render_names_every_chart():
+    from poker.strategy.charts.render import render_markdown
+
+    md = render_markdown()
+    assert md.startswith(preflop.MD_START) and md.rstrip().endswith(preflop.MD_END)
+    assert "baseline, not solver, for owner review" in md
+    for heading in ("Opening order", "Facing an open", "BB defence", "Facing a 3-bet",
+                    "Facing a 4-bet", "Limped pots", "Squeeze and cold 4-bet", "Short stacks"):
+        assert heading in md, heading
+    assert md == render_markdown()
+
