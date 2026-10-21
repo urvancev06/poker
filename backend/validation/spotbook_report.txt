@@ -1,0 +1,173 @@
+Spot book: 60 rows, policy 78c72c04a0c7
+
+sb01  4s4h AsAd9d3c6s BTN  fold  (underpair on a double-paired-looking A-A river vs pot)
+    tag       0.9998  in [0.900, 1.000]  ok
+    nit       1.0000  in [0.900, 1.000]  ok
+sb02  4s4h KsKh9d2c7s BB  fold  (fours under a K-K board vs a river pot bet)
+    tag       0.9202  in [0.900, 1.000]  ok
+sb03  4s4h KsKh9d2c7s BB  raise  (the same fours never raise)
+    tag       0.0000  in [0.000, 0.000]  ok
+    nit       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+sb04  Jh4h 9h7h2c BB  continue  (flush draw vs a half-pot c-bet)
+    tag       0.8842  in [0.850, 1.000]  ok
+    lag       0.7990  in [0.850, 1.000]  OUTSIDE
+sb05  Ah2c Kh9h6h3hJs BB  fold  (nut flush vs a min river bet (floor))
+    nit       0.0000  in [0.000, 0.000]  ok
+    tag       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+    station   0.0000  in [0.000, 0.000]  ok
+    maniac    0.0000  in [0.000, 0.000]  ok
+sb06  KsJd Kh7c2d9s4h BB  continue  (top pair vs a crumb river bet)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb07  KsJd Kh7c2d9s4h BB  fold  (top pair vs a 3x-pot river jam)
+    tag       0.9995  in [0.500, 1.000]  ok
+sb08  AsAh - BB  raise  (AA in the BB raises a limper)
+    nit       1.0000  in [0.900, 1.000]  ok
+    tag       1.0000  in [0.900, 1.000]  ok
+    lag       1.0000  in [0.900, 1.000]  ok
+    station   1.0000  in [0.900, 1.000]  ok
+    maniac    1.0000  in [0.900, 1.000]  ok
+sb09  (range) - BTN  range_fold  (the BTN open range folds to a BB 3-bet)
+    tag       0.5498  in [0.450, 0.620]  ok
+sb10  8s8d - BTN  call  (88 flats a CO open on the BTN)
+    tag       1.0000  in [0.500, 1.000]  ok
+sb11  KsQs - BTN  continue  (KQs continues vs a CO open)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb12  9s8s Kd9c4h BB  bet  (middle pair does not donk)
+    tag       0.0088  in [0.000, 0.100]  ok
+sb13  (range) Kh7d2c BTN  range_bet_air  (BTN air c-bets a dry K-high flop heads-up)
+    tag       0.9239  in [0.450, 0.800]  OUTSIDE
+sb14  Ks9d Kd7c4h2s8c BB  continue  (a station calls top pair vs a river pot bet)
+    station   0.9942  in [0.900, 1.000]  ok
+sb15  7c6d AsKdQh9c2s BB  fold  (a station folds seven-high to a 2x-pot jam)
+    station   0.9575  in [0.950, 1.000]  ok
+sb16  AsAd - UTG  open  (AA opens UTG)
+    nit       1.0000  in [0.990, 1.000]  ok
+    tag       1.0000  in [0.990, 1.000]  ok
+    lag       1.0000  in [0.990, 1.000]  ok
+    station   1.0000  in [0.990, 1.000]  ok
+    maniac    1.0000  in [0.990, 1.000]  ok
+sb17  7c2d - UTG  open  (72o never opens UTG)
+    nit       0.0000  in [0.000, 0.020]  ok
+    tag       0.0000  in [0.000, 0.020]  ok
+    lag       0.0000  in [0.000, 0.020]  ok
+    station   0.0000  in [0.000, 0.020]  ok
+    maniac    0.0000  in [0.000, 0.100]  ok
+sb18  9s8s - UTG  open  (98s opens UTG for a TAG)
+    tag       1.0000  in [0.500, 1.000]  ok
+sb19  8s7s - UTG  open  (87s does not open UTG for a nit)
+    nit       0.0000  in [0.000, 0.050]  ok
+sb20  Ks2s - BTN  open  (K2s opens the BTN)
+    tag       1.0000  in [0.500, 1.000]  ok
+sb21  7c2d - BTN  open  (72o folds the BTN)
+    tag       0.0000  in [0.000, 0.050]  ok
+sb22  7c2d - BTN  enter  (a maniac plays 72o on the BTN)
+    maniac    1.0000  in [0.800, 1.000]  ok
+sb23  6s6d - SB  call  (66 rarely flats the SB vs a BTN open)
+    tag       0.0000  in [0.000, 0.200]  ok
+sb24  QsQd - CO  threebet  (QQ 3-bets a UTG open)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb25  JsJd - CO  threebet  (JJ mostly flats a UTG open)
+    tag       0.0000  in [0.000, 0.200]  ok
+sb26  JsJd - CO  continue  (JJ continues vs a UTG open)
+    tag       1.0000  in [0.900, 1.000]  ok
+sb27  JsJd - BTN  threebet  (JJ 3-bets a CO open on the BTN)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb28  Ks7s - BB  continue  (K7s defends the BB vs a BTN open)
+    tag       1.0000  in [0.800, 1.000]  ok
+sb29  7c2d - BB  fold  (72o folds the BB to a UTG open)
+    tag       1.0000  in [0.980, 1.000]  ok
+sb30  As5s - BB  threebet  (A5s 3-bets the BB vs a BTN open)
+    tag       1.0000  in [0.900, 1.000]  ok
+sb31  AsKd - UTG  raise  (AKo 4-bets a BTN 3-bet)
+    tag       1.0000  in [0.900, 1.000]  ok
+sb32  AsAh - CO  fold  (AA never folds to a 5-bet jam)
+    nit       0.0000  in [0.000, 0.000]  ok
+    tag       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+    station   0.0000  in [0.000, 0.000]  ok
+    maniac    0.0000  in [0.000, 0.000]  ok
+sb33  KsKh - BTN  raise  (KK 5-bets a 4-bet)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb34  KsKh - BTN  raise_as_jam  (KK at 18bb 3-bets all-in)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb35  4s4d - BTN  call  (44 at 12bb never flats)
+    tag       0.0000  in [0.000, 0.000]  ok
+sb36  7s7d 7hKd2c BB  fold  (top set never folds to a small c-bet)
+    nit       0.0000  in [0.000, 0.020]  ok
+    tag       0.0000  in [0.000, 0.020]  ok
+    lag       0.0000  in [0.000, 0.020]  ok
+    station   0.0000  in [0.000, 0.020]  ok
+    maniac    0.0000  in [0.000, 0.020]  ok
+sb37  QsQd 8h5c2d BB  continue  (an overpair continues vs a small c-bet)
+    tag       1.0000  in [0.950, 1.000]  ok
+    nit       1.0000  in [0.950, 1.000]  ok
+    lag       1.0000  in [0.950, 1.000]  ok
+    station   1.0000  in [0.950, 1.000]  ok
+sb38  JsTs 6h7d8c9sKh BB  fold  (the nut straight never folds to a jam (floor))
+    nit       0.0000  in [0.000, 0.000]  ok
+    tag       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+    station   0.0000  in [0.000, 0.000]  ok
+    maniac    0.0000  in [0.000, 0.000]  ok
+sb39  Th9h 8h7c2d BB  continue  (a combo draw continues vs a half-pot c-bet)
+    tag       0.9953  in [0.900, 1.000]  ok
+    lag       0.9796  in [0.900, 1.000]  ok
+sb40  Qh2h Ah9c5d3s BB  fold  (a nit gives up queen-high vs a turn barrel)
+    nit       0.9988  in [0.800, 1.000]  ok
+sb41  2s2d AhKd8c5s3h BB  fold  (deuces fold to a river 2x overbet)
+    tag       0.9774  in [0.800, 1.000]  ok
+sb42  AsQd AhJc7d4s2c BB  fold  (top pair folds to a river raise)
+    tag       0.9988  in [0.800, 1.000]  ok
+sb43  4s4h AhKc4d BB  raise  (a set may 4-bet the flop)
+    tag       0.5264  in [0.300, 1.000]  ok
+sb44  AsJd AhKc4d BB  raise  (one pair never reraises)
+    nit       0.0000  in [0.000, 0.000]  ok
+    tag       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+    station   0.0000  in [0.000, 0.000]  ok
+    maniac    0.0000  in [0.000, 0.000]  ok
+sb45  (range) Kh7d2c BTN  range_bet_air  (multiway air c-bets far less than heads-up)
+    tag       0.6456  in [0.000, 0.416]  OUTSIDE
+sb46  (range) 9d6c2h4s7c BTN  range_bet_air  (river air when checked to)
+    maniac    0.4546  in [0.400, 1.000]  ok
+    nit       0.1291  in [0.000, 0.120]  OUTSIDE
+sb47  KsJd Kh7d2c BTN  bet  (top pair bets the flop when checked to)
+    tag       0.9999  in [0.800, 1.000]  ok
+sb48  8s7s Kh8d2c5s3h BTN  bet  (middle pair checks the river back)
+    tag       0.0270  in [0.000, 0.200]  ok
+sb49  3s2s Kh3d8c BB  continue  (a station calls bottom pair vs half pot)
+    station   0.9365  in [0.800, 1.000]  ok
+sb50  9c8c Kh9d4c2s BB  fold  (a nit folds middle pair to a turn pot bet)
+    nit       0.8896  in [0.700, 1.000]  ok
+sb51  Ah5h Kh9h2c BTN  bet  (a nut flush draw c-bets)
+    tag       0.6870  in [0.450, 1.000]  ok
+sb52  Ah3c Kd9s4h BB  fold + fit_or_fold(1)  (fit-or-fold folds ace-high)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb53  4s3s Kd9s4h7c2d BB  fold + cant_fold_pair(1)  (can't-fold-a-pair calls bottom pair)
+    tag       0.1840  in [0.000, 0.300]  ok
+sb54  KsJd Kh7c2d9s4h BB  fold + scared_money(1)  (scared money folds top pair to a pot bet)
+    tag       0.5001  in [0.200, 1.000]  ok
+sb55  7s7d 7hKd2c BB  raise + passive_monster(1)  (a passive monster never raises)
+    station   0.0000  in [0.000, 0.000]  ok
+sb56  (range) Kh7d2c BTN  range_bet_air + auto_cbet(1)  (auto-c-bet bets its air)
+    tag       0.9924  in [0.900, 1.000]  ok
+sb57  QhJh 9h8h2c3d5s BTN  bet + spewy_river(1)  (spewy river bluffs a missed draw)
+    lag       0.5700  in [0.380, 1.000]  ok
+sb58  AsAh - SB  open  (AA opens the SB)
+    nit       1.0000  in [0.950, 1.000]  ok
+    tag       1.0000  in [0.950, 1.000]  ok
+    lag       1.0000  in [0.950, 1.000]  ok
+    station   1.0000  in [0.950, 1.000]  ok
+    maniac    1.0000  in [0.950, 1.000]  ok
+sb59  KsKd - BB  raise  (KK 4-bets a squeeze-free 3-bet)
+    tag       1.0000  in [0.950, 1.000]  ok
+sb60  AsKs QcJhTd2s BB  fold  (Broadway never folds the turn (floor))
+    nit       0.0000  in [0.000, 0.000]  ok
+    tag       0.0000  in [0.000, 0.000]  ok
+    lag       0.0000  in [0.000, 0.000]  ok
+    station   0.0000  in [0.000, 0.000]  ok
+    maniac    0.0000  in [0.000, 0.000]  ok
+
+4 (row, type) values outside their bounds
