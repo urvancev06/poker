@@ -73,6 +73,10 @@ export interface DeckDef {
   colors: Record<Suit, string>
   /** Flat white face instead of the soft fall-off. */
   flat?: boolean
+  /** At a showdown the second card lies over the first: the share of the first left showing,
+   * so its whole index reads and the cut misses its pips (the front card's shadow takes
+   * the last unit or two). */
+  reveal: number
   face: (card: ParsedCard, color: string) => ReactNode
 }
 
@@ -89,12 +93,15 @@ const standardFace = (c: ParsedCard, color: string) => (
 )
 
 export const DECKS: readonly DeckDef[] = [
-  { id: 'standard', name: DECK_NAMES.standard, colors: TWO, face: standardFace },
-  { id: 'four', name: DECK_NAMES.four, colors: FOUR, face: standardFace },
+  // the index ends by x 41 ("10"), the big pip starts at 42.5
+  { id: 'standard', name: DECK_NAMES.standard, colors: TWO, reveal: 0.44, face: standardFace },
+  { id: 'four', name: DECK_NAMES.four, colors: FOUR, reveal: 0.44, face: standardFace },
   {
     id: 'large',
     name: DECK_NAMES.large,
     colors: TWO,
+    // the index ends by x 59, the pip starts at 57 (low on the card, under the shadow)
+    reveal: 0.59,
     face: (c, color) => (
       <>
         {index(c, color, 60)}
@@ -102,11 +109,13 @@ export const DECKS: readonly DeckDef[] = [
       </>
     ),
   },
-  { id: 'minimal', name: DECK_NAMES.minimal, colors: TWO, flat: true, face: (c, color) => index(c, color) },
+  { id: 'minimal', name: DECK_NAMES.minimal, colors: TWO, flat: true, reveal: 0.44, face: (c, color) => index(c, color) },
   {
     id: 'classic',
     name: DECK_NAMES.classic,
     colors: TWO,
+    // the index ends by x 34, the centre pip starts at 31 (its edge falls in the shadow)
+    reveal: 0.35,
     face: (c, color) => (
       <>
         {index(c, color, 30)}

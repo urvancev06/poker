@@ -30,7 +30,7 @@ import { canAggress, aggroType, dockActions, PRESETS, presetAmount, presetIndexF
 import { limbHeight, sunPlacement, type Rect } from '../../lib/space'
 import { useSpaceAvoid } from '../../lib/spaceAvoid'
 import { commandForKey, targetKind, type HotkeyFace } from '../../lib/tableHotkeys'
-import { computeLayout, glintAt, placeSeats, project, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
+import { BACKS_OFFSET, computeLayout, glintAt, placeSeats, project, slabOutline, VILLAIN_SLOTS, type SeatPlacement, type SeatSize, type TableLayout, type VillainSlot } from '../../lib/tableLayout'
 import { boardSpeech, buildTableModel, identityOf, STREET_LABEL, statusLine, type TableModel } from '../../lib/tableModel'
 import { useEscape } from '../../lib/escapeStack'
 import type { TableSession, SessionErrorScope } from '../../lib/useTableSession'
@@ -39,12 +39,15 @@ import { CoachGlance } from '../coach/CoachGlance'
 import { MathsSheet } from '../coach/MathsSheet'
 import { Dock } from './Dock'
 import { ActionsFace, ErrorFace, ResultFace, SizingFace, StatusFace } from './DockFaces'
-import { Felt, Slab } from './Felt'
+import { Felt, Slab, SlabSide } from './Felt'
 import { HandLog } from './HandLog'
 import { HeroHand } from './HeroHand'
 import { SeatLabel } from './SeatLabel'
 import { useTableMotion } from './useTableMotion'
 import './Stage.css'
+
+/** The slab's outline as this browser draws it (a rounded rectangle without corner-shape). */
+const OUTLINE = slabOutline()
 
 export interface TableViewProps {
   table: TableSession
@@ -99,6 +102,7 @@ function stageVars(L: TableLayout): CSSProperties {
     ['--thick0' as string]: g.thick,
     ['--card' as string]: g.card,
     ['--back' as string]: g.back,
+    ['--backs-off' as string]: BACKS_OFFSET,
     ['--chip' as string]: g.chip,
     ['--rev' as string]: g.rev,
     ['--hw' as string]: `${L.hw}px`,
@@ -146,7 +150,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const model = useMemo(() => (session ? buildTableModel(session, reads, visibility) : null), [session, reads, visibility])
   const panelOpen = desk && (logShown || mathsShown)
   const topSeatH = TOP_SEAT_H[phone ? 'phone' : 'desk'][visibility === 'hud' && model ? 'three' : 'two']
-  const L = useMemo(() => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH, sideSeatW: 140 }), [W, H, kind, panelOpen, topSeatH])
+  const L = useMemo(() => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH, sideSeatW: 140, outline: OUTLINE }), [W, H, kind, panelOpen, topSeatH])
 
   // seat labels: their natural sizes push the top three apart (measured after each render)
   const seatEls = useRef<(HTMLDivElement | null)[]>([])
@@ -187,7 +191,8 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
     if (key !== sizesKey) setSizesKey(key)
   }, [seatText, fontsReady, kind, sizesKey])
   const places = useMemo(() => placeSeats(L, sizes), [L, sizes])
-  const glint = useMemo(() => glintAt(L, sunPlacement(W, H).left), [L, W, H])
+  const sunX = sunPlacement(W, H).left
+  const glint = useMemo(() => glintAt(L, sunX), [L, sunX])
 
   /* ---------- the decision ---------- */
   const legal = model?.legal ?? null
@@ -357,7 +362,6 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   useSpaceAvoid('table', avoid)
 
   /* ---------- render ---------- */
-  const g = L.g
   const villains = model?.villains ?? null
   const pt = (u: number, v: number) => project(L, u, v)
   const sheetInset = desk ? H - L.dockBottom : H - (L.dockBottom - L.dockH - 8)
@@ -435,6 +439,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
       <h1 className="sr-only">Table</h1>
       <div ref={stageRef} className="stage" data-geo={L.gk} style={stageVars(L)}>
         <div className="table-obj" aria-hidden="true">
+          <SlabSide L={L} lightX={sunX} />
           <div className="scene" style={{ left: L.ox, top: L.oy }}>
             <div className="plane">
               <Slab glint={glint} focus={!!model?.heroTurn} />
@@ -462,7 +467,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
             const p = s?.player ?? i
             const spot = p === 0 ? L.heroBet : L.bets[p as VillainSlot]
             const [x, y] = pt(spot[0], spot[1])
-            const side = p === 0 ? 'right' : g.seats[p as VillainSlot].betSide
+            const side = p === 0 ? 'right' : L.betSides[p as VillainSlot]
             return (
               <span
                 key={`bet-${p}`}

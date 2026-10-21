@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { EASE } from './motion'
 import { BP, barHeight } from './breakpoints'
+import { LIMB_LIGHT_RGB } from './slabLight'
 
 // Read from disk: Vitest hands CSS imports (even ?raw) to its CSS pipeline, which empties them.
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
@@ -34,6 +35,10 @@ describe('CSS and JS tokens agree', () => {
     expect(Number(below)).toBeLessThan(BP.sm)
     expect(Number(below)).toBeGreaterThan(BP.sm - 1)
     expect(h.trim()).toBe(`${barHeight(BP.sm - 1)}px`)
+  })
+
+  it("the limb's light (CSS channels and the SVG colour)", () => {
+    expect(token('--limb-light')).toBe(LIMB_LIGHT_RGB.join(' '))
   })
 
   it('breakpoints', () => {

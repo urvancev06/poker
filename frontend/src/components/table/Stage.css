@@ -2,7 +2,7 @@
    Only what Tailwind cannot say well lives here: the CSS 3D camera and slab, cards and
    chips lying on the felt, the hand's lift and light pool, and the upright labels' anchors.
    Geometry comes from lib/tableLayout.ts as CSS variables on .stage:
-     --s scale, --tilt, --aspect, --persp0, --thick0, --card, --back, --chip, --rev, --hw.
+     --s scale, --tilt, --aspect, --persp0, --thick0, --card, --back, --chip, --rev, --hw, --backs-off, --reveal.
    State is drawn by classes and attributes; motion only ever runs from the previous look
    to the state already on screen (element.animate, fill: backwards), so an interrupted
    animation can never hide a bet, a card or a seat. */
@@ -38,41 +38,57 @@
 .slab {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
+  /* without corner-shape: a rounded rectangle that follows the superellipse within a few
+     px wherever a card lies (lib/tableLayout ROUNDED_RX); a plain ellipse's corners are
+     far rounder */
+  border-radius: 37% / 50%;
 }
 @supports (corner-shape: superellipse(1.35)) {
   .slab {
+    border-radius: 50%;
     corner-shape: superellipse(1.35);
   }
 }
-/* the side wall: what you see of it is the near band, lit from below by the limb */
+/* the bottom face: only its glow, the atmosphere's light under the near wall. The wall
+   itself is .slab-side (2D, under the object), so it can be shaded down its height. */
 .slab--wall {
   transform: translateZ(calc(var(--thick0) * var(--s) * -1px));
-  background: linear-gradient(180deg, #000 0 82%, #02040a 88%, #081833 93.5%, #2259ab 98%, #8fc4ff 100%);
   box-shadow: 0 calc(10px * var(--s)) calc(70px * var(--s)) rgba(41, 151, 255, 0.13);
 }
-/* the top: obsidian. A crisp specular on the far rim, the atmosphere's blue reflected on
-   the near half, a softbox along the far third */
+/* the side wall: the band between the top's near rim and the bottom edge, projected by
+   the same camera (lib/tableLayout slabSide); the top paints over the rest */
+.slab-side {
+  position: absolute;
+  overflow: visible;
+}
+/* the top: obsidian. A crisp specular on the far rim and a soft bevel inside the whole
+   rim, a softbox along the far third, falling off to a deep middle, the atmosphere's blue
+   reflected on the near half, and the ends darker where the surface turns away. The near
+   rim's line is a soft specular, not a second bright edge: the light is below, so the
+   wall's lower bevel (SlabSide) carries it */
 .slab--top {
   overflow: hidden;
   background:
-    radial-gradient(72% 60% at 50% 112%, rgba(41, 151, 255, 0.26), rgba(41, 151, 255, 0.09) 48%, rgba(41, 151, 255, 0) 74%),
-    radial-gradient(64% 46% at 50% -8%, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 72%),
-    linear-gradient(180deg, #121318 0%, #08090c 36%, #040506 64%, #050911 100%);
+    radial-gradient(72% 60% at 50% 112%, rgba(41, 151, 255, 0.3), rgba(41, 151, 255, 0.1) 48%, rgba(41, 151, 255, 0) 74%),
+    radial-gradient(70% 52% at 50% -6%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 52%, rgba(255, 255, 255, 0) 76%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, 0.5)),
+    linear-gradient(180deg, #17181e 0%, #0b0c10 30%, #040506 60%, #050912 100%);
   box-shadow:
-    inset 0 calc(2.4px * var(--s) + 0.6px) 0 rgba(255, 255, 255, 0.36),
-    inset 0 calc(8px * var(--s)) calc(16px * var(--s)) calc(-8px * var(--s)) rgba(255, 255, 255, 0.16),
-    inset 0 calc(-2.4px * var(--s) - 0.6px) 0 rgba(160, 212, 255, 0.62),
-    inset 0 calc(-40px * var(--s)) calc(60px * var(--s)) calc(-40px * var(--s)) rgba(80, 160, 255, 0.4);
+    inset 0 calc(2.4px * var(--s) + 0.6px) 0 rgba(255, 255, 255, 0.4),
+    inset 0 calc(8px * var(--s)) calc(16px * var(--s)) calc(-8px * var(--s)) rgba(255, 255, 255, 0.18),
+    inset 0 0 0 calc(0.5px + 0.5px * var(--s)) rgb(var(--limb-light) / 0.09),
+    inset 0 0 calc(14px * var(--s)) calc(1px * var(--s)) rgb(var(--limb-light) / 0.05),
+    inset 0 calc(-2.4px * var(--s) - 0.6px) 0 rgb(var(--limb-light) / 0.38),
+    inset 0 calc(-40px * var(--s)) calc(60px * var(--s)) calc(-40px * var(--s)) rgba(80, 160, 255, 0.42);
 }
 .slab__sheen {
   position: absolute;
-  left: 20%;
-  right: 20%;
-  top: 9%;
-  height: 15%;
+  left: 18%;
+  right: 18%;
+  top: 7%;
+  height: 18%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02) 60%, rgba(255, 255, 255, 0));
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025) 60%, rgba(255, 255, 255, 0));
 }
 /* where the star on the limb grazes the near rim (x from the star, y and angle from the curve) */
 .slab__glint {
@@ -160,12 +176,44 @@
 .vcards .flip {
   width: 100%;
 }
+/* a card lying on the felt: its near edge catches the limb's light (like a chip's), a tight
+   contact shadow where it meets the surface, and a soft one under it */
+.felt-top {
+  --on-felt:
+    0 calc(0.5px + 0.5px * var(--s)) 0 rgb(var(--limb-light) / 0.3),
+    0 0 0 0.5px rgba(0, 0, 0, 0.5),
+    0 calc(1.5px * var(--s)) calc(2.5px * var(--s)) rgba(0, 0, 0, 0.6),
+    0 calc(7px * var(--s)) calc(16px * var(--s)) rgba(0, 0, 0, 0.55);
+}
 .felt-top .flip,
 .felt-top .vcards > .card {
-  box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.6), 0 calc(6px * var(--s)) calc(14px * var(--s)) rgba(0, 0, 0, 0.6);
+  box-shadow: var(--on-felt);
+}
+/* the front card of a pair casts a shadow onto the one under it, and the under card sits
+   a step darker (a shade inside its SVG, not opacity: the deal animates the card) */
+.felt-top .vcards > .card + .card,
+.felt-top .vcards > .flip + .flip {
+  box-shadow:
+    calc(-1.5px * var(--s)) 0 calc(3px * var(--s)) rgba(0, 0, 0, 0.6),
+    var(--on-felt);
+}
+.felt-top .vcards > .card:first-child .card__shade {
+  fill-opacity: 0.22;
+}
+/* on a phone the backs are 19-24 px wide, so the navy reads as a dark square: lift it a step
+   and give each card a thin light edge all round, so the pair reads as two playing cards
+   (still well under the board's white faces) */
+.stage[data-geo='phone'] .vcards .card__lift {
+  fill-opacity: 0.12;
+}
+.stage[data-geo='phone'] .vcards .card__edge {
+  stroke-opacity: 0.5;
 }
 
-/* a live villain's two backs, fanned where they lie */
+/* a live villain's two backs: one rule at every seat. Both lie square to the table, like
+   the board; the second sits a fixed share of a card over (--backs-off, lib/tableLayout
+   BACKS_OFFSET), so a sliver of the first shows. Spaced with margin, never transform:
+   the deal animates transform. */
 .vcards {
   display: flex;
 }
@@ -176,32 +224,16 @@
   height: auto;
   border-radius: 16% / 11.4%;
 }
-.vcards > :first-child {
-  rotate: -9deg;
-}
-.vcards > :last-child {
-  rotate: 7deg;
-  translate: 0 -4%;
-}
 .vcards > * + * {
-  margin-left: calc(1000px * var(--s) * var(--back) * -0.5);
+  margin-left: calc(1000px * var(--s) * var(--back) * (var(--backs-off) - 1));
 }
-/* a showdown turns them face up where they lay, fanned so both indices read */
+/* a showdown turns them face up where they lay, the second leaving the first's index
+   column showing (--reveal, the deck's share: the cut misses its pips) */
 .vcards.is-shown > * {
   width: calc(1000px * var(--s) * var(--rev));
 }
 .vcards.is-shown > * + * {
-  margin-left: calc(1000px * var(--s) * var(--rev) * -0.42);
-}
-.vcards.is-shown > :first-child {
-  rotate: -4deg;
-}
-.vcards.is-shown > :last-child {
-  rotate: 4deg;
-  translate: 0 -3%;
-}
-.stage[data-geo="phone"] .vcards.is-shown > * + * {
-  margin-left: calc(1000px * var(--s) * var(--rev) * -0.5);
+  margin-left: calc(1000px * var(--s) * var(--rev) * (var(--reveal, 0.44) - 1));
 }
 
 /* a chip with a real edge: three discs stacked in z, the near edge catching the limb's blue */

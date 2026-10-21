@@ -13,6 +13,7 @@ import { useId } from 'react'
 import { CARD_INSET, CARD_OUTLINE, deckById, type DeckDef } from '../lib/decks'
 import { cardLabel, parseCard, type ParsedCard } from '../lib/cards'
 import { useDeck } from '../lib/prefsContext'
+import { LIMB_LIGHT } from '../lib/slabLight'
 import './Card.css'
 
 const RATIO = 1.4
@@ -34,39 +35,41 @@ function CardFace({ card, deck, uid }: { card: ParsedCard; deck: DeckDef; uid: s
   )
 }
 
-/** The back, the same for every deck: the scene in miniature. Deliberately lit (not
- * near-black), so a live opponent's cards read at >= 3:1 against the obsidian table. */
+/** The back, the same for every deck: deep navy graphite with the limb's light lifting it
+ * softly from the bottom edge (a smooth glow, no fine pattern: on a 20-40 px back any
+ * engraving reads as ribbing), a thin frame, and a thin rim lit only along the near
+ * (bottom) edge, where the planet's light catches it, as it catches a chip's. Quiet, so a
+ * table of backs never outshouts the board. `.card__shade` darkens the under card of a
+ * pair (Stage.css), so the pair reads as two cards, the front one lying on the other;
+ * `.card__lift` and `.card__edge` (off by default) lift a phone's small backs a step and
+ * edge them all round, so they read as cards rather than dark squares. */
 function CardBack({ uid }: { uid: string }) {
   return (
     <>
       <defs>
         <linearGradient id={`${uid}s`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#224a8c" />
-          <stop offset=".5" stopColor="#3374d0" />
-          <stop offset=".71" stopColor="#5aa2f6" />
-          <stop offset=".74" stopColor="#a8d6ff" />
+          <stop offset="0" stopColor="#223558" />
+          <stop offset="1" stopColor="#17233a" />
         </linearGradient>
-        <clipPath id={`${uid}c`}>
-          <path d={CARD_OUTLINE} />
-        </clipPath>
+        <radialGradient id={`${uid}l`} cx=".5" cy="1.08" r=".78" gradientTransform="translate(.5 1.08) scale(1 .72) translate(-.5 -1.08)">
+          <stop offset="0" stopColor={LIMB_LIGHT} stopOpacity=".22" />
+          <stop offset=".55" stopColor={LIMB_LIGHT} stopOpacity=".07" />
+          <stop offset="1" stopColor={LIMB_LIGHT} stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${uid}r`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={LIMB_LIGHT} stopOpacity=".16" />
+          <stop offset=".6" stopColor={LIMB_LIGHT} stopOpacity=".35" />
+          <stop offset="1" stopColor={LIMB_LIGHT} stopOpacity=".9" />
+        </linearGradient>
       </defs>
-      <g clipPath={`url(#${uid}c)`}>
-        <rect width="100" height="140" fill={`url(#${uid}s)`} />
-        <circle cx="50" cy="268" r="166" fill="#04060b" />
-        <circle cx="50" cy="268" r="166" fill="none" stroke="#e4f1ff" strokeWidth="1.3" />
-        <circle cx="50" cy="268" r="168.5" fill="none" stroke="#9fd0ff" strokeOpacity=".35" strokeWidth="3" />
-        <circle cx="20" cy="18" r=".8" fill="#fff" fillOpacity=".8" />
-        <circle cx="81" cy="27" r=".6" fill="#fff" fillOpacity=".7" />
-        <circle cx="67" cy="12" r=".5" fill="#fff" fillOpacity=".6" />
-        <circle cx="12" cy="60" r=".55" fill="#fff" fillOpacity=".5" />
-        <circle cx="88" cy="66" r=".5" fill="#fff" fillOpacity=".45" />
-        <g fill="none" stroke="#fff" strokeLinecap="square" transform="translate(33 31) scale(.066)">
-          <path d="M61 41L61 318Q61 482 256 482Q451 482 451 318L451 41" strokeWidth="22" strokeOpacity=".3" />
-          <path d="M123 72L123 307Q123 431 256 431Q389 431 389 307L389 72" strokeWidth="27" strokeOpacity=".55" />
-          <path d="M194 102L194 287Q194 369 256 369Q318 369 318 287L318 102" strokeWidth="32" strokeOpacity=".92" />
-        </g>
-      </g>
-      <path d={CARD_INSET} fill="none" stroke="#fff" strokeOpacity=".62" strokeWidth="2.2" />
+      <path d={CARD_OUTLINE} fill={`url(#${uid}s)`} />
+      <path d={CARD_OUTLINE} fill={`url(#${uid}l)`} />
+      <path className="card__lift" d={CARD_OUTLINE} />
+      <rect x="9" y="9" width="82" height="122" rx="8" fill="none" stroke={LIMB_LIGHT} strokeOpacity=".14" strokeWidth="1.3" />
+      {/* the rim is a screen-px hairline at any size, so it stays crisp on a phone's small backs */}
+      <path d={CARD_INSET} fill="none" stroke={`url(#${uid}r)`} strokeWidth="1.15" vectorEffect="non-scaling-stroke" />
+      <path className="card__edge" d={CARD_INSET} vectorEffect="non-scaling-stroke" />
+      <path className="card__shade" d={CARD_OUTLINE} />
     </>
   )
 }
