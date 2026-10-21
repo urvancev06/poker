@@ -142,7 +142,7 @@ asserts directly. The coach and the review pick the villains with one function
 (`coach/villains.py`), so a decision reviews with the coach's numbers.
 
 The hero's hand is read hole-aware (`classify`): a pair on the board is everyone's, so
-8♣4♦ on K♠K♥5♦5♣Q♠ is "board two pair, eight kicker", not two pair. The v1 bots and the
+8♣4♦ on K♠K♥5♦5♣Q♠ is "playing the board (two pair)", not two pair. The v1 bots and the
 villain model keep the frozen `classify_legacy` (the bots bet board pairs as pairs, and
 the model describes the bots).
 

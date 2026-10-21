@@ -1,7 +1,7 @@
 """P2.8: the current coach and review on the phase-2 maths.
 
-* Hole-aware labels: a board pair is not the hero's hand (8c4d on KKh55Q is "board
-  two pair, eight kicker" and checks), and four hearts on the board is not the
+* Hole-aware labels: a board pair is not the hero's hand (8c4d on KKh55Q is "playing
+  the board (two pair)" and checks), and four hearts on the board is not the
   hero's flush draw without a heart.
 * Equity v2 with honest labels: exact heads-up and two-way after the flop (every
   runout), the preflop table heads-up, seeded joint sampling otherwise, and the
@@ -78,7 +78,7 @@ def _board_two_pair_checked_to() -> Hand:
 
 def test_board_two_pair_checked_to_says_check():
     c = build_coaching(HandSession(_board_two_pair_checked_to(), hero_seat=1, archetypes={0: "TAG"}))
-    assert c.hand_label == "board two pair, eight kicker"
+    assert c.hand_label == "playing the board (two pair)"
     assert c.hole_tier == "HIGH_CARD"
     assert c.verdict == "Check."
 

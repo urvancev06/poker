@@ -125,8 +125,8 @@ describe('workingRows: phase-2 answers (hole-aware label, equity method)', () =>
   })
 
   it('"Your hand" reads the hole-aware label', () => {
-    const r = byKey(workingRows({ ...base, hand_label: 'board two pair, eight kicker', made_tier: 'TWO_PAIR', hole_tier: 'HIGH_CARD', draws: [] }))
-    expect(r.hand).toMatchObject({ value: 'Board two pair, eight kicker', note: null })
+    const r = byKey(workingRows({ ...base, hand_label: 'playing the board (two pair)', made_tier: 'TWO_PAIR', hole_tier: 'HIGH_CARD', draws: [] }))
+    expect(r.hand).toMatchObject({ value: 'Playing the board (two pair)', note: null })
   })
 
   it('"Your hand" puts the made part in the value and the draws, nut included, in the note', () => {

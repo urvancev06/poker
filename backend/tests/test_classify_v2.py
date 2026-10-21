@@ -33,7 +33,7 @@ def _split(cards: str) -> list[str]:
 # (hole, board, label, hole_tier, draws, nut_flush_draw)
 GOLDEN = [
     ("4s4h", "As Ad 9d 3c 6s", "pocket fours on a paired board", T.PAIR, set(), False),
-    ("8c4d", "Ks Kh 5d 5c Qs", "board two pair, eight kicker", T.HIGH_CARD, set(), False),
+    ("8c4d", "Ks Kh 5d 5c Qs", "playing the board (two pair)", T.HIGH_CARD, set(), False),
     ("Ac4d", "Ks Kh 5d 5c Qs", "board two pair, ace kicker", T.HIGH_CARD, set(), False),
     ("AcQd", "2h 5h 9h Kh", "ace high", T.HIGH_CARD, set(), False),
     ("AhKd", "5c 6d 7h 8s", "ace high", T.HIGH_CARD, set(), False),
@@ -79,7 +79,7 @@ def test_audit_pocket_fours_on_a_board_two_pair_is_not_two_pair():
 
 def test_audit_eight_four_plays_the_board():
     hc = classify(["8c", "4d"], _split("Ks Kd 5c 5h Qd"))
-    assert hc.label == "board two pair, eight kicker"
+    assert hc.label == "playing the board (two pair)"
     assert hc.hole_tier is T.HIGH_CARD
     assert hc.board_plays is True
 
@@ -113,15 +113,15 @@ def test_audit_no_phantom_flush_draw():
         ("AsKd", "7h 7c 2d 3s", "board pair, ace kicker", T.HIGH_CARD),
         ("AsKd", "7h 7c 2d", "board pair, ace kicker + two overcards", T.HIGH_CARD),
         ("9s3d", "7h 7c 7d", "board trips, nine kicker", T.HIGH_CARD),
-        ("As3d", "5h 6c 7d 8s 9h", "board straight, ace kicker", T.HIGH_CARD),
-        ("9s9d", "5h 6c 7d 8s 9h", "board straight, nine kicker", T.HIGH_CARD),  # the set does not play
-        ("As3d", "Kh 9h 6h 3h 2h", "board flush, ace kicker", T.HIGH_CARD),
-        ("2s3d", "Kh Kc Kd 7s 7h", "board full house, three kicker", T.HIGH_CARD),
+        ("As3d", "5h 6c 7d 8s 9h", "playing the board (straight)", T.HIGH_CARD),
+        ("9s9d", "5h 6c 7d 8s 9h", "playing the board (straight)", T.HIGH_CARD),  # the set does not play
+        ("As3d", "Kh 9h 6h 3h 2h", "playing the board (flush)", T.HIGH_CARD),
+        ("2s3d", "Kh Kc Kd 7s 7h", "playing the board (full house)", T.HIGH_CARD),
         ("As3d", "Kh Kc Kd Ks 7h", "board quads, ace kicker", T.HIGH_CARD),
         ("AsAd", "Kh Kc Kd Ks", "board quads, ace kicker", T.HIGH_CARD),  # the aces are only a kicker
         # counterfeited: three pairs, the hole's pair is the lowest and does not play
         ("2s3d", "Kh Kc Qd Qs 2h", "board two pair, three kicker", T.HIGH_CARD),
-        ("4s4d", "Kh Kc Qd Qs 9h", "board two pair, four kicker", T.HIGH_CARD),
+        ("4s4d", "Kh Kc Qd Qs 9h", "playing the board (two pair)", T.HIGH_CARD),
         # three pairs, the hole's pair plays
         ("Ks2d", "Kh Qc Qd 2s 7h", "top pair, weak kicker on a paired board", T.PAIR),
         # bigger hands
@@ -160,7 +160,7 @@ def test_seat_labels_on_the_table_are_hole_aware():
         seat=1, position="BTN", stack=900, bet=0, folded=False, all_in=False, is_actor=False,
         hole_cards=["8c", "4d"],
     )
-    assert seat_to_dict(seat, _split("Ks Kh 5d 5c Qs"))["hand_label"] == "board two pair, eight kicker"
+    assert seat_to_dict(seat, _split("Ks Kh 5d 5c Qs"))["hand_label"] == "playing the board (two pair)"
 
 
 def test_preflop_labels_are_unchanged():
@@ -228,6 +228,7 @@ _MADE = (
     rf"|top pair, (top|good|weak) kicker{_PAIRED}|(second|middle|bottom) pair{_PAIRED}"
     r"|top two pair|two pair|set|trips|straight|nut flush|flush|full house|quads|straight flush"
     rf"|board (pair|two pair|trips|straight|flush|full house|quads|straight flush), {_RANK} kicker"
+    r"|playing the board \((pair|two pair|trips|straight|flush|full house|quads|straight flush)\)"
     rf"|{_RANK} high)"
 )
 _DRAWS = r"( \+ (nut flush draw|flush draw))?( \+ open-ended straight draw| \+ gutshot)?( \+ two overcards)?( \+ backdoor flush draw)?"
@@ -262,7 +263,9 @@ def test_invariants():
         if hc.board_plays:
             assert hc.hole_tier is T.HIGH_CARD and len(board) == 5
         if hc.hole_tier is T.HIGH_CARD and hc.made >= T.PAIR:
-            assert hc.label.startswith("board "), (hole, board, hc.label)
+            # a kicker is named only when it plays; otherwise the board is the whole hand
+            want = "playing the board (" if hc.board_plays else "board "
+            assert hc.label.startswith(want), (hole, board, hc.label)
         if Draw.FLUSH_DRAW in hc.draws:
             # a hole card of the suit, four of it in all, and no flush yet
             suits = [c[1] for c in hole + board]

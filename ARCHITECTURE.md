@@ -42,7 +42,7 @@ are at 1/2, and every reader takes a hand's big blind from the hand itself.
 | `ranktable` | The 7-card rank table (scalar path), checked against treys. |
 | `vector` | The NumPy evaluator over many hands at once, and the cached flop equity matrix (`flop_matrix`, `is_flop_warm`). |
 | `board` | `BoardCache`: per-board hand strengths and weighted shares, for the phase-3 bots. |
-| `classify` | The hole-aware classifier: `made` counts the board, `hole_tier` only what the hole adds; labels such as "board two pair, eight kicker". |
+| `classify` | The hole-aware classifier: `made` counts the board, `hole_tier` only what the hole adds; labels such as "board pair, ace kicker" or "playing the board (two pair)". |
 | `classify_legacy` | The frozen pre-phase-2 classifier, used by the v1 bots and the villain model (`tests/test_classify_legacy.py` pins it). |
 | `draws`, `texture` | Draws that need a hole card, and board texture. |
 | `equity` | `equity_vs_ranges`: exact heads-up and two-way after the flop, the preflop table heads-up preflop, seeded joint sampling otherwise; the older Monte Carlo `equity` (treys), kept for `scripts/gen_preflop_ranking.py`. |

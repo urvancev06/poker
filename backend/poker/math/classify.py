@@ -207,6 +207,9 @@ def _made_label(hole: list[str], board: list[str], rd: _Read) -> str:
     if tier == MadeTier.HIGH_CARD:
         if rd.made == MadeTier.HIGH_CARD:
             return f"{_WORD[high]} high"
+        if rd.board_plays:
+            # The five board cards are the best hand: no hole card plays, not even as a kicker.
+            return f"playing the board ({_BOARD_TIER[rd.made]})"
         return f"board {_BOARD_TIER[rd.made]}, {_WORD[high]} kicker"
     if tier == MadeTier.PAIR:
         pair = rd.own[0]
