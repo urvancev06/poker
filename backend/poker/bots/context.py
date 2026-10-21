@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..engine import Hand, LegalActions
+from ..engine import DecisionFacts, Hand, LegalActions
 
 
 @dataclass
@@ -36,6 +36,13 @@ class DecisionContext:
     is_pfr: bool          # we were the last preflop raiser (aggressor)
     players_in_hand: int  # players not folded
     first_to_act: bool    # no bet to face this street
+
+    # v2 additions (P3.3); the v1 bots never read them. All from the actor's
+    # redacted snapshot: no other seat's hole cards, in the history or the seats.
+    history: tuple = ()           # HistoryEntry, oldest first
+    seats: tuple = ()             # SeatState per seat
+    facts: DecisionFacts | None = None
+    blinds: tuple[int, int] = (0, 0)
 
     @property
     def facing_level(self) -> int:
@@ -83,4 +90,8 @@ def build_context(hand: Hand, big_blind: int) -> DecisionContext:
         is_pfr=(last_pf_raiser == seat),
         players_in_hand=sum(1 for s in snap.seats if not s.folded),
         first_to_act=(legal.call_amount == 0),
+        history=tuple(snap.history),
+        seats=tuple(snap.seats),
+        facts=snap.facts,
+        blinds=tuple(snap.blinds),
     )
