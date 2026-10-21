@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { LayoutKind } from './breakpoints'
+import { layoutKind, type LayoutKind } from './breakpoints'
 import {
   GEO,
   BET_LABEL_PX,
@@ -7,7 +7,7 @@ import {
   backsBox,
   betBox,
   BACKS_OFFSET,
-  betClear,
+  airKept,
   betRects,
   betRoom,
   rectGap,
@@ -41,6 +41,24 @@ const SIZES: [number, number, LayoutKind][] = [
   [1024, 768, 'tablet'],
   [390, 844, 'phone'],
   [390, 664, 'phone'],
+]
+
+/** Small tables (s under about 0.5): portrait tablets, a laptop minus its browser chrome, a
+ * desktop with a side panel open, the smallest phone. A bet may give up some of its air to
+ * the backs there (AIR_STEPS), never its 4 px from another bet. (A 600 px wide tablet,
+ * s about 0.21, is below this: its pot block alone runs past the near rim.) */
+const SMALL: [number, number, boolean][] = [
+  [768, 1024, false],
+  [820, 1180, false],
+  [834, 1194, false],
+  [744, 1133, false],
+  [1366, 657, false],
+  [1280, 720, true],
+  [1280, 800, true],
+  [1180, 820, true],
+  [768, 1024, true],
+  [820, 1180, true],
+  [360, 640, false],
 ]
 
 describe('project (the camera)', () => {
@@ -126,14 +144,30 @@ describe('computeLayout', () => {
 describe('bets', () => {
   it.each(SIZES)('%ix%i: every bet clears the full board, the backs, the pot block and the rim', (w, h, kind) => {
     const L = layout(w, h, kind)
-    for (const k of VILLAIN_SLOTS) expect(betClear(L.g, k, L.bets[k], betRoom(L)), `seat ${k}`).toBe(true)
+    const room = betRoom(L)
+    for (const k of VILLAIN_SLOTS) {
+      expect(airKept(L.g, L.bets[k], L.betSides[k], room), `seat ${k}`).toBe(1)
+      expect(L.betKept[k], `seat ${k}`).toBe(1)
+    }
+  })
+  it.each(SMALL)('%ix%i (panel %s): every bet finds a spot, and no two come within 4 px', (w, h, panelOpen) => {
+    const L = layout(w, h, layoutKind(w), panelOpen)
+    const room = betRoom(L)
+    for (const k of VILLAIN_SLOTS) {
+      expect(L.betKept[k], `seat ${k}`).toBeGreaterThan(0)
+      expect(airKept(L.g, L.bets[k], L.betSides[k], room), `seat ${k}`).toBeGreaterThan(0)
+    }
+    const all = [betRects(L.g, L.heroBet, 'right', room), ...VILLAIN_SLOTS.map((k) => betRects(L.g, L.bets[k], L.betSides[k], room))]
+    for (let i = 0; i < all.length; i++)
+      for (let j = i + 1; j < all.length; j++)
+        for (const a of [all[i].chip, all[i].label]) for (const b of [all[j].chip, all[j].label]) expect(rectGap(a, b), `bets ${i} and ${j}`).toBeGreaterThanOrEqual(4)
   })
   it.each(SIZES)('%ix%i: no two bets (chip and label) touch', (w, h, kind) => {
     const L = layout(w, h, kind)
     const labelU = BET_LABEL_PX[L.gk] / (1000 * L.s)
     const boxes = [
       betBox(L.g, L.heroBet, 'right', labelU),
-      ...VILLAIN_SLOTS.map((k) => betBox(L.g, L.bets[k], L.g.seats[k].betSide, labelU)),
+      ...VILLAIN_SLOTS.map((k) => betBox(L.g, L.bets[k], L.betSides[k], labelU)),
     ]
     for (let i = 0; i < boxes.length; i++)
       for (let j = i + 1; j < boxes.length; j++) {
@@ -188,7 +222,7 @@ describe('bets', () => {
   it.each(SIZES)('%ix%i: on screen no two bets (chip and label) come within 4 px', (w, h, kind) => {
     const L = layout(w, h, kind)
     const room = betRoom(L)
-    const all = [betRects(L.g, L.heroBet, 'right', room), ...VILLAIN_SLOTS.map((k) => betRects(L.g, L.bets[k], L.g.seats[k].betSide, room))]
+    const all = [betRects(L.g, L.heroBet, 'right', room), ...VILLAIN_SLOTS.map((k) => betRects(L.g, L.bets[k], L.betSides[k], room))]
     for (let i = 0; i < all.length; i++)
       for (let j = i + 1; j < all.length; j++)
         for (const a of [all[i].chip, all[i].label]) for (const b of [all[j].chip, all[j].label]) expect(rectGap(a, b), `bets ${i} and ${j}`).toBeGreaterThanOrEqual(4)
@@ -203,7 +237,7 @@ describe('bets', () => {
       expect(Math.sign(bet[0] - from[0]) * Math.sign(to[0] - from[0])).toBeGreaterThanOrEqual(0)
       expect(Math.sign(bet[1] - from[1]) * Math.sign(to[1] - from[1])).toBeGreaterThanOrEqual(0)
       // and never onto the board
-      const box = betBox(L.g, bet, L.g.seats[k].betSide, 0)
+      const box = betBox(L.g, bet, L.betSides[k], 0)
       const b = boardBox(L.g)
       expect(box.v1 < b.v0 || box.v0 > b.v1 || box.u1 < b.u0 || box.u0 > b.u1).toBe(true)
     }
@@ -358,7 +392,7 @@ describe('slabSide', () => {
     expect(rounded.box.y + rounded.box.h).toBeCloseTo(L.objBottom, 0)
   })
   it('the rounded fallback keeps to the superellipse wherever a card lies', () => {
-    // the far rim within 0.012 of the plan's height from a quarter of the way in (a plain
+    // the far rim within 0.016 of the plan's height from a quarter of the way in (a plain
     // ellipse is 0.03 off at a top corner seat)
     for (let u = 0.2; u <= 0.5; u += 0.01) expect(Math.abs(rimV(u, 'rounded') - rimV(u))).toBeLessThan(0.016)
     expect(rimV(0.5, 'rounded')).toBe(0)

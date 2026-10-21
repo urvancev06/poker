@@ -362,7 +362,6 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   useSpaceAvoid('table', avoid)
 
   /* ---------- render ---------- */
-  const g = L.g
   const villains = model?.villains ?? null
   const pt = (u: number, v: number) => project(L, u, v)
   const sheetInset = desk ? H - L.dockBottom : H - (L.dockBottom - L.dockH - 8)

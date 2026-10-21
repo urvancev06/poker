@@ -317,7 +317,7 @@ export const BOARD_AIR_PX = 4
  * (at 768x1024 the band between the centre seat's backs and the board is 14 px; a chip with
  * full air needs 18). The solver then gives up the least it must, never past the last step.
  * Two bets never come within BET_AIR_PX, at any size. */
-export const AIR_STEPS: readonly number[] = [1, 0.8, 0.6, 0.45, 0.3]
+export const AIR_STEPS: readonly number[] = [1, 0.8, 0.6, 0.45, 0.3, 0.15, 0.01]
 
 export interface ScreenRect {
   x0: number
@@ -399,10 +399,9 @@ export interface BetRoom {
   ink: number
   backs: readonly ScreenRect[]
   taken?: readonly ScreenRect[]
-  /** The full board in table space and on screen, and its clearance along v (the
-   * table-space one, but never more than BOARD_AIR_PX on screen at its far edge). */
+  /** The full board in table space, and its clearance along v (the table-space one, but
+   * never more than BOARD_AIR_PX on screen at its far edge). */
   board: BoxUV
-  boardRect: ScreenRect
   boardV: number
   /** The pot block grown by its clearance. */
   potClear: BoxUV
@@ -422,7 +421,6 @@ export function betRoom(L: Pick<TableLayout, 'g' | 'gk' | 's' | 'pot'>, taken?: 
     backs: VILLAIN_SLOTS.map((k) => backsRect(g, s, g.seats[k].cards, cam)),
     taken,
     board,
-    boardRect: screenRect(cam, board, 0.6),
     boardV: Math.min(clearV, BOARD_AIR_PX / pxPerV),
     potClear: grow(L.pot.box, BET_CLEAR_U * 0.5, clearV * 0.5),
   }
@@ -465,7 +463,6 @@ export function airKept(g: Geo, at: UV, side: BetSide, room: BetRoom, floor = 0)
   }
   const r = betRects(g, at, side, room)
   if (room.taken) for (const t of room.taken) if (rectGap(r.chip, t) < BET_AIR_PX || rectGap(r.label, t) < BET_AIR_PX) return 0
-  // kept = Math.min(kept, rectGap(r.label, room.boardRect) / BOARD_AIR_PX)
   for (const k of room.backs) {
     kept = Math.min(kept, rectGap(r.chip, k) / CHIP_AIR_PX, rectGap(r.foot, k) / FOOT_AIR_PX, rectGap(r.label, k) / LABEL_AIR_PX)
     if (kept < floor) return 0
@@ -541,8 +538,9 @@ function spotStep(g: Geo, slot: VillainSlot, at: UV, side: BetSide, room: BetRoo
  * seat's (owns). The full board is used on every street, so a bet never moves when a card
  * lands. With a twin (twinOf), the spot must suit the twin mirrored too (its label on the
  * mirrored side). The most air kept wins (AIR_STEPS), then the least t + 2|d|. The cells are
- * visited in order of that cost, so the search stops at the first that keeps all the air.
- * Null if no spot keeps even the last step.
+ * visited in order of that cost (the search stops at the first that keeps all the air), on a
+ * coarse grid first, then at full resolution around its best. Null if no spot keeps even the
+ * last step.
  */
 export function betSpot(g: Geo, slot: VillainSlot, side: BetSide, room: BetRoom, twin: VillainSlot | null = null): Spot | null {
   const a = g.seats[slot].cards
@@ -554,45 +552,59 @@ export function betSpot(g: Geo, slot: VillainSlot, side: BetSide, room: BetRoom,
   const len = Math.hypot(dx, dy)
   const ux = dx / len
   const uy = dy / len
-  // rows: t from just in front of the seat to most of the way to the pot; columns: d off the
+  // rows: t from the seat to most of the way to the pot, len / 200 apart; columns: d off the
   // line, 0.005 apart
-  const T0 = 0
   const dt = len / 200
-  const rows = Math.max(0, Math.floor((0.8 * len - T0) / dt))
-  const J = 32
   const last = AIR_STEPS.length - 1
-  const found: { best: (Spot & { cost: number }) | null } = { best: null }
-  const visit = (i: number, j: number) => {
-    const { best } = found
-    const t = T0 + i * dt
-    const d = j * 0.005
-    const cost = t + 2 * Math.abs(d)
+  const found: { best: (Spot & { cost: number; i: number; j: number }) | null } = { best: null }
+  const visit = (i: number, j: number, cost: number) => {
     // only a spot that keeps more air, or as much nearer the seat, can win
-    const worst = !best ? last : cost < best.cost ? best.step : best.step - 1
+    const worst = !found.best ? last : cost < found.best.cost ? found.best.step : found.best.step - 1
     if (worst < 0) return
+    const t = i * dt
+    const d = j * 0.005
     const at: UV = [round4(a[0] + ux * t - uy * d), round4(a[1] + (uy * t + ux * d) / ph)]
     const step = spotStep(g, slot, at, side, room, twin ? { slot: twin, side: flip(side), at: mirror(at) } : null, worst)
-    if (step < 0 || step > worst || (best && step === best.step && cost >= best.cost)) return
-    found.best = { at, step, cost }
+    if (step < 0 || step > worst || (found.best && step === found.best.step && cost >= found.best.cost)) return
+    found.best = { at, step, cost, i, j }
   }
-  // in order of cost: each column (|j|, the left cell first) keeps its own next row, and a
-  // sweep takes every cell under the next threshold, one row's cost (dt) at a time
-  const next: number[] = new Array<number>(J + 1).fill(0)
-  for (let c = T0 + dt; ; c += dt) {
-    let left = false
-    for (let k = 0; k <= J; k++) {
-      while (next[k] <= rows && T0 + next[k] * dt + 0.01 * k < c) {
-        visit(next[k], -k)
-        if (k) visit(next[k], k)
-        next[k]++
+  // rows i0..i1 every di, columns j0..j1 every dj, in order of cost (a band of di rows at a
+  // time: each column keeps its own next row), so that once a spot keeps all the air nothing
+  // dearer is looked at
+  const sweep = (i0: number, i1: number, di: number, j0: number, j1: number, dj: number) => {
+    const cols: Cell[] = []
+    for (let j = j0; j <= j1; j += dj) cols.push({ i: i0, j })
+    for (let c = (i0 + di) * dt; ; c += di * dt) {
+      let left = false
+      for (const col of cols) {
+        let cost = col.i * dt + 0.01 * Math.abs(col.j)
+        while (col.i <= i1 && cost < c) {
+          visit(col.i, col.j, cost)
+          col.i += di
+          cost += di * dt
+        }
+        if (col.i <= i1) left = true
       }
-      if (next[k] <= rows) left = true
+      if (!left || (found.best?.step === 0 && found.best.cost <= c)) break
     }
-    if (found.best?.step === 0 || !left) break
   }
-  const { best } = found
-  return best && { at: best.at, step: best.step }
+  // coarse to fine: every 4th row and 2nd column, then every cell around the best of those
+  sweep(0, BET_ROWS, 4, -BET_COLS, BET_COLS, 2)
+  const coarse = found.best as (Spot & { i: number; j: number }) | null
+  if (!coarse) return null
+  sweep(Math.max(0, coarse.i - 3), Math.min(BET_ROWS, coarse.i + 3), 1, Math.max(-BET_COLS, coarse.j - 1), Math.min(BET_COLS, coarse.j + 1), 1)
+  const { at, step } = found.best as Spot
+  return { at, step }
 }
+
+interface Cell {
+  i: number
+  j: number
+}
+
+/** The bet search's grid (betSpot): 160 rows (0.8 of the way to the pot) by 2 x 32 columns. */
+const BET_ROWS = 160
+const BET_COLS = 32
 
 const round4 = (n: number) => Math.round(n * 1e4) / 1e4
 
