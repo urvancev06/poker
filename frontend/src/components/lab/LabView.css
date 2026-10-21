@@ -13,7 +13,12 @@
 .seg.lab-tools {
   width: 300px;
 }
+/* the bots switch (current / new engine) sizes like the tool switch */
+.seg.lab-engine {
+  width: 340px;
+}
 .seg.lab-tools .seg__opt,
+.seg.lab-engine .seg__opt,
 .seg.lab-tune-pick .seg__opt {
   height: 32px;
   font-size: 14px;
@@ -23,6 +28,7 @@
 }
 @media (max-width: 599.98px) {
   .seg.lab-tools,
+  .seg.lab-engine,
   .seg.lab-tune-pick {
     width: auto;
     min-width: 0;

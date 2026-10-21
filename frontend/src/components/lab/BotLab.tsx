@@ -135,7 +135,7 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
         <span id="lab-engine" className="mb-2 ml-0.5 block text-foot font-semibold text-fog">
           Bots
         </span>
-        <Segmented labelledBy="lab-engine" size="md" options={ENGINE_OPTIONS} value={engine} onChange={setEngine} />
+        <Segmented className="lab-engine" labelledBy="lab-engine" options={ENGINE_OPTIONS} value={engine} onChange={setEngine} />
       </div>
       <Lineup info={info} lineup={lineup} onChange={setLineup} />
 
