@@ -14,7 +14,7 @@ import time
 
 from ..bots import archetypes
 from .report import TARGETS, evaluate, gate_passes
-from .runner import DEFAULT_BLINDS, DEFAULT_LINEUP, DEFAULT_STACK, run
+from .runner import DEFAULT_BLINDS, DEFAULT_LINEUP, DEFAULT_STACK, check_engine, run
 from .stats import StatLine, StatsAccumulator
 
 # Hard cap on one Lab run. Runs are background jobs now (``sim.jobs``), so this is
@@ -151,8 +151,10 @@ def lab_report(
     seed: int,
     overrides: dict[str, dict[str, float]],
     elapsed_ms: int,
+    engine: str = "v1",
 ) -> dict:
-    """Measured-vs-target rows for an accumulated run, as JSON."""
+    """Measured-vs-target rows for an accumulated run, as JSON. The bands are
+    the v1 targets for either engine (v2 is calibrated in a later phase)."""
     checks = evaluate(acc)
     # Report one row per archetype that actually appeared in the lineup.
     present = {archetypes.make(name).name for name in lineup}
@@ -161,6 +163,7 @@ def lab_report(
         "hands": hands,
         "seed": seed,
         "lineup": list(lineup),
+        "engine": engine,
         "overrides": overrides,
         "gate_pass": gate_passes(acc),
         "rows": rows,
@@ -177,10 +180,12 @@ def run_lab(
     overrides: dict[str, dict[str, float]] | None = None,
     on_progress=None,
     cancelled=None,
+    engine: str = "v1",
 ) -> dict:
-    """Run a capped simulation and return measured-vs-target rows as JSON."""
+    """Run a capped simulation and return measured-vs-target rows as JSON. With
+    engine v2 the v1 knob overrides are ignored."""
     hands = clamp_hands(hands)
-    clean_overrides = sanitize_overrides(overrides or {})
+    clean_overrides = sanitize_overrides(overrides or {}) if check_engine(engine) == "v1" else {}
 
     start = time.perf_counter()
     acc = run(
@@ -192,6 +197,7 @@ def run_lab(
         overrides=clean_overrides,
         on_progress=on_progress,
         cancelled=cancelled,
+        engine=engine,
     )
     elapsed_ms = round((time.perf_counter() - start) * 1000)
-    return lab_report(acc, lineup, hands, seed, clean_overrides, elapsed_ms)
+    return lab_report(acc, lineup, hands, seed, clean_overrides, elapsed_ms, engine)

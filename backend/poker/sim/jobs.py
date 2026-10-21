@@ -38,6 +38,7 @@ from .runner import (
     DEFAULT_BLINDS,
     DEFAULT_SHARD,
     DEFAULT_STACK,
+    check_engine,
     process_pool,
     run_shard,
     shard_bounds,
@@ -92,13 +93,16 @@ def simulate_params(params: dict) -> dict:
     stack = int(params.get("starting_stack", DEFAULT_STACK))
     if stack < bb:
         raise ValueError("the starting stack must be at least one big blind")
+    engine = check_engine(str(params.get("engine", "v1")))
     return {
         "lineup": lineup,
         "hands": clamp_hands(params.get("hands", 1)),
         "seed": int(params.get("seed", 0)),
         "blinds": (sb, bb),
         "starting_stack": stack,
-        "overrides": sanitize_overrides(params.get("overrides") or {}),
+        # v2 has dials, not the v1 knobs, so its runs take no overrides.
+        "overrides": sanitize_overrides(params.get("overrides") or {}) if engine == "v1" else {},
+        "engine": engine,
     }
 
 
@@ -210,7 +214,9 @@ class JobManager:
         p = job.params
         pool: Executor | None = None
         try:
-            spec = shard_spec(p["lineup"], p["seed"], p["blinds"], p["starting_stack"], p["overrides"])
+            spec = shard_spec(
+                p["lineup"], p["seed"], p["blinds"], p["starting_stack"], p["overrides"], p.get("engine", "v1"),
+            )
             bounds = shard_bounds(p["hands"], self._shard_size)
             pool = self._executor()
             try:
@@ -238,7 +244,9 @@ class JobManager:
                         return
                     job.done = hi
             elapsed_ms = round((time.perf_counter() - job.started) * 1000)
-            report = lab_report(acc, p["lineup"], p["hands"], p["seed"], p["overrides"], elapsed_ms)
+            report = lab_report(
+                acc, p["lineup"], p["hands"], p["seed"], p["overrides"], elapsed_ms, p.get("engine", "v1"),
+            )
             with self._lock:
                 if job.state != "cancelled":
                     job.result = report

@@ -34,6 +34,17 @@ DEFAULT_BLINDS = (5, 10)
 DEFAULT_STACK = 1000
 DEFAULT_SHARD = 1000
 
+# The engines a run can seat: v1 archetype bots (the default, frozen until
+# phase 5) or v2 PersonaBots playing the logical policy (phase 3, beta).
+ENGINES = ("v1", "v2")
+
+
+def check_engine(engine: str) -> str:
+    """The engine name, or ValueError for one we do not have."""
+    if engine not in ENGINES:
+        raise ValueError(f"unknown engine: {engine!r}; choose from {list(ENGINES)}")
+    return engine
+
 
 def shard_spec(
     lineup: list[str] | None = None,
@@ -41,21 +52,39 @@ def shard_spec(
     blinds: tuple[int, int] = DEFAULT_BLINDS,
     starting_stack: int = DEFAULT_STACK,
     overrides: dict[str, dict[str, float]] | None = None,
+    engine: str = "v1",
 ) -> dict:
-    """Everything a shard needs to play its hands: plain, picklable data."""
+    """Everything a shard needs to play its hands: plain, picklable data. With
+    engine v2 the knob overrides do not apply (v2 has dials, not v1 knobs)."""
+    check_engine(engine)
     return {
         "lineup": list(lineup or DEFAULT_LINEUP),
         "seed": seed,
         "blinds": tuple(blinds),
         "starting_stack": starting_stack,
-        "overrides": dict(overrides or {}),
+        "overrides": dict(overrides or {}) if engine == "v1" else {},
+        "engine": engine,
     }
+
+
+def _v2_bots(spec: dict) -> list:
+    """Engine v2: seat k is a PersonaBot whose persona (jittered dials, leaks)
+    is drawn from ``stream(seed, "persona", k)``, so a run stays a pure function
+    of its spec and every shard seats the same people."""
+    from ..bots import PersonaBot, make_persona  # lazy: see poker.bots
+
+    return [
+        PersonaBot(make_persona(name.lower().replace(" ", ""), stream(spec["seed"], "persona", seat), f"p{seat}"))
+        for seat, name in enumerate(spec["lineup"])
+    ]
 
 
 def _bots(spec: dict) -> list[Bot]:
     """The lineup as bots. ``overrides`` maps an archetype key (``"tag"``,
     ``"station"``, …) to ``{field: value}`` pairs applied to every instance of
     that archetype; the caller validates which knobs are tunable."""
+    if spec.get("engine", "v1") == "v2":
+        return _v2_bots(spec)
 
     def build(name: str) -> Bot:
         params = archetypes.make(name)
@@ -146,6 +175,7 @@ def run(
     on_progress: Callable[[int], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
     executor: Executor | None = None,
+    engine: str = "v1",
 ) -> StatsAccumulator:
     """Simulate ``hands`` hands among ``lineup``.
 
@@ -154,9 +184,10 @@ def run(
     worker. ``on_progress(hands_done)`` is called after each shard, and
     ``cancelled()`` is checked before each one (a cancelled run returns the
     shards merged so far). An ``observer`` sees every decision, so it needs
-    ``workers == 1``.
+    ``workers == 1``. ``engine`` seats v1 archetype bots (default) or v2
+    PersonaBots.
     """
-    spec = shard_spec(lineup, seed, blinds, starting_stack, overrides)
+    spec = shard_spec(lineup, seed, blinds, starting_stack, overrides, engine)
     acc = StatsAccumulator(big_blind=blinds[1])
     bounds = shard_bounds(hands, shard_size)
 

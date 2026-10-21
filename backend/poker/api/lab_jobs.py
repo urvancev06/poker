@@ -10,6 +10,8 @@ and a poll after it answers 404; the Lab then says the run was lost.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -31,6 +33,9 @@ class LabJobRequest(BaseModel):
     starting_stack: int = Field(default=DEFAULT_BUY_IN, ge=1)
     # {archetype_key: {knob: value}}; sanitized server-side against the allowlist.
     overrides: dict[str, dict[str, float]] = Field(default_factory=dict)
+    # The bots to seat: v1 archetypes (default) or the v2 engine (beta). An
+    # unknown engine is a 422; v2 ignores the v1 knob overrides.
+    engine: Literal["v1", "v2"] = "v1"
 
 
 router = APIRouter()
