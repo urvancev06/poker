@@ -175,3 +175,16 @@ def test_no_leaks_preflop():
     priv = build_private(s, ("8c", "8d"))
     d = {FOLD: 0.5, CALL: 0.5}
     assert apply_leaks(d, s, priv, tuple(LeakSpec(n, 1.0) for n in LEAK_NAMES)) == (d, [])
+
+
+def test_fit_or_fold_folds_overcards_and_backdoors():
+    """§4.5: fit-or-fold folds no-pair, no-draw hands. Overcards and backdoors
+    are not draws (spot book sb52: Ah3c on Kd9s4h)."""
+    d = {FOLD: 0.05, CALL: 0.95}
+    for hero, board in (("Ah3c", "Kd9s4h"), ("Qh3h", "Kh8c2d")):
+        s, priv = setup(hero, board, hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.33"])
+        out, fired = leak("fit_or_fold", 1.0, d, s, priv)
+        assert out == approx({FOLD: 1.0}) and fired == ["fit_or_fold"], hero
+    # A gutshot is a draw: no fold added.
+    s, priv = setup("QhTc", "Kd9s4h", hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.33"])
+    assert priv.draws.gutshot and leak("fit_or_fold", 1.0, d, s, priv) == (d, [])

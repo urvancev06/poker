@@ -13,7 +13,6 @@ from collections.abc import Sequence
 from ..math.classify import MadeTier
 from ..math.draws import hole_draws
 from . import constants as K
-from .postflop import draw_class
 from .spot import Spot
 from .types import ActionDist, Choice, Kind, Private
 
@@ -67,7 +66,9 @@ def _own_pair(priv: Private) -> bool:
 
 
 def _no_draw(spot: Spot, priv: Private) -> bool:
-    return draw_class(priv.draws, spot.street, False) is None
+    """No flush draw, open-ender or gutshot (overcards and backdoors are misses)."""
+    d = priv.draws
+    return spot.street == "river" or not (d.flush or d.oesd or d.gutshot)
 
 
 def _bet_on(spot: Spot, street: str) -> bool:
