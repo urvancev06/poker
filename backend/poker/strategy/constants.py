@@ -37,7 +37,7 @@ BLUFF_H = 0.35  # eq against the bluff slice: min(1, h/BLUFF_H)
 R_BOT = {("flop", "ip"): 0.80, ("flop", "oop"): 0.72, ("turn", "ip"): 0.90, ("turn", "oop"): 0.82}
 IMPLIED = {"nut": 0.6, "draw": 0.42, "gutshot": 0.3}
 PRICE_ANCHOR = 0.25  # price_used = λ·r + (1 − λ)·PRICE_ANCHOR
-SUSPICION_BAND = (0.3, 0.6)
+SUSPICION_BAND = (0.3, 0.6)  # suspicion > 0 applies at h >= 0.3, < 0 at h <= 0.6
 TO_ACT_PENALTY = 0.03
 
 # Raises.

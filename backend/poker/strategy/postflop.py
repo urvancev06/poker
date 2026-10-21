@@ -180,12 +180,16 @@ def _margin(sp: Spot, h_used: float, dt: float, multiway: bool, d: Dials, imp: s
     lam = d.price
     price_used = lam * r + (1 - lam) * K.PRICE_ANCHOR
     realize = 1.0 if street == "river" or all_in else K.R_BOT[(street, _side(sp))]
+    # Suspicion: believing in more bluffs helps every hand that beats a bluff
+    # (h ≥ 0.3); disbelief hurts every hand short of value (h ≤ 0.6), but not a
+    # flush draw's or open-ender's outs (§5 L2: a priced draw continues). One-sided
+    # bands keep P(fold) from rising with strength at the band's edges.
     lo, hi = K.SUSPICION_BAND
-    band = 1.0 if lo <= h_used <= hi else 0.0
-    # Disbelief discounts bluff-catchers, not a flush draw's or open-ender's outs
-    # (§5 L2: a draw whose equity covers the price continues).
-    suspicion = 0.0 if d.suspicion < 0 and imp in ("nut", "draw") else d.suspicion
-    m = eq * realize - price_used + suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
+    if d.suspicion >= 0:
+        band = 1.0 if h_used >= lo else 0.0
+    else:
+        band = 1.0 if h_used <= hi and imp not in ("nut", "draw") else 0.0
+    m = eq * realize - price_used + d.suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
     return {"m": m, "prior": (v, beta), "eq": eq, "price": price_used, "r": r, "behind": behind, "R": realize}
 
 

@@ -110,6 +110,22 @@ def fold_never_decreases_with_size(nodes: Sequence[Node]) -> list[str]:
     return out
 
 
+def fold_never_increases_with_strength(nodes: Sequence[Node]) -> list[str]:
+    """Facing a bet, P(fold) never rises as the hand's strength against the
+    bettor (``h``, and ``s_all``) rises, everything else equal."""
+    out = []
+    for spot, priv, persona in _postflop_facing(nodes):
+        prev, prev_x = 2.0, None
+        for x in S_GRID:
+            p = dataclasses.replace(priv, h={j: x for j in priv.h}, s_all=x)
+            fold = _p(policy(spot, p, persona)[0], Kind.FOLD)
+            if fold > prev + EPS:
+                out.append(f"{describe(spot, priv, persona)}: P(fold) {prev:.4f} at h={prev_x} < {fold:.4f} at h={x}")
+                break
+            prev, prev_x = fold, x
+    return out
+
+
 def value_bet_weight_monotone_in_strength(nodes: Sequence[Node]) -> list[str]:
     """``w_v`` never falls as s rises, within [0, TRAP_S) and within [TRAP_S, 1].
     At TRAP_S itself the trap dial (§4.6: slowplay monsters) deliberately moves
@@ -130,12 +146,19 @@ def value_bet_weight_monotone_in_strength(nodes: Sequence[Node]) -> list[str]:
 
 def priced_draws_continue(nodes: Sequence[Node], cushion: float = 0.05) -> list[str]:
     """A flush draw or open-ender on the flop or turn whose eq·R covers the price
-    used plus ``cushion`` folds less than half the time."""
+    used plus ``cushion`` folds less than half the time.
+
+    Calls that put the hero all-in are left out: there R jumps to 1, and the
+    monotone fold envelope (P(fold) never decreases with size, D32) caps that
+    up-step at the margin of the size just short of all-in, where R is R_bot.
+    The two §5 L2 properties conflict at that boundary; the size property wins."""
     out = []
     for spot, priv, persona in _postflop_facing(nodes):
         if spot.street == "river" or not (priv.draws.flush or priv.draws.oesd):
             continue
         dist, tr = policy(spot, priv, persona)
+        if tr.features["R"] == 1.0:
+            continue
         if tr.eq * tr.features["R"] >= tr.price + cushion and _p(dist, Kind.FOLD) >= 0.5:
             out.append(f"{describe(spot, priv, persona)}: eq {tr.eq:.3f} R {tr.features['R']:.2f} "
                        f"price {tr.price:.3f} yet P(fold) {_p(dist, Kind.FOLD):.3f}")
@@ -216,6 +239,7 @@ CHECKS: dict[str, Callable[[Sequence[Node]], list[str]]] = {
     "distributions_sum_to_one_and_are_legal": distributions_sum_to_one_and_are_legal,
     "nuts_never_fold": nuts_never_fold,
     "fold_never_decreases_with_size": fold_never_decreases_with_size,
+    "fold_never_increases_with_strength": fold_never_increases_with_strength,
     "value_bet_weight_monotone_in_strength": value_bet_weight_monotone_in_strength,
     "priced_draws_continue": priced_draws_continue,
     "no_one_pair_raise_at_level_two": no_one_pair_raise_at_level_two,

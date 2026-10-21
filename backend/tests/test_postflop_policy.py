@@ -209,6 +209,23 @@ def test_committed_one_pair_calls_a_check_raise():
     assert tr["features"]["committed"] and p(dist, Kind.JAM) > 0.9
 
 
+def test_fold_never_increases_with_strength_across_the_suspicion_band():
+    """The suspicion term must not switch off as the hand gets stronger: a
+    station with h = 0.62 folded 0.27 where h = 0.60 folded 0.07 (sb49), and a
+    nit's disbelief switched on at h = 0.30. More bluffs help every hand that
+    beats a bluff (h >= 0.3); disbelief hurts every hand short of value (h <= 0.6)."""
+    import dataclasses
+
+    s, priv = setup("3s2s", "Kh3d8c", hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.5"])
+    for dials in (STATION, NIT, LAG, MANIAC, TAG):
+        folds = []
+        for i in range(51):
+            x = i / 50
+            pv = dataclasses.replace(priv, h={j: x for j in priv.h}, s_all=x)
+            folds.append(fold(decide_postflop(s, pv, dials)[0]))
+        assert all(b <= a + 1e-12 for a, b in zip(folds, folds[1:])), (dials.suspicion, folds)
+
+
 def test_station_calls_top_pair_vs_pot():
     s, priv = setup("Kc8d", "Ks7c2d", hero_pos="BB", line=SRP + ["BB check", "BTN bet 1.0"])
     dist, tr = decide_postflop(s, priv, STATION)
