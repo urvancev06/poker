@@ -31,9 +31,9 @@ from dataclasses import dataclass, field
 from itertools import combinations
 
 from ..math.cards import FULL_DECK
-# The hole-aware labeller (P2.3), shared with the review, the villain model and
-# scripts/measure_bet_ranges.py (BET_COMPOSITION was measured with it). The v1 bots
-# keep classify_legacy.
+# The hole-aware labeller (P2.3), shared with the review. The v1 bots, the villain
+# model and BET_COMPOSITION (scripts/measure_bet_ranges.py, via
+# villain_model.bet_category) keep classify_legacy.
 from ..math.classify import Draw, HandClass, MadeTier, PairStrength, classify, pair_strength
 from ..math.odds import analyze_call, implied_required_equity, required_equity
 from .villain_model import BET_COMPOSITION, condition_range, villain_line
