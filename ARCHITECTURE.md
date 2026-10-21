@@ -25,7 +25,7 @@ are at 1/2, and every reader takes a hand's big blind from the hand itself.
 |---|---|
 | `poker.engine` | Wrapper over **PokerKit** for 6-max NLHE cash: whose turn, legal actions and sizing, apply action, advance streets, showdown, side pots, and a serialisable game-state object. Rules and hand evaluation are not re-implemented. Deals come from a deck we shuffle (PokerKit's manual dealing). `ledger.py` keeps the chip ledger beside PokerKit: chips added per post and action, the uncalled-bet return, the pot, `winnable(seat, extra)` (side-pot aware) and payouts. The decision facts for the player to act (to call, what a call can win, who acts after a call, whether a call ends the betting) feed the coach and the review. Snapshots hide other seats' hole cards, history included; the rake hook exists and is off. |
 | `poker.rng` | Seeded random streams: one `random.Random` per purpose (the deck of hand h, decision k of player p in hand h, ...), derived with blake2b from the seed and keys. Nothing reads the global `random` state, so a seeded session or simulation replays exactly. |
-| `poker.math` | Monte Carlo equity (**treys**), pot odds, required equity, EV, a made-hand and draw classifier, and a range-string parser (`"22+, ATs+"` → combos, blockers removed). Pure functions, no game-state or framework dependencies. |
+| `poker.math` | Equity, odds and hand reading; pure functions, no game state (modules below). NumPy for the vector paths. |
 | `poker.bots` | Bot interface `(game_state, legal_actions, own_cards) -> action`, a parameterised strategy (positional ranges + a postflop heuristic over `poker.math`), and five archetypes as parameter sets. These are the v1 bots; `sim/fingerprint.py` hashes what they do over 300 seeded hands and `tests/test_v1_frozen.py` pins it, so shared code can change under them without moving a decision. |
 | `poker.sim` | Headless simulation: play archetypes against each other for N hands, logging every decision; the stats module (VPIP, PFR, 3-bet%, AF, WTSD); the measured-vs-target report; and `lab.py`, the same machinery exposed as JSON for the bot lab. Hand h is dealt and decided from streams seeded by (seed, h), so a run splits into shards of 1,000 hands that play anywhere and merge, as integer counts, into exactly the one-process result (`run(..., workers=4)`). `jobs.py` (`JobManager`) runs Lab simulations as background jobs on a pool of spawned processes at low CPU priority (replaced when a dead worker breaks it): `queued` → `running` → `done`, `cancelled` or `failed`, progress per merged shard, cancel between shards, and an in-memory registry that a restart forgets. |
 | `poker.coach` | Per-spot coaching (equity against modelled ranges, pot odds, a candid line), hand replay reconstruction, and computed leak detection. All maths comes from `poker.math`. |
@@ -33,6 +33,22 @@ are at 1/2, and every reader takes a hand's big blind from the hand itself.
 | `poker.db` | SQLAlchemy models and persistence: hand histories and hero stats over time, in SQLite. `HandRecord.summary()` reports each hand's big blind (2 for rows stored before phase 1), and `/stats/me` counts bb/100 in each hand's own big blinds. |
 | `poker.api` | FastAPI app: session, state, action, coaching, history and lab endpoints. `lab_jobs.py` adds the Lab job API: `POST /lab/jobs` starts a simulation and answers at once, `GET /lab/jobs/{id}` reports progress and the result, `DELETE /lab/jobs/{id}` cancels; `/lab/simulate` remains as a wrapper that waits for a job. `GET /hands/{id}` strips the server-only `truth`. |
 | `poker.learn` | `kuhn_cfr.py` runs vanilla Counterfactual Regret Minimization on Kuhn poker and converges to its known equilibrium (game value −1/18), with exact best-response exploitability. |
+
+`poker.math` modules:
+
+| Module | Responsibility |
+|---|---|
+| `cards`, `suits` | Card strings, the deck, canonical combos and suit isomorphism. |
+| `ranktable` | The 7-card rank table (scalar path), checked against treys. |
+| `vector` | The NumPy evaluator over many hands at once, and the cached flop equity matrix (`flop_matrix`, `is_flop_warm`). |
+| `board` | `BoardCache`: per-board hand strengths and weighted shares, for the phase-3 bots. |
+| `classify` | The hole-aware classifier: `made` counts the board, `hole_tier` only what the hole adds; labels such as "board two pair, eight kicker". |
+| `classify_legacy` | The frozen pre-phase-2 classifier, used by the v1 bots and the villain model (`tests/test_classify_legacy.py` pins it). |
+| `draws`, `texture` | Draws that need a hole card, and board texture. |
+| `equity` | `equity_vs_ranges`: exact heads-up and two-way after the flop, the preflop table heads-up preflop, seeded joint sampling otherwise; the older Monte Carlo `equity` (treys), kept for `scripts/gen_preflop_ranking.py`. |
+| `preflop_table` | The 169 x 169 precomputed preflop equities (`data/`). |
+| `ranges` | Range strings to combos (blockers removed) and weighted ranges. |
+| `odds` | Pot odds, required equity, implied-odds prices and EV, exact arithmetic. |
 
 Not part of the installed package:
 

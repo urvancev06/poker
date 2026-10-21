@@ -124,15 +124,27 @@ bounded below only. Everything else is a genuine two-sided interval.
 
 ## The equity engine
 
-`poker.math.equity` runs a Monte Carlo simulation using **treys** for hand evaluation.
-It deals the remaining board, samples opponent holdings from their assigned range, and
-counts how often the hero's hand is best at showdown. Ties split, so the returned win /
-tie / lose fractions sum to one - a property [`test_math.py`](backend/tests/test_math.py)
-asserts directly.
+`poker.math.equity` (`equity_vs_ranges`) picks the method the spot allows, and the coach
+and the review say which one ran (the maths sheet's equity chip, the History replay):
 
-Trial counts are set where they are used: the live coach runs **4,000** trials per
-decision (`build_coaching`), and hand review runs 1,200-1,800, because review re-evaluates
-every street of every stored hand and the extra precision is not worth the latency.
+- **Exact, heads-up and two-way after the flop.** Every runout and every open villain
+  combo is counted, on a NumPy rank table (`ranktable`, `vector`) that agrees with treys
+  on every hand. The flop's matrix is cached, and the table warms it during the bots'
+  turns (`/advance?warm_coach=true`), so the hero's flop answer reads it warm.
+- **A precomputed table, heads-up preflop** (`preflop_table`, 169 x 169 classes, about
+  ±0.4 pp).
+- **Sampled, three-way and more** (joint sampling of the villains' hands, 4,000 samples),
+  seeded by the decision (session, hand, action count) so the review of a decision draws
+  the same samples the live coach did. The basis line gives the 95% margin.
+
+Win / tie / lose fractions sum to one, a property [`test_math.py`](backend/tests/test_math.py)
+asserts directly. The coach and the review pick the villains with one function
+(`coach/villains.py`), so a decision reviews with the coach's numbers.
+
+The hero's hand is read hole-aware (`classify`): a pair on the board is everyone's, so
+8♣4♦ on K♠K♥5♦5♣Q♠ is "board two pair, eight kicker", not two pair. The v1 bots and the
+villain model keep the frozen `classify_legacy` (the bots bet board pairs as pairs, and
+the model describes the bots).
 
 Two things sit on top of the raw equity number:
 
@@ -180,7 +192,7 @@ Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_
 
 ## What the tests assert
 
-**234 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+**514 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
 majority check a specific numeric or structural property:
 
 | Area | Tests | Examples of what is asserted |
@@ -196,7 +208,9 @@ majority check a specific numeric or structural property:
 | `test_rng.py`, `test_sim_streams.py`, `test_sim_shards.py`, `test_v1_frozen.py` | 21 | seeded streams: a pinned shuffle, no dependence on the global RNG, a sharded run equal to one process for any worker count, Lab workers at low CPU priority, and the pinned fingerprint of the v1 bots |
 | `test_session_*.py`, `test_stats_mixed_blinds.py` | 18 | a seeded session replays exactly, the stored pot is the ledger pot, the seed never leaves the server, concurrent requests on one session, the 5/10 defaults, and bb/100 counted in each hand's own big blinds across 1/2 and 5/10 |
 | `test_villain_model.py` | 8 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, the river bluff slice is low and ordered by archetype, and the measured composition matches the recorded one |
-| remainder | 37 | bot/sim behaviour, implied-odds spots (the set-value note in bb), leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging and the PokerKit pin |
+| `test_ranktable.py`, `test_vector.py`, `test_board.py`, `test_classify_v2.py`, `test_classify_legacy.py`, `test_texture.py`, `test_equity_exact.py`, `test_preflop_table.py`, `test_ranges_weighted.py` | 268 | the phase-2 maths: the rank table and the vector evaluator against treys, the hole-aware classifier (board pairs, kickers, draws that need a hole card), the frozen v1 classifier, texture, exact equity against enumeration, the preflop table (AA vs KK 0.8195 ± 0.006), weighted ranges |
+| `test_coach_v2_math.py` | 9 | a board two pair checked to is a check, no phantom flush draw, river equity exact and stable, the coach and the review agree on a decision, the basis names the method, the warm flop matrix, one villain selection |
+| remainder | 40 | bot/sim behaviour, implied-odds spots (the set-value note in bb), leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging and the PokerKit pin |
 
 Chip conservation is the one I would point at first: it plays randomised hands to
 completion and asserts that chips are neither created nor destroyed, which catches a
@@ -211,7 +225,8 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 [DESIGN.md](DESIGN.md) for the visual spec.
 
 - **Backend** - Python 3.11+, [PokerKit](https://github.com/uoftcprg/pokerkit) (game state
-  and hand evaluation), [treys](https://github.com/ihendley/treys) (fast Monte Carlo),
+  and hand evaluation), [treys](https://github.com/ihendley/treys) (the reference evaluator),
+  [NumPy](https://numpy.org) (the vector evaluator, exact equity and the precomputed tables),
   FastAPI + uvicorn, SQLite via SQLAlchemy. Chips are integers throughout; the frontend
   shows them in big blinds through one formatter.
 - **Frontend** - React 19 + Vite + TypeScript + Tailwind v4, in the Stage design. One type
@@ -227,14 +242,14 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"     # the poker package (editable), pytest, httpx
-.venv/bin/python -m pytest                        # 234 tests, about 4 minutes
+.venv/bin/python -m pytest                        # 514 tests, about 5 minutes
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
 ```bash
 cd frontend
 npm install
-npm test                                          # 428 tests (vitest)
+npm test                                          # 443 tests (vitest)
 npm run dev                                       # http://localhost:5173
 ```
 
