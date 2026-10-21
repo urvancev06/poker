@@ -242,14 +242,14 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"     # the poker package (editable), pytest, httpx
-.venv/bin/python -m pytest                        # 514 tests, about 5 minutes
+.venv/bin/python -m pytest                        # 514 tests, about 4 minutes
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
 ```bash
 cd frontend
 npm install
-npm test                                          # 443 tests (vitest)
+npm test                                          # 444 tests (vitest)
 npm run dev                                       # http://localhost:5173
 ```
 
