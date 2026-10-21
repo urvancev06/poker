@@ -14,9 +14,6 @@ from validation.spotbook import MEASURES, RANGE, SPOTS, TYPE_CODES, BY_ID, bound
 
 OWNER_REVIEW: dict[tuple[str, str], str] = {
     ("sb04", "lag"): "measured 0.799",
-    ("sb13", "tag"): "measured 0.924",
-    ("sb45", "tag"): "measured 0.646",
-    ("sb46", "nit"): "measured 0.129",
 }
 
 

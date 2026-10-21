@@ -37,7 +37,7 @@ sb11  KsQs - BTN  continue  (KQs continues vs a CO open)
 sb12  9s8s Kd9c4h BB  bet  (middle pair does not donk)
     tag       0.0088  in [0.000, 0.100]  ok
 sb13  (range) Kh7d2c BTN  range_bet_air  (BTN air c-bets a dry K-high flop heads-up)
-    tag       0.9239  in [0.450, 0.800]  OUTSIDE
+    tag       0.6626  in [0.450, 0.800]  ok
 sb14  Ks9d Kd7c4h2s8c BB  continue  (a station calls top pair vs a river pot bet)
     station   0.9942  in [0.900, 1.000]  ok
 sb15  7c6d AsKdQh9c2s BB  fold  (a station folds seven-high to a 2x-pot jam)
@@ -129,10 +129,10 @@ sb44  AsJd AhKc4d BB  raise  (one pair never reraises)
     station   0.0000  in [0.000, 0.000]  ok
     maniac    0.0000  in [0.000, 0.000]  ok
 sb45  (range) Kh7d2c BTN  range_bet_air  (multiway air c-bets far less than heads-up)
-    tag       0.6456  in [0.000, 0.416]  OUTSIDE
+    tag       0.2716  in [0.000, 0.298]  ok
 sb46  (range) 9d6c2h4s7c BTN  range_bet_air  (river air when checked to)
-    maniac    0.4546  in [0.400, 1.000]  ok
-    nit       0.1291  in [0.000, 0.120]  OUTSIDE
+    maniac    0.4516  in [0.400, 1.000]  ok
+    nit       0.0693  in [0.000, 0.120]  ok
 sb47  KsJd Kh7d2c BTN  bet  (top pair bets the flop when checked to)
     tag       0.9999  in [0.800, 1.000]  ok
 sb48  8s7s Kh8d2c5s3h BTN  bet  (middle pair checks the river back)
@@ -152,9 +152,9 @@ sb54  KsJd Kh7c2d9s4h BB  fold + scared_money(1)  (scared money folds top pair t
 sb55  7s7d 7hKd2c BB  raise + passive_monster(1)  (a passive monster never raises)
     station   0.0000  in [0.000, 0.000]  ok
 sb56  (range) Kh7d2c BTN  range_bet_air + auto_cbet(1)  (auto-c-bet bets its air)
-    tag       0.9924  in [0.900, 1.000]  ok
+    tag       0.9663  in [0.900, 1.000]  ok
 sb57  QhJh 9h8h2c3d5s BTN  bet + spewy_river(1)  (spewy river bluffs a missed draw)
-    lag       0.5700  in [0.380, 1.000]  ok
+    lag       0.0426  in [0.028, 1.000]  ok
 sb58  AsAh - SB  open  (AA opens the SB)
     nit       1.0000  in [0.950, 1.000]  ok
     tag       1.0000  in [0.950, 1.000]  ok
@@ -170,4 +170,4 @@ sb60  AsKs QcJhTd2s BB  fold  (Broadway never folds the turn (floor))
     station   0.0000  in [0.000, 0.000]  ok
     maniac    0.0000  in [0.000, 0.000]  ok
 
-4 (row, type) values outside their bounds
+1 (row, type) values outside their bounds

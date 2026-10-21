@@ -7,8 +7,11 @@ the clean-draw term; ``h_used`` is the strength against the bettor heads-up and
 
 No bet faced: ``P(bet) = w_v + (1 − w_v)·f_b`` with the value weight
 ``w_v = σ((s − V')/τ)`` (traps damp it), and ``f_b`` a semi-bluff frequency for a
-draw or, for air, ``σ((f_air − bluff_quantile)/0.05)`` (D33). A hand with its own
-pair below V' is in the showdown band and never bluffs.
+draw or, for air, ``σ((f_air − q)/0.05)`` (D33). ``q`` (``own_bluff_quantile``)
+is the combo's weighted rank, in D33's bluff order, among the air of the hero's
+own preflop-line range, so f_air is the share of that air that bets (a board-wide
+rank made a BTN bet 92% of its air on K-7-2 where f_air is 65%). A hand with its
+own pair below V' is in the showdown band and never bluffs.
 
 Facing a bet: the bettor prior ``(v, β)`` (D34) gives the equity estimate, the
 price includes the bot's own implied odds for draws, and the continue margin
@@ -23,12 +26,19 @@ by the policy entry (P3.8).
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 
+import numpy as np
+
+from ..math.board import board_cache
+from ..math.cards import FULL_DECK
 from ..math.classify import MadeTier
 from ..math.draws import DrawSet
 from ..math.texture import scare_flags, texture
+from ..math.vector import COMBOS, combo_index
 from . import constants as K
 from .bettor import prior
+from .preflop import range_array
 from .dials import Dials
 from .private import draw_term
 from .sizing import bet_frac
@@ -38,6 +48,7 @@ from .types import ActionDist, Choice, Kind, Private
 _FOLD, _CHECK, _CALL = Choice(Kind.FOLD), Choice(Kind.CHECK), Choice(Kind.CALL)
 _RAISE, _JAM = Choice(Kind.RAISE), Choice(Kind.JAM)
 _AGGRESSIVE = ("bet", "raise")
+_BOARD_STREET = {3: "flop", 4: "turn", 5: "river"}
 
 
 def sigmoid(x: float) -> float:
@@ -62,6 +73,37 @@ def draw_class(draws: DrawSet, street: str, own_pair: bool) -> str | None:
     if street == "flop" and (draws.backdoor_flush or draws.backdoor_straight):
         return "backdoor"
     return None
+
+
+@lru_cache(maxsize=64)
+def _air_order(board: tuple[str, ...]) -> tuple[np.ndarray, dict[int, int]]:
+    """The board's D33 bluff order restricted to the policy's air on this street
+    (no pair of the hole's own and no ``draw_class``: flop overcards and
+    backdoors are semi-bluffs, not air), and each combo's position in it."""
+    bc = board_cache(board)
+    street = _BOARD_STREET[len(board)]
+    ids = []
+    for cid in bc.bluff_order().tolist():
+        a, b = COMBOS[cid]
+        if draw_class(bc.draws((FULL_DECK[a], FULL_DECK[b])), street, False) is None:
+            ids.append(cid)
+    order = np.array(ids, dtype=np.int64)
+    return order, {cid: i for i, cid in enumerate(ids)}
+
+
+def own_bluff_quantile(spot: Spot, hole: tuple[str, str], dials: Dials) -> float:
+    """The air combo's weighted rank, best bluff first, among the air of the
+    hero's own preflop-line range (``dials``' line likelihood, the board's cards
+    dead): in [0, 1), or 1.0 for a hand that is not air."""
+    order, pos = _air_order(tuple(spot.board))
+    i = pos.get(combo_index(*hole))
+    if i is None:
+        return 1.0
+    w = range_array(dials, spot, spot.seat, spot.board)[order]
+    total = float(w.sum())
+    if total <= 0:
+        return i / len(order)
+    return float(w[:i].sum()) / total
 
 
 def _side(spot: Spot) -> str:

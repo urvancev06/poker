@@ -125,6 +125,7 @@ class BoardCache:
         self._weighted: OrderedDict[str, _Weighted] = OrderedDict()
         self._draws: dict[int, DrawSet] = {}
         self._bluff: dict[int, float] | None = None
+        self._bluff_ids: np.ndarray | None = None
 
     # --- lookups ---------------------------------------------------------------
 
@@ -262,6 +263,7 @@ class BoardCache:
             scored.append((-score, cid))
         scored.sort()
         n = len(scored)
+        self._bluff_ids = np.array([cid for _s, cid in scored], dtype=np.int64)
         return {cid: rank / n for rank, (_s, cid) in enumerate(scored)}
 
     def bluff_quantile(self, hole: Sequence[str]) -> float:
@@ -270,11 +272,21 @@ class BoardCache:
         score, best first, ties by combo id: rank / count, in [0, 1). A holding
         that is not air returns 1.0, so it never falls in an air bluff slice."""
         cid = self._hole(hole)[2]
+        return self._bluff_table().get(cid, 1.0)
+
+    def _bluff_table(self) -> dict[int, float]:
         ranking = self._bluff
         if ranking is None:
             ranking = self._bluff_ranking()
             self._bluff = ranking
-        return ranking.get(cid, 1.0)
+        return ranking
+
+    def bluff_order(self) -> np.ndarray:
+        """The combo ids ``bluff_quantile`` ranks (the board's air), best bluff
+        candidate first: D33's score, ties by combo id."""
+        self._bluff_table()
+        assert self._bluff_ids is not None
+        return self._bluff_ids
 
 
 _CACHE: OrderedDict[tuple[str, ...], BoardCache] = OrderedDict()

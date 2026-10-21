@@ -3,7 +3,9 @@
 ``policy(spot, priv, persona)`` runs, in order:
 
 1. decide: the chart policy preflop (``preflop.decide_preflop``) or the priced
-   postflop policy (``postflop.decide_postflop``), on the persona's dials;
+   postflop policy (``postflop.decide_postflop``), on the persona's dials (first
+   in with air, ``bluff_q`` is first ranked within the persona's own range,
+   ``postflop.own_bluff_quantile``);
 2. leaks: the persona's named leaks (``leaks.apply_leaks``, postflop only);
 3. floors and the legal filter (``apply_floors``): a free check is never folded,
    the nuts are never folded, and a choice of an illegal kind becomes the action
@@ -17,6 +19,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import random
 from collections.abc import Mapping
@@ -30,7 +33,7 @@ from .charts import order as chart_order
 from .charts import preflop as chart_tables
 from .dials import TYPE_DIALS
 from .leaks import LEAK_TEXT, apply_leaks
-from .postflop import decide_postflop
+from .postflop import decide_postflop, own_bluff_quantile
 from .preflop import decide_preflop
 from .spot import Spot
 from .types import ActionDist, Choice, Kind, Private, Trace, normalise
@@ -98,6 +101,8 @@ def _strength(priv: Private) -> dict:
 def policy(spot: Spot, priv: Private, persona: Persona) -> tuple[ActionDist, Trace]:
     """The persona's action distribution at ``spot`` and the decision's trace."""
     dials = persona.dials
+    if spot.street != "preflop" and spot.to_call == 0 and priv.bluff_q < 1.0:
+        priv = dataclasses.replace(priv, bluff_q=own_bluff_quantile(spot, priv.hole, dials))
     if spot.street == "preflop":
         raw, features = decide_preflop(spot, priv.cls, dials)
         info = {"features": features, "prior": None, "eq": None, "price": None, "margin": None}

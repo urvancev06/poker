@@ -7,7 +7,8 @@ clean-draw term lifts it: ``s = s_all + (1 − s_all)·p_hit·clean``.
 
 ``bluff_q`` (D33) is read only by a first-in decision with air, so it is built
 only there (the board's ranking costs about 16 ms a board); elsewhere it is 1.0,
-the value a non-air holding has anyway.
+the value a non-air holding has anyway. Here it is the board-wide rank; the
+policy re-ranks it within the persona's own range (``postflop.own_bluff_quantile``).
 """
 
 from __future__ import annotations

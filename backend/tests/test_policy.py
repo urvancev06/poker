@@ -204,3 +204,36 @@ def test_bluff_quantile_is_built_only_where_the_policy_reads_it():
     # a board) is not built.
     s, priv = setup("Qc3d", "Js6h4d", hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.5"])
     assert priv.bluff_q == 1.0 and board_cache(s.board)._bluff is None
+
+
+def test_air_bluff_quantile_is_over_the_hero_own_range():
+    """D33 ranks the board's air combos board-wide, but a BTN's range holds the
+    board's best bluff candidates, so it bet 92% of its air where f_air is 65%
+    (spot book sb13). The quantile is now the weighted rank among the hero's own
+    preflop-line range's air (no own pair, no draw), so f_air is the share of
+    that air that bets."""
+    import numpy as np
+
+    from poker.math.cards import FULL_DECK
+    from poker.math.vector import COMBOS
+    from poker.strategy.postflop import own_bluff_quantile
+    from poker.strategy.preflop import range_array
+
+    s, priv = setup("QsJs", "Kh7d2c", hero_pos="BTN", line=SRP + ["BB check"])
+    tag = type_mean("tag")
+    w = range_array(tag, s, s.seat, s.board)
+    qs, ws = [], []
+    for cid in np.flatnonzero(w > 0).tolist():
+        a, b = COMBOS[cid]
+        q = own_bluff_quantile(s, (FULL_DECK[a], FULL_DECK[b]), tag)
+        if q < 1.0:
+            qs.append(q)
+            ws.append(w[cid])
+    qs, ws = np.array(qs), np.array(ws)
+    assert len(qs) > 20 and qs.min() == 0.0
+    assert abs(ws[qs < 0.5].sum() / ws.sum() - 0.5) < 0.05
+    # The policy reads it for first-in air.
+    hole = ("Qs", "5s")
+    s2, p2 = setup("Qs5s", "Kh7d2c", hero_pos="BTN", line=SRP + ["BB check"])
+    tr = policy(s2, p2, mean_persona("tag"))[1]
+    assert tr.features["air"] and tr.strength["bluff_q"] == own_bluff_quantile(s2, hole, tag)
