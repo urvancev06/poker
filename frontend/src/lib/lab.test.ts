@@ -351,6 +351,12 @@ describe('tuning', () => {
     expect(a).toBe(b)
     expect(configKey({ lineup: ['nit'], hands: 200, seed: 0, overrides: {} })).not.toBe(a)
   })
+
+  it('keys the engine too, the current bots by default', () => {
+    const base = { lineup: ['nit'], hands: 100, seed: 0, overrides: {} }
+    expect(configKey({ ...base, engine: 'v2' })).not.toBe(configKey({ ...base, engine: 'v1' }))
+    expect(configKey(base)).toBe(configKey({ ...base, engine: 'v1' }))
+  })
 })
 
 describe('before any run', () => {

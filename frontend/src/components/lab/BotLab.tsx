@@ -12,9 +12,13 @@
  * playing), cancelled (how far it got; the last result stays), a result (pass or fail), a
  * result whose setup has since changed, a run error (notice; the last result stays), and a
  * run the server lost when it restarted (notice with Run again).
+ *
+ * Bots: the current archetypes or the new engine (beta). The new engine has no knobs yet
+ * (its dials arrive with the policy explorer), and its rows read against the current bots'
+ * bands, which the results say.
  */
 import { useRef, useState } from 'react'
-import type { LabArchetypesInfo, LabJobBody } from '../../api'
+import type { EngineChoice, LabArchetypesInfo, LabJobBody } from '../../api'
 import {
   HANDS_MIN,
   clampHands,
@@ -34,6 +38,7 @@ import { prefersReducedMotion } from '../../lib/motion'
 import { count } from '../../lib/stats'
 import { Capsule } from '../../ui/Capsule'
 import { Disclosure } from '../../ui/Disclosure'
+import { Segmented, type SegmentedOption } from '../../ui/Segmented'
 import { ErrorNotice } from '../../ui/ErrorNotice'
 import { Tooltip } from '../../ui/Tooltip'
 import { BotResults } from './BotResults'
@@ -48,8 +53,15 @@ const simulate = (c: RunConfig): LabJobBody => ({
   lineup: [...c.lineup],
   hands: c.hands,
   seed: c.seed,
-  overrides: c.overrides as Record<string, Record<string, number>>,
+  overrides: c.engine === 'v2' ? {} : (c.overrides as Record<string, Record<string, number>>),
+  engine: c.engine ?? 'v1',
 })
+
+const ENGINE_OPTIONS: readonly SegmentedOption<EngineChoice>[] = [
+  { value: 'v1', label: 'Current bots' },
+  { value: 'v2', label: 'New engine (beta)' },
+]
+const V2_BANDS = 'Bands are the current bots’ targets. The new engine is calibrated in a later phase.'
 
 const INTRO = (
   <p className="m-0 mt-5 max-w-[62ch] text-body text-fog max-sm:text-callout">
@@ -94,10 +106,11 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
   const [seed, setSeed] = useState(0)
   const [overrides, setOverrides] = useState<Overrides>({})
   const [picked, setPicked] = useState<string | null>(null)
+  const [engine, setEngine] = useState<EngineChoice>('v1')
   const run = useLabJob(simulate)
   const results = useRef<HTMLElement>(null)
 
-  const config: RunConfig = { lineup, hands, seed, overrides: seatedOverrides(overrides, lineup) }
+  const config: RunConfig = { lineup, hands, seed, overrides: engine === 'v2' ? {} : seatedOverrides(overrides, lineup), engine }
   const busy = run.running !== null
   const result = run.result
   const stale = result !== null && run.resultFor !== null && configKey(run.resultFor) !== configKey(config)
@@ -118,6 +131,12 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
   return (
     <>
       {INTRO}
+      <div className="mt-10 max-sm:mt-8">
+        <span id="lab-engine" className="mb-2 ml-0.5 block text-foot font-semibold text-fog">
+          Bots
+        </span>
+        <Segmented labelledBy="lab-engine" size="md" options={ENGINE_OPTIONS} value={engine} onChange={setEngine} />
+      </div>
       <Lineup info={info} lineup={lineup} onChange={setLineup} />
 
       {run.error ? (
@@ -152,9 +171,19 @@ function BotLabReady({ info }: { info: LabArchetypesInfo }) {
         progress={run.progress}
         cancelled={run.cancelled}
         estimate={estimate}
+        note={engine === 'v2' || result?.engine === 'v2' ? V2_BANDS : null}
       />
 
-      <KnobPanel info={info} lineup={lineup} overrides={overrides} onOverrides={setOverrides} picked={picked} onPick={setPicked} />
+      {engine === 'v2' ? (
+        <section aria-labelledby="lab-tune" className="mt-24 max-sm:mt-16">
+          <h2 id="lab-tune" className="m-0 text-title font-strong">
+            Tune
+          </h2>
+          <p className="m-0 mt-4 text-callout text-fog">The new engine’s dials arrive with the policy explorer.</p>
+        </section>
+      ) : (
+        <KnobPanel info={info} lineup={lineup} overrides={overrides} onOverrides={setOverrides} picked={picked} onPick={setPicked} />
+      )}
 
       <Footnote />
 

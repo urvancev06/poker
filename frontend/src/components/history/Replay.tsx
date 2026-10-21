@@ -288,6 +288,7 @@ function Decision({ d }: { d: DecisionView }) {
         </div>
       ) : null}
       {note ? <p className="m-0 mt-2 max-w-[56ch] text-foot text-fog">{note}</p> : null}
+      {d.reduced ? <p className="m-0 mt-2 max-w-[56ch] text-foot text-fog">Graded on preflop and missed value only (new engine beta)</p> : null}
       {d.leaks.length > 0 ? (
         <ul className="m-0 mt-2.5 grid list-none gap-2 p-0">
           {d.leaks.map((l, i) => (

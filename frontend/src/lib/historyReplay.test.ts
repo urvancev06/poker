@@ -210,3 +210,12 @@ describe('boardSpeech', () => {
     expect(boardSpeech(['Ts', '8c', 'Qc', 'Qh'], 3)).toBe('Board 10 of spades, 8 of clubs, Queen of clubs; dealt now: Queen of hearts')
   })
 })
+
+describe('decisionView on a new-engine hand', () => {
+  it('marks a reduced grading', () => {
+    const d = review(234).decisions[1]
+    expect(decisionView({ ...d, graded_by: 'reduced' }, 'd1', 2).reduced).toBe(true)
+    expect(decisionView({ ...d, graded_by: 'full' }, 'd1', 2).reduced).toBe(false)
+    expect(decisionView(d, 'd1', 2).reduced).toBe(false)
+  })
+})

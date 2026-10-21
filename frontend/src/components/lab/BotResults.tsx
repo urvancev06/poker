@@ -50,9 +50,11 @@ export interface BotResultsProps {
   cancelled?: { done: number; total: number } | null
   /** How long a run of the current hands takes, in words. */
   estimate: string
+  /** A quiet line under the verdict (the new engine's runs read against the current bands). */
+  note?: string | null
 }
 
-export function BotResults({ ref, info, rows, result, stale, running, startedAt, progress = null, cancelled = null, estimate }: BotResultsProps) {
+export function BotResults({ ref, info, rows, result, stale, running, startedAt, progress = null, cancelled = null, estimate, note = null }: BotResultsProps) {
   const headId = useId()
   const gate = result ? gateSummary(result, rows) : null
   const busy = running !== null
@@ -79,6 +81,7 @@ export function BotResults({ ref, info, rows, result, stale, running, startedAt,
         {headline}
       </h2>
       <div className="mt-2.5 grid gap-1 text-callout text-fog">
+        {note ? <p className="m-0 text-foot text-fog">{note}</p> : null}
         {busy && startedAt !== null ? (
           <>
             <LabProgress share={progress ? progressShare(progress.done, progress.total) : 0} label={progress ? progressText(progress.done, progress.total) : 'Starting'} />

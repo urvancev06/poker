@@ -33,6 +33,7 @@ export function LeakReport({ load, known, window, quietStale = false }: LeakRepo
   const [dismissed, setDismissed] = useState<ApiError | null>(null)
   const rows = report ? leakRows(report) : []
   const reviewed = report?.hands_reviewed ?? 0
+  const reduced = report?.hands_reduced ?? 0
 
   return (
     <section aria-labelledby={headId} aria-busy={loading && !report}>
@@ -74,6 +75,11 @@ export function LeakReport({ load, known, window, quietStale = false }: LeakRepo
       ) : (
         <Reviewing since={startedAt} known={known} window={window} />
       )}
+      {report && reduced > 0 ? (
+        <p className="m-0 mt-3 max-w-[52ch] text-foot text-fog">
+          {reduced === 1 ? '1 new-engine hand is' : `${count(reduced)} new-engine hands are`} graded on preflop and missed value only.
+        </p>
+      ) : null}
     </section>
   )
 }

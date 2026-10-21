@@ -14,7 +14,7 @@
 // - The "tune" choice is derived from the lineup, so it can never point at an archetype
 //   that is no longer seated (B34).
 
-import type { LabArchetypesInfo, LabKnob, LabResult, LabRow, LabStatCell } from '../api'
+import type { EngineChoice, LabArchetypesInfo, LabKnob, LabResult, LabRow, LabStatCell } from '../api'
 import { count, signedFixed } from './stats'
 
 /* ---------- the five banded stats ---------- */
@@ -562,6 +562,8 @@ export interface RunConfig {
   hands: number
   seed: number
   overrides: Overrides
+  /** The bots to seat: the current ones (default) or the new engine (beta). */
+  engine?: EngineChoice
 }
 
 /** A stable key for a run's settings (overrides in a fixed order), to tell when the
@@ -570,5 +572,5 @@ export function configKey(c: RunConfig): string {
   const o = Object.keys(c.overrides)
     .sort()
     .map((a) => [a, Object.keys(c.overrides[a]).sort().map((k) => [k, c.overrides[a][k]])])
-  return JSON.stringify([c.lineup, c.hands, c.seed, o])
+  return JSON.stringify([c.lineup, c.hands, c.seed, o, c.engine ?? 'v1'])
 }

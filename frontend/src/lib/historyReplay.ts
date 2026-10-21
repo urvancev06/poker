@@ -97,6 +97,8 @@ export interface DecisionView {
   /** Which way the adjustment moved the price. */
   adjust: 'dearer' | 'cheaper' | null
   leaks: DecisionLeak[]
+  /** A new-engine hand: graded on the preflop charts and missed value only. */
+  reduced: boolean
   /** Any leak on this decision. */
   flagged: boolean
   /** A leak about the price itself (called without odds, folded with them): the realized
@@ -157,6 +159,7 @@ export function decisionView(d: ReviewDecision, key: string, bigBlind: number): 
     direct: moved ? directRaw : null,
     adjust: moved ? (need > directRaw ? 'dearer' : 'cheaper') : null,
     leaks,
+    reduced: d.graded_by === 'reduced',
     flagged: leaks.length > 0,
     priceFlag: leaks.some((l) => PRICE_LEAKS.has(l.type)),
     method: raw != null ? equityMethodTag(d) : null,
