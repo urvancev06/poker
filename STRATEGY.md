@@ -50,6 +50,91 @@ A standard, slightly-conservative 100bb baseline, good for low/mid stakes where 
 - Defend **wide vs late opens** (BTN/CO/SB) because of price and position closing; defend **tighter vs UTG/MP**.
 - Mix flat-calls with a polarized 3-betting range (value + suited blockers). 3-bet more vs SB opens (you'll have position).
 
+<!-- charts:v2:start -->
+### Proposed v2 baseline charts (2026-10): baseline, not solver, for owner review
+
+Rendered from `backend/poker/strategy/charts/` by `backend/scripts/render_charts.py`; do not edit by hand (a test keeps this block in sync). The v2 bots and the beta coach read these same tables. Each list is the chart with every dial at 1.0 and shows the hands whose chart probability is at least 50%; the types scale the cuts with their dials (§4). The RFI lists above are unchanged.
+
+#### Opening order
+
+One order holds every RFI list above as an exact prefix: the UTG tier, then MP∖UTG, CO∖MP, SB∖CO, BTN∖SB, then the rest; inside each tier hands sort by Chen playability. A player's open cut is its seat's list size × its `open` dial (cumulative combos: UTG 182, MP 222, CO 326, SB 450, BTN 538).
+
+- Widening past the BTN list adds, in order: `64s, 43s, T8o, 87o, 53s, 32s, 97o, 76o, Q4s, Q3s, Q2s, 85s, 42s, J8o, 86o, 65o`, ...
+- Hands near a cut mix through a logistic of width 3 combos, so a range is never a cliff; a TAG opens about 15% wider than the lists (`open` 1.15).
+
+#### Limped pots
+
+- Iso-raise with the open cut × 0.7 per limper: CO over one limper `22+, A7s+, A5s-A2s, KTs+, QTs+, J9s+, T9s, 98s, ATo+, KJo+`; BTN over one limper `22+, A2s+, K5s+, Q8s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, A7o+, KTo+, QTo+, JTo`.
+- The BB over limpers raises `TT+, AQs+, AKo` and checks the rest, so AA no longer checks behind.
+- Premium hands `JJ+, AQs+, AKo` (44 combos) are never limped; only a player with a `limp` dial (Station, Maniac) limps the others.
+
+#### Facing an open
+
+Three disjoint sets per seat pair, at a 2.5bb open: value 3-bets always 3-bet, light 3-bets come off an ordered list by a cut (`threebet` dial), and flats come off a flat order that skips the value 3-bets (`call` dial). An open above 2.5bb shrinks every cut by ×(2.5bb/open)^0.8. From the SB it is mostly 3-bet or fold (flat base 12 combos).
+
+| Hero vs opener | 3-bet value | 3-bet light | Flat |
+|---|---|---|---|
+| MP vs UTG | `QQ+, AKs, AKo` | `A5s-A4s` | `JJ-88, AQs-ATs, KJs+, QJs` |
+| CO vs UTG | `QQ+, AKs, AKo` | `A5s-A4s` | `JJ-88, AQs-ATs, KJs+, QJs` |
+| BTN vs UTG | `QQ+, AKs, AKo` | `A5s-A4s` | `JJ-88, AQs-ATs, KJs+, QJs` |
+| SB vs UTG | `QQ+, AKs, AKo` | `A5s-A4s` | `JJ-TT` |
+| CO vs MP | `QQ+, AKs, AKo` | `A5s-A2s` | `JJ-77, AQs-ATs, KJs+, QJs, JTs` |
+| BTN vs MP | `QQ+, AKs, AKo` | `A5s-A2s` | `JJ-77, AQs-ATs, KJs+, QJs, JTs` |
+| SB vs MP | `QQ+, AKs, AKo` | `A5s-A2s` | `JJ-TT` |
+| BTN vs CO | `JJ+, AQs+, AKo` | `A5s-A2s, KJs-KTs` | `TT-55, AJs-ATs, KQs, QTs+, JTs, T9s, 98s, AQo-AJo, KQo` |
+| SB vs CO | `JJ+, AQs+, AKo` | `A5s-A2s, KJs-KTs, QJs` | `TT-99` |
+| SB vs BTN | `JJ+, AQs+, AKo` | `A5s-A2s, KJs-KTs, QJs, 76s, 65s` | `TT-99` |
+
+Light 3-bet order: `A5s, A4s, A3s, A2s, KJs, KTs, QJs, 76s, 65s, A9s, A8s, A7s, A6s, K9s, Q9s, J9s, T8s, 98s, 87s, 54s, QTs, JTs, T9s, AJo, KQo, ATo, KJo, QJo, K8s, Q8s, J8s, 97s, 86s, 75s, 64s, 53s, A9o, KTo, QTo, JTo`.
+
+#### BB defence
+
+The BB defends a suited-and-connected order (Chen + 1.5 if suited + 1 if connected or one-gapped with a 4 or better). Its flat cut is the defence target minus the value 3-bets, so value plus flats lands on the target.
+
+| vs | Defend | 3-bet | Flat |
+|---|---|---|---|
+| UTG | 25% | `QQ+, AKs, A5s-A4s, AKo` | `JJ-77, AQs-A6s, A3s-A2s, K5s+, Q8s+, J8s+, T8s+, 97s+, 86s+, 75s+, 64s+, 54s, AQo-AJo, KJo+, QTo+, J9o+, T9o, 98o` |
+| MP | 28% | `QQ+, AKs, A5s-A2s, AKo` | `JJ-66, AQs-A6s, K2s+, Q8s+, J8s+, T7s+, 97s+, 86s+, 75s+, 64s+, 54s, 43s, AQo-ATo, KJo+, QTo+, J9o+, T9o, 98o` |
+| CO | 38% | `JJ+, AQs+, A5s-A2s, KJs-KTs, AKo` | `TT-22, AJs-A6s, KQs, K9s-K2s, Q2s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 53s+, 42s+, 32s, AQo-ATo, KTo+, QTo+, J9o+, T8o+, 97o+, 87o, 76o` |
+| BTN | 50% | `JJ+, AQs+, A5s-A2s, KJs-KTs, QJs, 76s, 65s, AKo` | `TT-22, AJs-A6s, KQs, K9s-K2s, QTs-Q2s, J7s+, T7s+, 96s+, 85s+, 75s-74s, 64s, 53s+, 42s+, 32s, AQo-A2o, KTo+, Q9o+, J9o+, T8o+, 97o+, 86o+, 75o+, 65o, 54o` |
+| SB | 58% | `JJ+, AQs+, A9s, A5s-A2s, KJs-KTs, QJs, 76s, 65s, AKo` | `TT-22, AJs-ATs, A8s-A6s, KQs, K9s-K2s, QTs-Q2s, J2s+, T2s+, 95s+, 84s+, 75s-74s, 64s-63s, 52s+, 42s+, 32s, AQo-A2o, K8o+, Q9o+, J8o+, T8o+, 97o+, 86o+, 75o+, 64o+, 54o` |
+
+#### Facing a 3-bet
+
+The opener calls with the top 45% of its own opening range in position and 42% out of position (4-bets included), so a button opener defends far wider than a UTG opener. 4-bet value is `QQ+, AKs, AKo` (`KK+, AKs` against an MP 3-bet over a UTG open); 4-bet bluffs `A5s-A4s` at 0.15 × the `threebet` dial. Fold-to-3-bet is the combo-weighted share of the opening range that folds.
+
+| Opener vs 3-bettor | Call | Fold (chart) | Fold (TAG) |
+|---|---|---|---|
+| UTG vs BTN (OOP) | `JJ-99, AQs-AJs, KJs+, QJs, JTs` | 58% | 57% |
+| UTG vs BB (IP) | `JJ-99, AQs-AJs, KJs+, QJs, JTs` | 54% | 54% |
+| MP vs BTN (OOP) | `JJ-88, AQs-AJs, KJs+, QJs, JTs, AQo` | 57% | 57% |
+| MP vs BB (IP) | `JJ-88, AQs-ATs, KJs+, QJs, JTs, AQo` | 55% | 54% |
+| CO vs BTN (OOP) | `JJ-88, AQs-ATs, KTs+, QTs+, JTs, T9s, 98s, AQo-AJo, KQo` | 58% | 58% |
+| CO vs BB (IP) | `JJ-77, AQs-ATs, KTs+, QTs+, JTs, T9s, 98s, AQo-AJo, KQo` | 55% | 55% |
+| BTN vs SB (IP) | `JJ-22, AQs-A2s, KTs+, Q9s+, J9s+, T8s+, 98s, AQo-ATo, KJo+` | 55% | 55% |
+| BTN vs BB (IP) | `JJ-22, AQs-A2s, KTs+, Q9s+, J9s+, T8s+, 98s, AQo-ATo, KJo+` | 55% | 55% |
+| SB vs BB (OOP) | `JJ-22, AQs-A9s, A5s-A4s, KTs+, QTs+, J9s+, T9s, 98s, AQo-AJo, KQo` | 58% | 58% |
+
+- Cold, facing an open and a 3-bet: 4-bet `KK+, AKs`; call from `QQ, JJ, AKo, AQs` with a cut of 18 combos (`QQ-JJ, AKo`).
+
+#### Facing a 4-bet or 5-bet
+
+- Jam `KK+, AKs`. `QQ, AKo` continue when the direct price is at most 38%, else fold. Everything else folds.
+- Facing a 5-bet: `KK+, AKs` call or jam; everything else folds.
+
+#### Squeeze and cold 4-bet
+
+- Facing an open and callers: squeeze `QQ+, AKs, AKo` for value and `A5s-A4s` as bluffs at 0.5 × the `threebet` dial; flat cuts shrink × 0.6.
+- Cold 4-bet `KK+, AKs`.
+
+#### Short stacks and sizes
+
+- At 25bb effective or less, every 3-bet or bigger is a jam.
+- Small pairs `66-22` flat only when the effective stack is at least 18× the call.
+- Sizes (§4.6): open 2.5bb (3bb from the SB) plus 1bb per limper; 3-bet 3× in position and 4× out of position; 4-bet 2.2×; jam when a raise would commit more than 40% of the stack.
+
+<!-- charts:v2:end -->
+
 ---
 
 ## 3. Postflop logic + the math

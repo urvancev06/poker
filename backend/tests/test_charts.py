@@ -226,3 +226,11 @@ def test_render_names_every_chart():
         assert heading in md, heading
     assert md == render_markdown()
 
+
+def test_strategy_md_block_in_sync():
+    from poker.strategy.charts.render import render_markdown
+
+    text = STRATEGY_MD.read_text()
+    start, end = text.find(preflop.MD_START), text.find(preflop.MD_END)
+    assert 0 <= start < end, "run backend/scripts/render_charts.py --write"
+    assert text[start : end + len(preflop.MD_END)] + "\n" == render_markdown()
