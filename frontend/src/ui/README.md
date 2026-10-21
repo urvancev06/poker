@@ -32,6 +32,7 @@ The look is the approved Stage prototype (`scratchpad/round2/stage/`); tokens li
 - `Space` - the void behind every view: deterministic starfield, the planet limb, the light
   source. Rendered once in App. `variant` stage|page, `dollyKey`, `intro`.
 - `Capsule` - the button. `variant` primary|secondary|quiet, `size` sm 34|md 44|lg 48.
+- `MethodChip` - how an equity figure was computed ("Exact", "±0.4 pp", "Table"): a small quiet pill, decorative (the figure's label speaks it).
 - `IconButton` - a circle holding one icon. `label` (required), `size`, `variant`.
 - `Segmented` - exclusive choice as a radiogroup with roving focus; selected segment >= 3:1.
 - `Sheet` - non-modal side panel (desk) / bottom sheet with grabber and medium/large detents

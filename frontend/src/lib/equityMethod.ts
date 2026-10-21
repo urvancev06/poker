@@ -43,3 +43,13 @@ export function equityMethodTag(f: EquityMethodFields): string | null {
   const m = equityMargin(f)
   return m != null ? `±${m.toFixed(1)} pp` : 'Sampled'
 }
+
+/** The method for a screen reader, lower case to follow a figure: "every runout counted",
+ *  "sampled, plus or minus 1.0 points", "from the preflop table"; null without a method. */
+export function equityMethodSpoken(f: EquityMethodFields): string | null {
+  if (!known(f.equity_method)) return null
+  if (f.equity_method === 'exact') return 'every runout counted'
+  if (f.equity_method === 'preflop_table') return 'from the preflop table'
+  const m = equityMargin(f)
+  return m != null ? `sampled, plus or minus ${m.toFixed(1)} points` : 'sampled'
+}

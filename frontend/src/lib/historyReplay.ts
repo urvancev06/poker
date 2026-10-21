@@ -24,6 +24,7 @@ import { cardLabel, splitCards } from './cards'
 import { bb, bigBlindOf, LEGACY_BIG_BLIND, pct } from './format'
 import { leakLabel } from './historyList'
 import { STREET_LABEL, capitalize, streetVerb, type Street } from './tableModel'
+import { equityMethodSpoken, equityMethodTag } from './equityMethod'
 
 const STREETS: readonly Street[] = ['preflop', 'flop', 'turn', 'river']
 const BOARD_LEN: Record<Street, number> = { preflop: 0, flop: 3, turn: 4, river: 5 }
@@ -101,6 +102,10 @@ export interface DecisionView {
   /** A leak about the price itself (called without odds, folded with them): the realized
    *  figure is the one that was judged, so it carries the leak's tone. */
   priceFlag: boolean
+  /** How the equity was computed, as a tag ("Exact", "±1.0 pp", "Table"), and in words for
+   *  a screen reader; null without an equity or on a review from before phase 2. */
+  method: string | null
+  methodSpoken: string | null
 }
 
 /** The leaks judged on realized equity against the price (review.py:123-153). */
@@ -154,6 +159,8 @@ export function decisionView(d: ReviewDecision, key: string, bigBlind: number): 
     leaks,
     flagged: leaks.length > 0,
     priceFlag: leaks.some((l) => PRICE_LEAKS.has(l.type)),
+    method: raw != null ? equityMethodTag(d) : null,
+    methodSpoken: raw != null ? equityMethodSpoken(d) : null,
   }
 }
 
@@ -167,11 +174,12 @@ export function priceNote(v: Pick<DecisionView, 'direct' | 'adjust' | 'need'>): 
 }
 
 /** One sentence for assistive tech: "Realized 7.8%, need 45.7%, raw equity 8.4%". */
-export function figuresLabel(v: Pick<DecisionView, 'eq' | 'need' | 'raw'>): string {
+export function figuresLabel(v: Pick<DecisionView, 'eq' | 'need' | 'raw'> & Partial<Pick<DecisionView, 'methodSpoken'>>): string {
   const parts: string[] = []
   if (v.eq) parts.push(`${v.eq.label} ${pct(v.eq.value, 1)}`)
   if (v.need != null) parts.push(`need ${pct(v.need, 1)}`)
   if (v.raw != null) parts.push(`raw equity ${pct(v.raw, 1)}`)
+  if (v.eq && v.methodSpoken) parts.push(v.methodSpoken)
   return parts.join(', ')
 }
 

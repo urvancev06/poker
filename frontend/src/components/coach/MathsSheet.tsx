@@ -36,9 +36,11 @@ import { useShowWorking } from '../../lib/coachPrefs'
 import { villainLines, type VillainLine } from '../../lib/coachRange'
 import { glanceView, type GlanceView } from '../../lib/coachView'
 import { PROVENANCE_LABEL, workingRows, type WorkingRow } from '../../lib/coachWorking'
+import { equityMethodSpoken, equityMethodTag } from '../../lib/equityMethod'
 import { pct } from '../../lib/format'
 import { usePrefs } from '../../lib/prefsContext'
 import { Disclosure } from '../../ui/Disclosure'
+import { MethodChip } from '../../ui/MethodChip'
 import { Ring } from '../../ui/Ring'
 import { Sheet } from '../../ui/Sheet'
 import { TONE_FILL, TONE_TEXT } from './tones'
@@ -82,7 +84,7 @@ export function MathsSheet({ coaching, open, onClose, bottomInset, mediumTop, po
         view.priced ? <Ring realizedPct={view.eq} needPct={view.need} rawPct={view.raw} tone={view.tone} size={SHEET_RING_PX} /> : undefined
       }
     >
-      <Bars view={view} />
+      <Bars view={view} method={equityMethodTag(c)} spoken={equityMethodSpoken(c)} />
       <p className="mt-[22px] mb-0 text-body leading-[1.45] text-ink">{c.rationale}</p>
       {lines.length > 0 && <TheirRange lines={lines} />}
       <Disclosure summary="Show working" open={working} onOpenChange={setWorking} className="mt-[18px]" panelClassName="mb-1.5 mt-1">
@@ -107,12 +109,12 @@ export function MathsSheet({ coaching, open, onClose, bottomInset, mediumTop, po
 }
 
 /** Realized (or Equity) against Need, on one 0-100 scale. */
-function Bars({ view }: { view: GlanceView }) {
+function Bars({ view, method, spoken }: { view: GlanceView; method: string | null; spoken: string | null }) {
   const rawTick = Math.abs(view.raw - view.eq) >= 1 ? view.raw : null
-  const label = `${view.eqLabel} ${pct(view.eq)}${view.need != null ? `, need ${pct(view.need, 1)}` : ''}${rawTick != null ? `, raw equity ${pct(rawTick)}` : ''}`
+  const label = `${view.eqLabel} ${pct(view.eq)}${view.need != null ? `, need ${pct(view.need, 1)}` : ''}${rawTick != null ? `, raw equity ${pct(rawTick)}` : ''}${spoken ? `, ${spoken}` : ''}`
   return (
     <div role="img" aria-label={label} className="grid gap-4">
-      <Bar label={view.eqLabel} value={pct(view.eq)} width={view.eq} valueClass={TONE_TEXT[view.tone]} fillClass={`bg-linear-to-r ${TONE_FILL[view.tone]}`} tick={rawTick} />
+      <Bar label={view.eqLabel} chip={method} value={pct(view.eq)} width={view.eq} valueClass={TONE_TEXT[view.tone]} fillClass={`bg-linear-to-r ${TONE_FILL[view.tone]}`} tick={rawTick} />
       {view.need != null && <Bar label="Need" value={pct(view.need, 1)} width={view.need} valueClass="text-ink" fillClass="bg-fog" tick={null} />}
     </div>
   )
@@ -120,6 +122,8 @@ function Bars({ view }: { view: GlanceView }) {
 
 interface BarProps {
   label: string
+  /** The equity method's chip, beside the label. */
+  chip?: string | null
   value: string
   width: number
   valueClass: string
@@ -129,11 +133,14 @@ interface BarProps {
 
 const clamp = (n: number) => Math.min(100, Math.max(0, n))
 
-function Bar({ label, value, width, valueClass, fillClass, tick }: BarProps) {
+function Bar({ label, chip = null, value, width, valueClass, fillClass, tick }: BarProps) {
   return (
     <div aria-hidden="true">
       <div className="flex items-baseline justify-between">
-        <span className="text-callout font-medium text-fog">{label}</span>
+        <span className="text-callout font-medium text-fog">
+          {label}
+          <MethodChip tag={chip} className="ml-2" />
+        </span>
         <span className={`text-[24px] leading-[1.15] font-strong tracking-[-0.02em] tabular-nums ${valueClass}`}>{value}</span>
       </div>
       <div className="relative mt-1.5 h-2.5 rounded-[5px] bg-white/10">

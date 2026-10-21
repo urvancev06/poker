@@ -29,6 +29,7 @@ import { boardSpeech, buildTimeline, decisionsLine, figuresLabel, handBigBlind, 
 import { usePrefs } from '../../lib/prefsContext'
 import { Capsule } from '../../ui/Capsule'
 import { ErrorNotice } from '../../ui/ErrorNotice'
+import { MethodChip } from '../../ui/MethodChip'
 import { Card } from '../Card'
 import { NET_TEXT } from './tones'
 import type { ReplayLoad } from './useHistoryData'
@@ -282,6 +283,7 @@ function Decision({ d }: { d: DecisionView }) {
             {d.eq ? <Figure value={pct(d.eq.value, 1)} label={d.eq.label} className={d.priceFlag ? 'text-(--tone-fold-b)' : 'text-ink'} /> : null}
             {d.need != null ? <Figure value={pct(d.need, 1)} label="Need" className="text-fog" /> : null}
             {d.raw != null ? <Figure value={pct(d.raw, 1)} label="Equity" className="text-fog" /> : null}
+            {d.method ? <MethodChip tag={d.method} className="self-end mb-px" /> : null}
           </div>
         </div>
       ) : null}

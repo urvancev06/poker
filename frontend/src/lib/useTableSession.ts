@@ -218,6 +218,8 @@ export function useTableSession(): TableSession {
   const skipping = !!handKey && skipFor === handKey
   // While a bot is to act, step one action after a short pause (none while skipping). The
   // effect re-runs on each new state, which paces out the whole street.
+  // With the coach on, each step asks the server to warm the flop's equity matrix (D18).
+  const warmCoach = coachMode !== 'off'
   useEffect(() => {
     if (!session || session.hand_over || session.hero_to_act) return
     let cancelled = false
@@ -225,7 +227,7 @@ export function useTableSession(): TableSession {
     const t = setTimeout(
       async () => {
         try {
-          const s = await api.advance(session.session_id)
+          const s = await api.advance(session.session_id, warmCoach)
           if (!cancelled && alive()) {
             setSession(s)
             if (s.hand_over) refreshReads(s)
@@ -241,7 +243,7 @@ export function useTableSession(): TableSession {
       cancelled = true
       clearTimeout(t)
     }
-  }, [session, gen, refreshReads, setError, stepNonce, skipping])
+  }, [session, gen, refreshReads, setError, stepNonce, skipping, warmCoach])
 
   const decisionKey = decisionKeyOf(session)
   const heroTurn = !!session?.hero_to_act
