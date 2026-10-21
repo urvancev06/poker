@@ -14,19 +14,26 @@ ones).
 * ``villain_equity``: equity v2 (``math.equity.equity_vs_ranges``) against the
   villains' modelled combo lists, exact heads-up and two-way after the flop, from
   the preflop table heads-up preflop, and sampled otherwise.
+* ``villain_equity_or_any_two``: the same, but when no modelled combo is left
+  open it falls back to any two cards for each villain and says so, so the coach
+  and the review show the same equity in that spot too.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
+from itertools import combinations
 
-from ..math.cards import Combo
+from ..math.cards import FULL_DECK, Combo
 from ..math.equity import EquityResult, equity_vs_ranges, weights_from_combos
 
 # Joint samples for the sampled methods. One number for the coach and the review:
 # a different sample count is a different estimate.
 EQUITY_SAMPLES = 4000
+
+# Every two-card holding, for the fallback when no modelled combo is left open.
+_ANY_TWO = tuple(combinations(FULL_DECK, 2))
 
 
 def select_villains(
@@ -74,3 +81,22 @@ def villain_equity(
     except ValueError:
         return None
     return replace(res, dropped=res.dropped + len(ranges) - len(weights))
+
+
+def villain_equity_or_any_two(
+    hero: Sequence[str],
+    board: Sequence[str],
+    ranges: Sequence[Sequence[Combo]],
+    *,
+    key: str,
+    samples: int | None = None,
+) -> tuple[EquityResult | None, bool]:
+    """``villain_equity`` with the any-two fallback: ``(equity, modelled)``. When no
+    modelled combo is left open (every range blocked, or the ranges cannot all be
+    held at once), each villain gets any two cards and ``modelled`` is False. The
+    equity is None only when there are no villains."""
+    eq = villain_equity(hero, board, ranges, key=key, samples=samples)
+    if eq is not None or not ranges:
+        return eq, True
+    any_two = [list(_ANY_TWO)] * len(ranges)
+    return villain_equity(hero, board, any_two, key=key, samples=samples), False

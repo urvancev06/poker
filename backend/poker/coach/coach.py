@@ -28,16 +28,14 @@ betting, R = 1, and raw-equity-vs-pot-odds is exactly correct.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from itertools import combinations
 
-from ..math.cards import FULL_DECK
 # The hole-aware labeller (P2.3), shared with the review. The v1 bots, the villain
 # model and BET_COMPOSITION (scripts/measure_bet_ranges.py, via
 # villain_model.bet_category) keep classify_legacy.
 from ..math.classify import Draw, HandClass, MadeTier, PairStrength, classify, pair_strength
 from ..math.odds import analyze_call, implied_required_equity, required_equity
 from .villain_model import BET_COMPOSITION, condition_range, villain_line
-from .villains import EQUITY_SAMPLES, decision_key, select_villains, villain_equity
+from .villains import EQUITY_SAMPLES, decision_key, select_villains, villain_equity_or_any_two
 
 # As later streets carry the "they're strong" signal in the action-conditioned
 # villain range, the realization discount shrinks toward 1 (don't double-count it).
@@ -58,9 +56,6 @@ _REVERSE_MULT = 0.40       # reverse-implied penalty ≈ this × current pot (do
 # overpair crushes a c-betting range as thoroughly as two pair does, and gating value
 # lines on tier alone talks the coach out of raising its own best hands.
 _VALUE_EQUITY = 0.72
-
-# Every two-card holding, for the fallback when no modelled combo is left open.
-_ANY_TWO = tuple(combinations(FULL_DECK, 2))
 
 
 def _bb(chips: int, big_blind: int) -> str:
@@ -469,15 +464,11 @@ def build_coaching(session, trials: int | None = None) -> Coaching:
     key = decision_key(
         getattr(session, "session_id", None) or "local", getattr(session, "hand_index", 0), len(state.history)
     )
-    measured_ranges = all(v.archetype in BET_COMPOSITION for v in villain_models)
-    eq = villain_equity(hole, board, ranges, key=key, samples=trials or EQUITY_SAMPLES)
-    if eq is None and villain_seats:
-        # No modelled combo is left open (every range blocked, or the ranges cannot
-        # all be held at once): fall back to any two cards for each villain, and
-        # say the ranges are not the modelled ones.
-        any_two = [list(_ANY_TWO)] * len(villain_seats)
-        eq = villain_equity(hole, board, any_two, key=key, samples=trials or EQUITY_SAMPLES)
-        measured_ranges = False
+    # When no modelled combo is left open (every range blocked, or the ranges
+    # cannot all be held at once) each villain gets any two cards, the same
+    # fallback the review uses, and the ranges are not the modelled ones.
+    eq, modelled = villain_equity_or_any_two(hole, board, ranges, key=key, samples=trials or EQUITY_SAMPLES)
+    measured_ranges = modelled and all(v.archetype in BET_COMPOSITION for v in villain_models)
     if eq is not None:
         equity_frac = eq.equity
         win, tie, lose = eq.win, eq.tie, eq.lose

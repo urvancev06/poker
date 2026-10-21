@@ -34,7 +34,7 @@ from ..math.odds import implied_required_equity, required_equity
 # private to the coach package.
 from .coach import _implied_adjustment, _realization_factor, hand_flags
 from .villain_model import condition_range, villain_line
-from .villains import decision_key, select_villains, villain_equity
+from .villains import decision_key, select_villains, villain_equity_or_any_two
 
 # Opens are judged by EXACT MEMBERSHIP in STRATEGY.md §2's positional hand lists, so
 # in-range and out-of-range are exact and no slack constant is needed. A percentile
@@ -290,7 +290,8 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
                     cr = condition_range(lineup[seat_to_player[s]], board_now, role, postflop, dead)
                     ranges.append(cr.combos)
                 key = decision_key(data.get("session_id") or "local", data.get("hand_index") or 0, idx)
-                eq = villain_equity(hero, board_now, ranges, key=key, samples=equity_trials)
+                # Same any-two fallback as the coach when no modelled combo is open.
+                eq, _ = villain_equity_or_any_two(hero, board_now, ranges, key=key, samples=equity_trials)
                 if eq is not None:
                     eq_frac = eq.equity
 

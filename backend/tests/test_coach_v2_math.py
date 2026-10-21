@@ -171,6 +171,60 @@ def test_coach_and_review_agree():
     assert d["equity_method"] == advised[2]
 
 
+def test_coach_and_review_agree_when_every_range_is_blocked(monkeypatch):
+    """When no modelled combo is left open, the coach falls back to any two cards;
+    the review of the same decision must use the same fallback, not drop the equity."""
+    from dataclasses import replace
+
+    import poker.coach.coach as coach_mod
+    import poker.coach.review as review_mod
+    from poker.coach.villain_model import condition_range
+
+    def blocked(archetype, board, role, postflop, dead):
+        cr = condition_range(archetype, board, role, postflop, dead)
+        return replace(cr, combos=[tuple(sorted(dead))[:2]])  # two dead cards: never open
+
+    monkeypatch.setattr(coach_mod, "condition_range", blocked)
+    monkeypatch.setattr(review_mod, "condition_range", blocked)
+    gs = GameSession("agree21", villains=["nit", "tag", "lag", "station", "maniac"], seed=21)
+    advised = None
+    for _ in range(80):
+        gs.start_hand()
+        advised = None
+        while not gs.hand_over:
+            st = gs.state()
+            la = st.legal_actions
+            if len(st.board) == 5 and la.call_amount > 0 and advised is None:
+                c = build_coaching(gs)
+                advised = (c.equity_pct, c.required_equity_pct, c.equity_method)
+                gs.submit_hero_action(Action(C))
+            elif la.can_check:
+                gs.submit_hero_action(Action(X))
+            else:
+                gs.submit_hero_action(Action(C))
+        if advised is not None:
+            break
+    assert advised is not None, "no river call in 80 hands"
+    d = [d for d in review_hand(gs.last_result)["decisions"] if d["street"] == "river" and d["action"] == "call"][0]
+    assert d["equity_pct"] is not None
+    assert d["equity_pct"] == pytest.approx(advised[0], abs=0.05)
+    assert d["required_pct"] == advised[1]
+    assert d["equity_method"] == advised[2]
+
+
+def test_villain_equity_or_any_two_falls_back():
+    """Two villains whose only combo (AsAh) is open but cannot be held by both:
+    no modelled equity, so the shared helper falls back to any two cards."""
+    from poker.coach.villains import villain_equity, villain_equity_or_any_two
+
+    args = (["Qc", "Jc"], ["2d", "7h", "9s"], [[("As", "Ah")]] * 2)
+    assert villain_equity(*args, key="k") is None
+    eq, modelled = villain_equity_or_any_two(*args, key="k")
+    assert eq is not None and modelled is False
+    eq2, modelled2 = villain_equity_or_any_two(["Qc", "Jc"], ["2d", "7h", "9s"], [[("As", "Ah")]], key="k")
+    assert modelled2 is True and eq2 is not None and eq2.equity < 0.3
+
+
 # --- D18: warm the flop matrix ------------------------------------------------
 
 
