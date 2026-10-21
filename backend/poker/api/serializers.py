@@ -95,6 +95,7 @@ def session_to_dict(session: GameSession) -> dict:
     state = session.state()
     return {
         "session_id": session.session_id,
+        "engine": getattr(session, "engine", "v1"),
         "hand_index": session.hand_index,
         "hand_over": session.hand_over,
         "hero_seat": session.hero_seat,

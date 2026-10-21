@@ -21,6 +21,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 
 from ..bots.preflop_ranges import RFI_COMBOS, has_rfi, in_rfi
+from ..strategy.charts.preflop import chart_advice
 from ..bots.preflop_strength import hand_class
 from ..engine.ledger import DecisionFacts
 from ..engine.types import positions_for
@@ -71,6 +72,9 @@ class Decision:
     # without one; a sampled equity's standard error in percentage points.
     equity_method: str | None = None
     equity_se_pct: float | None = None
+    # "full", or "reduced" on a v2 (beta) hand (D25): graded on the preflop
+    # charts and missed value only.
+    graded_by: str = "full"
 
 
 def _board_prefix(street: str, board: list[str]) -> list[str]:
@@ -201,6 +205,25 @@ def _ledger_view(data: dict, n: int, start_stacks: list[int], actions: list[dict
     return view if len(view.facts) == len(actions) else None
 
 
+def _chart_open_leaks(hero: list[str], pos: str, action: str, preflop_raises: int, num_limpers: int) -> list[Leak]:
+    """v2 hands (owner decision a): the first-in decision graded against the same
+    open charts the v2 bots play and the beta coach advises from."""
+    if preflop_raises or num_limpers or pos == "BB":
+        return []
+    cls = hand_class(hero)
+    adv = chart_advice(cls, pos, "unopened")
+    in_chart = adv.action == "raise"
+    if action in ("bet", "raise") and not in_chart:
+        return [Leak("loose_open", f"Opened {cls} from {pos}: it is not in your {pos} chart "
+                                   f"(STRATEGY.md §2, {RFI_COMBOS.get(pos, 0)} combos).")]
+    if action == "call":
+        return [Leak("limp", f"Limped {cls} from {pos}. The charts raise or fold first in: "
+                             + ("open-raise it." if in_chart else "fold it."))]
+    if action == "fold" and in_chart:
+        return [Leak("tight_fold", f"Folded {cls} from {pos} when folded to: it is in your {pos} chart.")]
+    return []
+
+
 def review_hand(data: dict, equity_trials: int | None = None) -> dict:
     """The street-by-street review of one stored hand. ``equity_trials`` is the
     sample count of the sampled equity methods (default the coach's,
@@ -214,6 +237,9 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
     board_full = data["board"].split() if data.get("board") else []
     hero = _two(data.get("hero_cards", ""))
     actions = data.get("actions", [])
+    # v2 (beta) hands are graded reduced (D25): the coach that advised them had no
+    # calibrated realization or ranges, so no call/fold-by-odds leaks.
+    reduced = (data.get("versions") or {}).get("engine") == "v2"
 
     start_stacks = list(data.get("start_stacks") or [])
     led = _ledger_view(data, n, start_stacks, actions)
@@ -280,7 +306,7 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
                 contesting, players_behind = select_villains(live, committed, level, None)
             eq_frac: float | None = None
             eq = None
-            if contesting and cur_street != "preflop":
+            if contesting and cur_street != "preflop" and not reduced:
                 dead = set(hero) | set(board_now)
                 # Same model the live coach uses: each villain's range narrowed by
                 # the line they've actually taken this hand (not their static open).
@@ -335,6 +361,8 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
                 )
                 required_direct = required_equity(to_call, pot_for_call)
                 required = implied_required_equity(to_call, pot_for_call, implied_adj)
+                if reduced:  # the reduced coach's price: no implied term
+                    required = required_direct
                 if eq_frac is not None:
                     r = _realization_factor(
                         is_strong=flags.is_strong,
@@ -350,8 +378,9 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
 
             leaks: list[Leak] = []
             if cur_street == "preflop":
-                leaks += _preflop_leaks(hero, a["position"], act, preflop_raises, num_limpers)
-            else:
+                grade = _chart_open_leaks if reduced else _preflop_leaks
+                leaks += grade(hero, a["position"], act, preflop_raises, num_limpers)
+            elif not reduced:
                 leaks += _postflop_leaks(act, to_call, realized, required)
 
             decision = Decision(
@@ -370,6 +399,7 @@ def review_hand(data: dict, equity_trials: int | None = None) -> dict:
                 winnable=winnable,
                 equity_method=None if eq is None else eq.method,
                 equity_se_pct=None if eq is None or eq.se is None else round(eq.se * 100, 2),
+                graded_by="reduced" if reduced else "full",
             )
             decisions.append(decision)
             # A checked strong hand is a missed-value candidate — but only if the
@@ -448,7 +478,7 @@ _CACHE_MAX = 5000
 # Bump when anything that changes a leak verdict changes (thresholds, price model,
 # ranges). Forgetting to bump serves stale verdicts; bumping needlessly only costs
 # one recomputation.
-_REVIEW_VERSION = 4
+_REVIEW_VERSION = 5
 
 
 def _cache_key(data: dict, equity_trials: int | None) -> tuple | None:
@@ -478,10 +508,13 @@ def leak_summary(records_data: list[dict], equity_trials: int | None = None) -> 
     by_type: dict[str, dict] = {}
     examples: list[dict] = []
     hands_reviewed = 0
+    hands_reduced = 0
     for data in records_data:
         if not isinstance(data, dict) or "actions" not in data:
             continue
         hands_reviewed += 1
+        if (data.get("versions") or {}).get("engine") == "v2":
+            hands_reduced += 1
         review = review_hand_cached(data, equity_trials=equity_trials)
         for leak in review["leaks"]:
             entry = by_type.setdefault(leak["type"], {"type": leak["type"], "count": 0})
@@ -490,6 +523,7 @@ def leak_summary(records_data: list[dict], equity_trials: int | None = None) -> 
                 examples.append(leak)
     return {
         "hands_reviewed": hands_reviewed,
+        "hands_reduced": hands_reduced,
         "by_type": sorted(by_type.values(), key=lambda e: -e["count"]),
         "examples": examples,
     }

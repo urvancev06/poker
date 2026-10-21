@@ -30,14 +30,24 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 
 from ..bots import Bot, archetypes, build_context
+from ..bots.bot_v2 import PersonaBot
+from ..bots.personas import make_persona
 from ..engine import Action, GameState, Hand
 from ..engine.ledger import LEDGER_VERSION
 from ..math.vector import flop_matrix, is_flop_warm
 from ..rng import new_seed, shuffled_deck, stream
 from ..sim.stats import StatsAccumulator
 from ..sim.summarize import summarize_hand
+from ..strategy.dials import TYPE_DIALS
+from ..strategy.policy import policy_hash
+
+ENGINES = ("v1", "v2")
+# The Classic lineup the v2 beta table seats (owner decision: the Realistic pool
+# is the phase-4 default), in seats shuffled by ``stream(seed, "seating")``.
+CLASSIC_LINEUP = ["nit", "tag", "lag", "station", "maniac"]
 
 HERO = 0
 # Hands observed vs a bot before its HUD read is shown (STRATEGY.md §5 sample-size).
@@ -65,23 +75,36 @@ class GameSession:
     # When False, bots do NOT auto-act to the hero's turn; the caller steps them
     # one action at a time via advance_one() so the UI can watch the hand unfold.
     auto_advance: bool = True
+    # Which bot engine plays the villains: "v1" archetype bots (the default) or
+    # "v2" PersonaBots (the beta table). v2 seats ``villains or CLASSIC_LINEUP``
+    # in shuffled seats, each with its own jittered persona.
+    engine: str = "v1"
 
     n: int = field(init=False)
     stacks: list[int] = field(init=False)       # carried, per player
     archetype_of: list[str] = field(init=False)  # per player ("hero" for 0)
     hand_index: int = field(init=False, default=0)
-    # Which bot engine plays the villains (the v2 bots arrive behind "v2").
-    engine: str = field(init=False, default="v1")
     # Serialises every read and mutation of this session (see the module docstring).
     lock: threading.RLock = field(init=False, repr=False, compare=False, default_factory=threading.RLock)
 
     def __post_init__(self) -> None:
         if self.seed is None:
             self.seed = new_seed()
+        if self.engine not in ENGINES:
+            raise ValueError(f"unknown engine: {self.engine!r}; choose from {list(ENGINES)}")
+        self._policy_hash: str | None = None
+        if self.engine == "v2":
+            types = [v.lower().replace(" ", "") for v in (self.villains or CLASSIC_LINEUP)]
+            for t in types:
+                if t not in TYPE_DIALS:
+                    raise ValueError(f"unknown player type: {t!r}; choose from {list(TYPE_DIALS)}")
+            stream(self.seed, "seating").shuffle(types)
+            self.villains = types
+            self._policy_hash = policy_hash()
         self.n = len(self.villains) + 1
         self.stacks = [self.buy_in] * self.n
-        self._bots: dict[int, Bot] = {
-            p: Bot(archetypes.make(self.villains[p - 1])) for p in range(1, self.n)
+        self._bots: dict[int, Bot | PersonaBot] = {
+            p: self._make_bot(p) for p in range(1, self.n)
         }
         # Use the bots' canonical display names ("Nit", "Calling Station", …) so
         # frontend labels and the coach's per-archetype range model both match.
@@ -98,6 +121,14 @@ class GameSession:
         self._dealt_holes: list[list[str]] = []  # all seats' cards, captured at deal
         # Per-player observed stats (keyed by player index).
         self._reads = StatsAccumulator(big_blind=self.blinds[1])
+        # v2: every bot decision's trace this hand (server-only, D26).
+        self._traces: list[dict] = []
+
+    def _make_bot(self, p: int) -> Bot | PersonaBot:
+        name = self.villains[p - 1]
+        if self.engine == "v2":
+            return PersonaBot(make_persona(name, stream(self.seed, "persona", p), f"p{p}"))
+        return Bot(archetypes.make(name))
 
     # ------------------------------------------------------------------ #
     @property
@@ -159,6 +190,7 @@ class GameSession:
         self._last_result = None
         self._decision_ms = []
         self._decisions = Counter()
+        self._traces = []
         # Every seat's cards as dealt: PokerKit clears them on fold/muck, but we
         # want to reveal non-folded hands at a showdown (and the hero always).
         self._dealt_holes = self._hand.dealt_holes()
@@ -184,7 +216,11 @@ class GameSession:
         k = self._decisions[player]
         self._decisions[player] += 1
         rng = stream(self.seed, "decision", self.hand_index, player, k)
-        h.apply(self._bots[player].act(ctx, rng))
+        bot = self._bots[player]
+        action = bot.act(ctx, rng)
+        if isinstance(bot, PersonaBot) and bot.last_trace is not None:
+            self._traces.append({"player": player, "seat": seat, **_jsonable(asdict(bot.last_trace))})
+        h.apply(action)
 
     def advance_one(self) -> bool:
         """Step a single bot action. Returns True if one was applied, False when
@@ -290,6 +326,10 @@ class GameSession:
             # Server-only: never in an API response (see public_result).
             "truth": {"seed": self.seed},
         }
+        if self.engine == "v2":
+            result["versions"]["policy_hash"] = self._policy_hash
+            result["truth"]["personas"] = self.personas()
+            result["truth"]["traces"] = list(self._traces)
 
         # Per-player summaries: accumulate observed stats (HUD reads) and stash the
         # hero's summary for the stats-over-time dashboard.
@@ -302,6 +342,25 @@ class GameSession:
         self._last_result = result
         self.hand_index += 1
         return result
+
+    def personas(self) -> list[dict]:
+        """v2: who sits where (server-only truth): each villain's type, persona id,
+        handle, dials and leaks."""
+        out = []
+        for p in range(1, self.n):
+            bot = self._bots[p]
+            if not isinstance(bot, PersonaBot):
+                continue
+            per = bot.persona
+            out.append({
+                "player": p,
+                "type": per.type_key,
+                "persona_id": per.persona_id,
+                "handle": per.handle,
+                "dials": _jsonable(asdict(per.dials)),
+                "leaks": [{"name": lk.name, "intensity": round(lk.intensity, 4)} for lk in per.leaks],
+            })
+        return out
 
     def reads(self) -> dict[int, dict]:
         """Per-bot observed read for the HUD: hands seen + stats (revealed once the
@@ -388,3 +447,19 @@ class GameSession:
 
     def archetype_at_seat(self, seat: int) -> str:
         return self.archetype_of[self._seat_to_player[seat]]
+
+
+def _jsonable(value):
+    """A trace or persona as plain JSON: enums by value, tuples as lists, floats
+    rounded to 4 places."""
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, float):
+        return round(value, 4)
+    if isinstance(value, dict):
+        return {str(_jsonable(k)): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_jsonable(v) for v in value]
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    return str(value)

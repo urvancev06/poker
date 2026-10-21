@@ -170,6 +170,7 @@ def create_app(
                 buy_in=req.buy_in,
                 seed=req.seed,
                 auto_advance=req.auto_advance,
+                engine=req.engine,
             )
             gs.start_hand()
         except (ValueError, AssertionError) as exc:

@@ -171,6 +171,12 @@ class Coaching:
     equity_method: str = "exact"
     equity_se_pct: float | None = None
     hole_tier: str = "HIGH_CARD"   # the hole's own part (``made_tier`` counts the board)
+    # "full" (the calibrated v1 coach) or "reduced" (v2 tables, D24: odds only,
+    # plus the preflop chart advice); ``mode_note`` is the caption that says so.
+    mode: str = "full"
+    mode_note: str | None = None
+    # Reduced mode, preflop: the chart's play (see ``coach.reduced.preflop_advice``).
+    advice: dict | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -204,6 +210,9 @@ class Coaching:
             "equity_method": self.equity_method,
             "equity_se_pct": self.equity_se_pct,
             "hole_tier": self.hole_tier,
+            "mode": self.mode,
+            "mode_note": self.mode_note,
+            "advice": self.advice,
         }
 
 
@@ -221,6 +230,8 @@ VERDICT_TONE: dict[str, str] = {
     "Check.": "neutral",
     "Close — call or fold.": "close",
     "Fold.": "fold",
+    # The reduced coach on v2 tables (D24): a price, not a recommendation.
+    "Odds only.": "neutral",
 }
 
 
@@ -404,6 +415,10 @@ def build_coaching(session, trials: int | None = None) -> Coaching:
 
     ``trials`` is the sample count of the sampled equity methods (default
     ``villains.EQUITY_SAMPLES``, the review's too); exact methods ignore it."""
+    if getattr(session, "engine", "v1") == "v2":
+        from .reduced import build_reduced_coaching  # the reduced module imports this one
+
+        return build_reduced_coaching(session, trials)
     if not session.hero_to_act:
         raise RuntimeError("coaching is only available when it's the hero's turn")
 

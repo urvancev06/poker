@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 DEFAULT_VILLAINS = ["nit", "tag", "lag", "station", "maniac"]
@@ -21,6 +23,9 @@ class CreateSessionRequest(BaseModel):
     # The UI passes False to step bots one action at a time (watch the hand);
     # default True keeps the simple "bots already acted" behaviour for API use.
     auto_advance: bool = True
+    # "v2" seats the new engine's bots (the beta table: the Classic lineup in
+    # shuffled seats, the reduced coach). An unknown engine is a 422.
+    engine: Literal["v1", "v2"] = "v1"
 
 
 class ActionRequest(BaseModel):
