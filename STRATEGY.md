@@ -186,6 +186,8 @@ Each archetype is a **parameter set** over the strategy in §2–§3. The parame
 - **Calldown / fold-to-bet** — Station folds far too little (pays off value); Nit folds too much; TAG ≈ correct; Maniac calls light *and* over-bluffs.
 - **Steal / fold-to-steal** — Nit folds blinds constantly; Station defends too wide passively; LAG/Maniac steal often.
 
+**v2 types are dial vectors.** In the new engine (beta), a type is not a separate strategy. It is a vector of 16 dials and a decision temperature over the one logical policy, defined in `backend/poker/strategy/dials.py` (`TYPE_DIALS`, with each dial's range in `DIAL_META`). Each player is a copy of its type's mean, jittered per player, plus up to two named leaks (`poker/bots/personas.py`). The bands above remain the targets. The phase-3 smoke (`backend/validation/v2_smoke.txt`, 50,000 hands) is WARN-only. The type vectors are calibrated against these bands in phase 4, and where a logical policy disagrees with a band, the band is revised with the owner.
+
 > The fish archetypes (Station, Maniac, loose-passive play) play badly on purpose. Realistic, beatable opponents are the whole reason to practise against them, so their leaks are the feature and not a defect to tune away.
 
 ### Reads are earned, not given (opponent visibility modes)

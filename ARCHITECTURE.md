@@ -27,9 +27,11 @@ are at 1/2, and every reader takes a hand's big blind from the hand itself.
 | `poker.rng` | Seeded random streams: one `random.Random` per purpose (the deck of hand h, decision k of player p in hand h, ...), derived with blake2b from the seed and keys. Nothing reads the global `random` state, so a seeded session or simulation replays exactly. |
 | `poker.math` | Equity, odds and hand reading; pure functions, no game state (modules below). NumPy for the vector paths. |
 | `poker.bots` | Bot interface `(game_state, legal_actions, own_cards) -> action`, a parameterised strategy (positional ranges + a postflop heuristic over `poker.math`), and five archetypes as parameter sets. These are the v1 bots; `sim/fingerprint.py` hashes what they do over 300 seeded hands and `tests/test_v1_frozen.py` pins it, so shared code can change under them without moving a decision. |
-| `poker.sim` | Headless simulation: play archetypes against each other for N hands, logging every decision; the stats module (VPIP, PFR, 3-bet%, AF, WTSD); the measured-vs-target report; and `lab.py`, the same machinery exposed as JSON for the bot lab. Hand h is dealt and decided from streams seeded by (seed, h), so a run splits into shards of 1,000 hands that play anywhere and merge, as integer counts, into exactly the one-process result (`run(..., workers=4)`). `jobs.py` (`JobManager`) runs Lab simulations as background jobs on a pool of spawned processes at low CPU priority (replaced when a dead worker breaks it): `queued` → `running` → `done`, `cancelled` or `failed`, progress per merged shard, cancel between shards, and an in-memory registry that a restart forgets. |
-| `poker.coach` | Per-spot coaching (equity against modelled ranges, pot odds, a candid line), hand replay reconstruction, and computed leak detection. All maths comes from `poker.math`. |
-| `poker.game` | Interactive session: hero plus villains, stacks and rebuys, button rotation, bots auto-acting, per-bot observed reads for the HUD. Deals and bot decisions come from the session seed's streams; the seed is stored server-side only (`truth` in the hand record). Each session has a re-entrant lock that every request on it takes, so a double-click, a coach fetch during an advance and the next action cannot interleave. A finished hand stores the ledger's pot, the ledger itself and each action's chips (`added`, `street_total`, `all_in`, `stack_after`), all as new keys of `hands.data`; old rows without them still load, replay and review. |
+| `poker.bots` (v2) | `bot_v2.py`: `PersonaBot`, a v2 player with the same `Bot` interface (`.name`, `.act(ctx, rng)`), so the session and the simulator drive it unchanged; it builds the public `Spot` and its private features from its own redacted context, samples `poker.strategy.policy` with the decision stream, and keeps `last_trace` (server-side only). `personas.py`: a type's mean dials jittered per player (truncated at 3σ), plus named leaks, and a word handle such as "MellowOtter4". Both are exported lazily from `poker.bots` to avoid an import cycle with `poker.strategy.charts`. |
+| `poker.strategy` | The v2 policy behind the engine flag (modules below): preflop charts, a priced postflop policy, sizing, 16 dials, the five type means, six leaks and `policy_hash()`. Nothing in the v1 bots imports it. |
+| `poker.sim` | Headless simulation: play archetypes against each other for N hands, logging every decision; the stats module (VPIP, PFR, 3-bet%, AF, WTSD); the measured-vs-target report; and `lab.py`, the same machinery exposed as JSON for the bot lab. Hand h is dealt and decided from streams seeded by (seed, h), so a run splits into shards of 1,000 hands that play anywhere and merge, as integer counts, into exactly the one-process result (`run(..., workers=4)`). `jobs.py` (`JobManager`) runs Lab simulations as background jobs on a pool of spawned processes at low CPU priority (replaced when a dead worker breaks it): `queued` → `running` → `done`, `cancelled` or `failed`, progress per merged shard, cancel between shards, and an in-memory registry that a restart forgets. The engine flag (`engine="v1"` by default, or `"v2"`) picks the bots: a v2 run seats one `PersonaBot` per seat, its persona drawn from the run seed, and ignores the v1 knob overrides (`scripts/simulate.py --engine v2`, the Lab's engine toggle). |
+| `poker.coach` | Per-spot coaching (equity against modelled ranges, pot odds, a candid line), hand replay reconstruction, and computed leak detection. All maths comes from `poker.math`. On a v2 (beta) session the coach is reduced: preflop it gives the chart's advice (`charts.chart_advice`, the same tables the v2 bots play) and names the chart; postflop it gives "Odds only.", exact equity against the pool average and the price. History grades v2 preflop opens against the same charts. |
+| `poker.game` | Interactive session: hero plus villains, stacks and rebuys, button rotation, bots auto-acting, per-bot observed reads for the HUD. Deals and bot decisions come from the session seed's streams; the seed is stored server-side only (`truth` in the hand record). Each session has a re-entrant lock that every request on it takes, so a double-click, a coach fetch during an advance and the next action cannot interleave. A finished hand stores the ledger's pot, the ledger itself and each action's chips (`added`, `street_total`, `all_in`, `stack_after`), all as new keys of `hands.data`; old rows without them still load, replay and review. `GameSession(engine="v2")` is the beta table: the Classic lineup in shuffled seats, each a persona; the hand record adds the policy hash and the hidden truth (personas, decision traces), which the API never serves. |
 | `poker.db` | SQLAlchemy models and persistence: hand histories and hero stats over time, in SQLite. `HandRecord.summary()` reports each hand's big blind (2 for rows stored before phase 1), and `/stats/me` counts bb/100 in each hand's own big blinds. |
 | `poker.api` | FastAPI app: session, state, action, coaching, history and lab endpoints. `lab_jobs.py` adds the Lab job API: `POST /lab/jobs` starts a simulation and answers at once, `GET /lab/jobs/{id}` reports progress and the result, `DELETE /lab/jobs/{id}` cancels; `/lab/simulate` remains as a wrapper that waits for a job. `GET /hands/{id}` strips the server-only `truth`. |
 | `poker.learn` | `kuhn_cfr.py` runs vanilla Counterfactual Regret Minimization on Kuhn poker and converges to its known equilibrium (game value −1/18), with exact best-response exploitability. |
@@ -50,12 +52,32 @@ are at 1/2, and every reader takes a hand's big blind from the hand itself.
 | `ranges` | Range strings to combos (blockers removed) and weighted ranges. |
 | `odds` | Pot odds, required equity, implied-odds prices and EV, exact arithmetic. |
 
+`poker.strategy` modules (v2, phase 3):
+
+| Module | Responsibility |
+|---|---|
+| `charts/` | `preflop.py`: per-hand chart probabilities for every preflop node (unopened, vs an open or a squeeze, vs a 3-bet, cold vs a 3-bet, vs a 4-bet), `fold_to_3bet`, and `chart_advice` for the beta coach and History. `order.py`: the opening order, which holds every STRATEGY §2 RFI list as an exact prefix. `render.py`: the STRATEGY.md §2 block (`scripts/render_charts.py`; a test keeps it in sync). |
+| `dials` | The 16 dials and the decision temperature, the five type means and `DIAL_META`. |
+| `types` | `Kind`, `Choice`, `ActionDist`, `Node`, `Trace`, `Private`, `PreflopLine`. |
+| `spot` | `Spot`: the public features of a decision, built from a `DecisionContext`. |
+| `scenario` | A line DSL that deals a real `Hand` up to the hero's decision, for the spot book and the property tests. |
+| `preflop` | The chart-based preflop policy (`decide_preflop`) and the preflop-line likelihood. |
+| `constants`, `bettor` | Every §4.6 postflop number by name, and the bettor priors keyed by street, node kind, size and heads-up or multiway (D34). |
+| `private` | The deciding player's private features: hand strength against the range it faces, draws, the bluff quantile. |
+| `postflop` | The priced postflop policy (`decide_postflop`): equity against the bettor's prior range at the price on offer, value and bluff bands, raises. |
+| `sizing` | Texture sizing, preflop sizes and legal chip amounts; a bet that would leave a crumb jams instead. |
+| `leaks` | The six named, bounded leaks: can't fold a pair, fit or fold, auto c-bet, scared money, spewy river, passive monster. |
+| `policy` | The entry point: `policy()` (decide, apply leaks and floors), sampling, `explain()`, and `policy_hash()` over the tables and constants. |
+
 Not part of the installed package:
 
 ```
 backend/tests/     pytest - engine correctness, equity against known values, side pots, chip conservation
 backend/scripts/   runnable utilities - the sim CLI, the console hand-runner, calibration probes
-backend/validation/ recorded output of the 100k-hand stat gate and the coach calibration probe
+backend/validation/ recorded output of the 100k-hand stat gate and the coach calibration probe, and the v2
+                    records: the spot book (spotbook.py, 60 owner-reviewable rows), the property nodes
+                    and checks (nodes.py, properties.py), the smoke counters (v2_stats.py) and
+                    phase3_v2_report.txt
 ```
 
 ### Why this split

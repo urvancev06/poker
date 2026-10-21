@@ -122,6 +122,31 @@ because STRATEGY.md §4 records it as "varies" and I would rather leave it unban
 invent a number to gate against; and the Maniac's AF band is one-sided (`>4`), so it is
 bounded below only. Everything else is a genuine two-sided interval.
 
+### The new engine (beta)
+
+Phase 3 of the engine redesign added a second engine. **It is in testing.** You turn it on
+in **Preferences → Bots → New engine (beta)**, and it applies from the next new game. The
+current bots stay the default, and `test_v1_frozen.py` keeps them from moving.
+
+- **One logical policy** (`poker.strategy`) plays every opponent. Preflop it plays charts
+  (the proposed v2 block in [STRATEGY.md](STRATEGY.md) §2, rendered from the code).
+  Postflop it rates the hand it actually holds against the bettor's likely range, at the
+  price on offer, so a board pair is worth nothing and bet size matters. Regs size by
+  texture, and a bet that would leave a crumb jams instead.
+- **Personality comes from dials.** There are 16 dials and a decision temperature, five type
+  means, and personas jittered per player, some with one of six named leaks.
+- **The beta table** seats the Classic lineup in shuffled seats. The coach gives chart advice
+  before the flop ("Open-raise to 2.5 bb. 55 is in your BTN chart.") and odds only after it.
+  History grades beta hands on preflop and missed value only.
+- **Validation.** All 60 rows of the spot book land inside their bounds
+  (`backend/validation/spotbook_report.txt`). Ten property checks over 5,000 decision
+  nodes find 0 violations (`policy_properties.txt`). The 50,000-hand smoke (`backend/validation/v2_smoke.txt`) is
+  WARN-only until the phase-4 gate. A reg's fold-to-3-bet is 49%, inside the 45-62% band
+  that the old bots missed at 90%. 0 bets leave a crumb. Several §4 bands are not met yet:
+  showdown rates are high, regs over-fold the river, and the TAG, LAG and Maniac play
+  tighter than their bands. Phase 4 calibrates against them;
+  `backend/validation/phase3_v2_report.txt` has the details.
+
 ## The equity engine
 
 `poker.math.equity` (`equity_vs_ranges`) picks the method the spot allows, and the coach
@@ -192,7 +217,7 @@ Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_
 
 ## What the tests assert
 
-**516 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+**821 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
 majority check a specific numeric or structural property:
 
 | Area | Tests | Examples of what is asserted |
@@ -210,6 +235,9 @@ majority check a specific numeric or structural property:
 | `test_villain_model.py` | 8 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, the river bluff slice is low and ordered by archetype, and the measured composition matches the recorded one |
 | `test_ranktable.py`, `test_vector.py`, `test_board.py`, `test_classify_v2.py`, `test_classify_legacy.py`, `test_texture.py`, `test_equity_exact.py`, `test_preflop_table.py`, `test_ranges_weighted.py` | 268 | the phase-2 maths: the rank table and the vector evaluator against treys, the hole-aware classifier (board pairs, kickers, draws that need a hole card), the frozen v1 classifier, texture, exact equity against enumeration, the preflop table (AA vs KK 0.8195 ± 0.006), weighted ranges |
 | `test_coach_v2_math.py` | 11 | a board two pair checked to is a check, no phantom flush draw, river equity exact and stable, the coach and the review agree on a decision (also when every modelled range is blocked: the same any-two fallback), the basis names the method, the warm flop matrix, one villain selection |
+| `test_charts.py`, `test_dials_personas.py`, `test_spot.py`, `test_preflop_policy.py`, `test_postflop_policy.py`, `test_sizing_v2.py`, `test_leaks.py`, `test_policy.py` | 149 | the v2 policy: the charts against the STRATEGY §2 lists (and the §2 block in sync with the code), a reg's fold-to-3-bet inside 45-62%, BB defence on target, jittered personas, texture sizing with no crumbs, the bettor priors, the six leaks, and a `policy_hash` that is the same across processes |
+| `test_policy_properties.py`, `test_spotbook.py`, `test_v2_stats.py` | 136 | the ten policy properties over sampled nodes (the nuts never fold, P(fold) never falls as the bet grows, priced draws continue, no crumbs), the 60-row spot book for each type, and the smoke counters |
+| `test_sim_v2.py`, `test_session_v2.py` | 20 | v2 in the simulator and the Lab, and the beta table: shuffled Classic seats, the hidden truth never served, chart advice preflop and odds only after the flop |
 | remainder | 40 | bot/sim behaviour, implied-odds spots (the set-value note in bb), leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging and the PokerKit pin |
 
 Chip conservation is the one I would point at first: it plays randomised hands to
@@ -234,7 +262,7 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
   CDN), with tabular figures for every number. The table is a CSS 3D object whose camera is
   also written as a pure function, so type, your hand and the bet labels sit upright at
   projected points and are never skewed by the 3D. Cards are inline SVG, so there are no image assets and no per-card requests.
-  The pure logic in `frontend/src/lib` has 541 vitest tests, run with `npm test`.
+  The pure logic in `frontend/src/lib` has 550 vitest tests, run with `npm test`.
 
 ## Running it
 
@@ -242,14 +270,14 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"     # the poker package (editable), pytest, httpx
-.venv/bin/python -m pytest                        # 516 tests, about 4 minutes
+.venv/bin/python -m pytest                        # 821 tests, about 7 minutes
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
 ```bash
 cd frontend
 npm install
-npm test                                          # 541 tests (vitest)
+npm test                                          # 550 tests (vitest)
 npm run dev                                       # http://localhost:5173
 ```
 
