@@ -1,6 +1,7 @@
 /**
- * Preferences: the coach mode, what you can see about the opponents, and the deck. All
- * three persist on this device (localStorage, via the prefs provider) and apply at once.
+ * Preferences: the coach mode, what you can see about the opponents, the bots and the deck.
+ * All persist on this device (localStorage, via the prefs provider). The bots apply to the
+ * next new game; the rest apply at once.
  *
  *   <PreferencesView coachMode={table.coachMode} onCoachMode={table.setCoachMode} />
  *
@@ -13,7 +14,7 @@
  * device".
  */
 import { useId, useState } from 'react'
-import type { CoachMode, VisibilityMode } from '../../lib/prefsSchema'
+import type { CoachMode, EngineChoice, VisibilityMode } from '../../lib/prefsSchema'
 import { usePrefs } from '../../lib/prefsContext'
 import { canPersist, localStore } from '../../lib/prefsStorage'
 import { BP, useViewportSize } from '../../lib/breakpoints'
@@ -44,6 +45,16 @@ const OPPONENTS: readonly Choice<VisibilityMode>[] = [
     aside: <SeatSample mode="hud" />,
   },
   { value: 'live', label: 'Live', description: 'Nothing but the action. Closest to a real table.', aside: <SeatSample mode="live" /> },
+]
+
+const BOTS: readonly Choice<EngineChoice>[] = [
+  { value: 'v1', label: 'Current bots', description: 'Five archetypes the coach is calibrated for.' },
+  {
+    value: 'v2',
+    label: 'New engine (beta)',
+    description:
+      'Every opponent plays one sound baseline with its own personality. While the coach is being calibrated, it gives chart advice preflop and odds only after the flop. Applies to your next new game.',
+  },
 ]
 
 function SpaceColumn() {
@@ -89,6 +100,13 @@ export function PreferencesView({ coachMode, onCoachMode }: PreferencesViewProps
               training wheels.
             </p>
             <ChoiceList className="mt-4" labelledBy={`${uid}-opp`} describedBy={`${uid}-opp-note`} options={OPPONENTS} value={prefs.visibility} onChange={prefs.setVisibility} />
+          </section>
+
+          <section aria-labelledby={`${uid}-bots`}>
+            <h2 id={`${uid}-bots`} className="m-0 text-headline font-strong">
+              Bots
+            </h2>
+            <ChoiceList className="mt-4" labelledBy={`${uid}-bots`} options={BOTS} value={prefs.engine} onChange={prefs.setEngine} />
           </section>
         </div>
 

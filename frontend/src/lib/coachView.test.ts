@@ -133,3 +133,35 @@ describe('Call EV and the verdict (B8)', () => {
     expect(evView(coach('coach_verdict_bet_for_value'))).toBeNull()
   })
 })
+
+describe('glanceView on a new-engine table (reduced coach)', () => {
+  it('shows odds only after the flop: no EV, the raw equity, the caption', () => {
+    const v = glanceView(coach('reduced_flop_facing_bet'))
+    expect(v.verdict).toBe('Odds only.')
+    expect(v.tone).toBe('neutral')
+    expect(v.reduced).toBe(true)
+    expect(v.caption).toBe('Not yet calibrated for the new bots')
+    expect(v.figures.map((f) => f.kind)).toEqual(['eq', 'need'])
+    expect(v.figures[0]).toMatchObject({ label: 'Equity', value: '48%' })
+    expect(v.ev).toBeNull()
+    expect(v.spoken).not.toMatch(/EV/)
+  })
+
+  it('preflop gives the chart advice and says whether the hand is in the chart', () => {
+    const v = glanceView(coach('reduced_preflop_open'))
+    expect(v.verdict).toBe('Open-raise to 2.5 bb.')
+    expect(v.tone).toBe('good')
+    expect(v.caption).toBe('22 is in your CO chart.')
+    expect(v.figures.map((f) => f.kind)).not.toContain('ev')
+    expect(v.spoken).toContain('22 is in your CO chart.')
+    expect(glanceView(coach('reduced_preflop_3bet')).caption).toBe('JJ is in your value 3-bet vs CO chart.')
+  })
+
+  it('the full coach has no caption', () => {
+    for (const s of COACH_SAMPLES) {
+      const v = glanceView(s.coach)
+      expect(v.reduced).toBe(false)
+      expect(v.caption).toBeNull()
+    }
+  })
+})

@@ -1,4 +1,4 @@
-// Preferences provider: card deck, opponent visibility and coach mode, persisted per
+// Preferences provider: card deck, opponent visibility, coach mode and engine, persisted per
 // device in localStorage and shared via context (lib/prefsContext.ts). Unknown stored
 // values fall back to the defaults; old deck ids migrate (lib/deckIds.ts).
 
@@ -10,9 +10,11 @@ import {
   STORAGE_KEYS,
   loadPref,
   normalizeCoachMode,
+  normalizeEngine,
   normalizeVisibility,
   savePref,
   type CoachMode,
+  type EngineChoice,
   type VisibilityMode,
 } from './lib/prefsSchema'
 
@@ -20,6 +22,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const [deckId, setDeck] = useState<DeckId>(() => normalizeDeckId(loadPref(STORAGE_KEYS.deck)))
   const [visibility, setVis] = useState<VisibilityMode>(() => normalizeVisibility(loadPref(STORAGE_KEYS.visibility)))
   const [coachMode, setCoach] = useState<CoachMode>(() => normalizeCoachMode(loadPref(STORAGE_KEYS.coachMode)))
+  const [engine, setEng] = useState<EngineChoice>(() => normalizeEngine(loadPref(STORAGE_KEYS.engine)))
 
   const value = useMemo<PrefsValue>(
     () => ({
@@ -40,8 +43,14 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
         setCoach(m)
         savePref(STORAGE_KEYS.coachMode, m)
       },
+      engine,
+      setEngine: (e: EngineChoice) => {
+        const next = normalizeEngine(e)
+        setEng(next)
+        savePref(STORAGE_KEYS.engine, next)
+      },
     }),
-    [deckId, visibility, coachMode],
+    [deckId, visibility, coachMode, engine],
   )
 
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>

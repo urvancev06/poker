@@ -20,7 +20,7 @@
 
 import type { Coaching } from '../api'
 import { bb, bigBlindOf, pct, signed } from './format'
-import { callEvBB, isPriced, priceAdjustment } from './coachView'
+import { callEvBB, isPriced, isReduced, priceAdjustment } from './coachView'
 import { equityMethodNote } from './equityMethod'
 
 export type Provenance = 'exact' | 'computed' | 'estimate'
@@ -130,6 +130,20 @@ export function workingRows(c: Coaching): WorkingRow[] {
   const winnable = typeof c.winnable === 'number' ? c.winnable : c.pot + c.to_call
   const capped = winnable < c.pot + c.to_call
 
+  const reduced = isReduced(c)
+  if (reduced) {
+    // D24: the coach is not calibrated for the new bots yet, so it shows the odds, and
+    // preflop the chart the new bots play.
+    rows.push(
+      c.advice
+        ? { key: 'mode', label: 'Coach', value: 'Chart and odds', note: 'The new bots’ preflop charts, and exact odds against an average preflop range', kind: 'estimate' }
+        : { key: 'mode', label: 'Coach', value: 'Odds only', note: 'Not yet calibrated for the new bots: exact odds against an average preflop range', kind: 'estimate' },
+    )
+    if (c.advice) {
+      const value = c.advice.in_chart && c.advice.chart ? capitalize(c.advice.chart) : 'Not in a chart'
+      rows.push({ key: 'chart', label: 'Chart', value, note: c.rationale.trim() || null, kind: 'computed' })
+    }
+  }
   rows.push({ key: 'hand', label: 'Your hand', ...handRow(c), kind: 'computed' })
   rows.push({
     key: 'equity',
@@ -139,7 +153,9 @@ export function workingRows(c: Coaching): WorkingRow[] {
     kind: c.equity_method === 'exact' ? 'exact' : 'computed',
   })
 
-  if (c.action_closed) {
+  if (reduced) {
+    // no realization: the equity above is what the price is compared with
+  } else if (c.action_closed) {
     rows.push({ key: 'realized', label: 'Equity counts in full', value: pct(c.equity_pct), note: 'No more betting after this call', kind: 'exact' })
   } else if (c.realization_pct !== 100) {
     const where = c.in_position ? 'in position' : 'out of position'
@@ -153,7 +169,7 @@ export function workingRows(c: Coaching): WorkingRow[] {
     const odds = c.pot_odds ? `, pot odds ${c.pot_odds}` : ''
     const cap = capped ? `, you can win ${u(winnable)} of it` : ''
     rows.push({ key: 'price', label: 'Price', value: pct(direct, 1), note: `${u(c.to_call)} to call into ${u(c.pot)}${cap}${odds}`, kind: 'exact' })
-    const delta = priceAdjustment(c)
+    const delta = reduced ? null : priceAdjustment(c)
     if (delta != null) {
       const v = `${delta < 0 ? MINUS : '+'}${Math.abs(delta).toFixed(1)} pts`
       rows.push({ key: 'adjust', label: 'Price adjustment', value: v, note: adjustmentNote(delta, c.implied_note), kind: 'estimate' })
@@ -165,7 +181,7 @@ export function workingRows(c: Coaching): WorkingRow[] {
       note: delta != null ? 'The price after that adjustment' : 'The price: nothing adjusts it',
       kind: delta != null ? 'estimate' : 'exact',
     })
-    const ev = callEvBB(c)
+    const ev = reduced ? null : callEvBB(c)
     if (ev != null) {
       const before = delta != null ? '. Before implied odds' : ''
       rows.push({

@@ -50,7 +50,7 @@ function Page({ active, children }: { active: boolean; children: ReactNode }) {
 
 export default function App() {
   const table = useTableSession()
-  const { visibility, setVisibility } = usePrefs()
+  const { visibility, setVisibility, engine, setEngine } = usePrefs()
   const [view, setView] = useState<View>('table')
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set<View>(['table']))
   const [logOpen, setLogOpen] = useState(false)
@@ -104,6 +104,9 @@ export default function App() {
             onCoachMode={table.setCoachMode}
             visibility={visibility}
             onVisibility={setVisibility}
+            engine={engine}
+            onEngine={setEngine}
+            tableEngine={table.engine}
             onNewGame={newGame}
           />
         }

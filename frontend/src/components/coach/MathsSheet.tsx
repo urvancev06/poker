@@ -84,6 +84,7 @@ export function MathsSheet({ coaching, open, onClose, bottomInset, mediumTop, po
         view.priced ? <Ring realizedPct={view.eq} needPct={view.need} rawPct={view.raw} tone={view.tone} size={SHEET_RING_PX} /> : undefined
       }
     >
+      {view.reduced && c.mode_note && <p className="m-0 mb-3 text-foot text-fog">{c.mode_note}</p>}
       <Bars view={view} method={equityMethodChip(c, view.eqLabel)} spoken={equityMethodSpoken(c)} />
       <p className="mt-[22px] mb-0 text-body leading-[1.45] text-ink">{c.rationale}</p>
       {lines.length > 0 && <TheirRange lines={lines} />}

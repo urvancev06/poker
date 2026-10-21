@@ -169,3 +169,29 @@ describe('words', () => {
     expect(adjustmentNote(-2, '')).toBe('Cheaper: you should win more later when you hit.')
   })
 })
+
+describe('workingRows on a new-engine table (reduced coach)', () => {
+  it('has the mode row and no realized, adjustment or EV rows', () => {
+    const rs = rows('reduced_flop_facing_bet')
+    const keys = rs.map((r) => r.key)
+    expect(byKey(rs).mode).toEqual({
+      key: 'mode',
+      label: 'Coach',
+      value: 'Odds only',
+      note: 'Not yet calibrated for the new bots: exact odds against an average preflop range',
+      kind: 'estimate',
+    })
+    expect(keys).not.toContain('realized')
+    expect(keys).not.toContain('adjust')
+    expect(keys).not.toContain('ev')
+    expect(keys).toContain('price')
+    expect(byKey(rs).need.note).toBe('The price: nothing adjusts it')
+  })
+
+  it('preflop shows the chart the advice comes from', () => {
+    const rs = byKey(rows('reduced_preflop_open'))
+    expect(rs.chart).toMatchObject({ label: 'Chart', value: 'CO open', note: '22 is in your CO chart.' })
+    expect(rs.mode.value).toBe('Chart and odds')
+    expect(byKey(rows('reduced_flop_facing_bet')).chart).toBeUndefined()
+  })
+})

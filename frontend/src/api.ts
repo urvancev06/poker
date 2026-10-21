@@ -119,8 +119,13 @@ export interface HandResult {
   hero_summary?: Record<string, unknown>
 }
 
+/** The bots a table seats: the current ones (v1) or the new engine (v2, beta). */
+export type EngineChoice = 'v1' | 'v2'
+
 export interface SessionState {
   session_id: string
+  /** Absent on servers from before phase 3 (read it as 'v1'). */
+  engine?: EngineChoice
   hand_index: number
   hand_over: boolean
   hero_seat: number
@@ -181,6 +186,26 @@ export interface Coaching {
   /** The part the hole cards play (a MadeTier name); `made_tier` counts the board's cards
    *  too, so a board pair is "PAIR" there and "HIGH_CARD" here. */
   hole_tier?: string
+  /** 'full' (the calibrated coach) or 'reduced' (new-engine tables: odds only, plus the
+   *  preflop chart advice). Absent on older servers (read it as 'full'). */
+  mode?: 'full' | 'reduced'
+  /** The caption that says why the coach is reduced, e.g. "Not yet calibrated for the new bots". */
+  mode_note?: string | null
+  /** Reduced mode, preflop: the chart's play for this hand (null where no chart covers it). */
+  advice?: ChartAdvice | null
+}
+
+/** The preflop chart's play (the same charts the new bots use). */
+export interface ChartAdvice {
+  action: 'raise' | '3bet' | '4bet' | 'jam' | 'call' | 'check' | 'fold'
+  /** Raise-to in chips (null for call, check and fold). */
+  to_amount: number | null
+  /** The chart's name, e.g. "UTG open", "value 3-bet vs CO", "BB defence vs BTN" ('' for a fold). */
+  chart: string
+  in_chart: boolean
+  hand: string
+  position: string
+  all_in: boolean
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -208,6 +233,7 @@ export interface CreateSessionBody {
   buy_in?: number
   seed?: number | null
   auto_advance?: boolean
+  engine?: EngineChoice
 }
 
 export interface BotRead {
@@ -309,6 +335,8 @@ export interface ReviewDecision {
    *  reviews from before phase 2). */
   equity_method?: EquityMethod | null
   equity_se_pct?: number | null
+  /** 'reduced' on new-engine hands: graded on the preflop charts and missed value only. */
+  graded_by?: 'full' | 'reduced'
   leaks: Leak[]
 }
 export interface ReviewStreet {
@@ -329,6 +357,8 @@ export interface HandReview {
 }
 export interface LeakSummary {
   hands_reviewed: number
+  /** New-engine hands among them (graded on preflop and missed value only). */
+  hands_reduced?: number
   by_type: Array<{ type: string; count: number }>
   examples: Leak[]
 }
@@ -370,6 +400,8 @@ export interface LabResult {
   seed: number
   lineup: string[]
   overrides: Record<string, Record<string, number>>
+  /** Absent on servers from before phase 3 (read it as 'v1'). */
+  engine?: EngineChoice
   gate_pass: boolean
   rows: LabRow[]
   elapsed_ms: number
@@ -384,6 +416,8 @@ export interface LabSimulateBody {
 /** A background Lab run (POST /lab/jobs). */
 export interface LabJobBody extends LabSimulateBody {
   kind: 'simulate'
+  /** The new engine ignores the knob overrides. */
+  engine?: EngineChoice
 }
 export type LabJobState = 'queued' | 'running' | 'done' | 'cancelled' | 'failed'
 export interface LabJob {

@@ -102,3 +102,15 @@ describe('airLine', () => {
     expect(airLine({ bluff_pct: 12.5 }, 'unknown', true)).toBe('12.5% of their range is air.')
   })
 })
+
+describe('villainLines on a new-engine table', () => {
+  it('names the pool-average range by position in every mode, never by a type', () => {
+    const s = coachSample('reduced_flop_facing_bet')
+    for (const visibility of ['labeled', 'hud', 'live'] as const) {
+      const [line] = villainLines(s.coach, { visibility, positions: s.positions, priced: true })
+      expect(line.name).toBe('BB')
+      expect(line.line).toBe('Preflop range. 992 combos')
+      expect(line.air).toBeNull()
+    }
+  })
+})

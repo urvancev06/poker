@@ -5,11 +5,14 @@ export type VisibilityMode = 'labeled' | 'hud' | 'live'
 /** on: the coach speaks on every hero turn. think: it works in the background and waits
  * until you ask ("Think first"). off: only when you ask. */
 export type CoachMode = 'on' | 'think' | 'off'
+/** The bots a new game seats: the current ones (v1) or the new engine (v2, beta). */
+export type EngineChoice = 'v1' | 'v2'
 
 export const STORAGE_KEYS = {
   deck: 'poker-deck',
   visibility: 'poker-visibility',
   coachMode: 'poker-coach-mode',
+  engine: 'poker-engine',
 } as const
 
 export const VISIBILITY_MODES: readonly VisibilityMode[] = ['labeled', 'hud', 'live']
@@ -17,6 +20,8 @@ export const COACH_MODES: readonly CoachMode[] = ['on', 'think', 'off']
 
 export const DEFAULT_VISIBILITY: VisibilityMode = 'labeled'
 export const DEFAULT_COACH_MODE: CoachMode = 'on'
+export const ENGINES: readonly EngineChoice[] = ['v1', 'v2']
+export const DEFAULT_ENGINE: EngineChoice = 'v1'
 
 export function normalizeVisibility(v: string | null | undefined): VisibilityMode {
   return VISIBILITY_MODES.includes(v as VisibilityMode) ? (v as VisibilityMode) : DEFAULT_VISIBILITY
@@ -24,6 +29,10 @@ export function normalizeVisibility(v: string | null | undefined): VisibilityMod
 
 export function normalizeCoachMode(v: string | null | undefined): CoachMode {
   return COACH_MODES.includes(v as CoachMode) ? (v as CoachMode) : DEFAULT_COACH_MODE
+}
+
+export function normalizeEngine(v: string | null | undefined): EngineChoice {
+  return ENGINES.includes(v as EngineChoice) ? (v as EngineChoice) : DEFAULT_ENGINE
 }
 
 export function loadPref(key: string): string | null {

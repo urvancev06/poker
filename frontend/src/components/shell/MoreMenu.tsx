@@ -3,6 +3,7 @@
  * a panel), not role=menu: it holds two radiogroups and a few links.
  *   - below 1100 px: the three primary views first (the centred nav is hidden there);
  *   - Coach: On / Think first / Off; Opponents: Labeled / HUD / Live (both persisted);
+ *   - Bots: Current / New (beta) for the next new game, and which bots this table seats;
  *   - Study, Lab, Preferences; and New game on a phone (the top bar hides it there).
  * Opens on the spring (scale .96 + blur 6 -> 0); Escape, a tap outside, focus leaving, or
  * picking a destination closes it, and focus returns to the button.
@@ -10,7 +11,7 @@
 import { useId, useLayoutEffect, useRef } from 'react'
 import { useEscape } from '../../lib/escapeStack'
 import { play } from '../../lib/motion'
-import type { CoachMode, VisibilityMode } from '../../lib/prefsSchema'
+import type { CoachMode, EngineChoice, VisibilityMode } from '../../lib/prefsSchema'
 import { MORE_VIEWS, PRIMARY_VIEWS, VIEW_LABEL, type View } from '../../lib/views'
 import { IconButton } from '../../ui/IconButton'
 import { IconMore } from '../../ui/Icons'
@@ -27,6 +28,11 @@ const OPPONENT_OPTIONS: readonly SegmentedOption<VisibilityMode>[] = [
   { value: 'live', label: 'Live', title: 'Read it yourself' },
 ]
 
+const BOT_OPTIONS: readonly SegmentedOption<EngineChoice>[] = [
+  { value: 'v1', label: 'Current', title: 'The archetype bots the coach is calibrated for' },
+  { value: 'v2', label: 'New (beta)', title: 'The new engine, from your next new game' },
+]
+
 export interface MoreMenuProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -36,13 +42,31 @@ export interface MoreMenuProps {
   onCoachMode: (mode: CoachMode) => void
   visibility: VisibilityMode
   onVisibility: (mode: VisibilityMode) => void
+  /** The bots of the next new game (the preference). */
+  engine: EngineChoice
+  onEngine: (engine: EngineChoice) => void
+  /** The bots this table seats. */
+  tableEngine: EngineChoice
   onNewGame: () => void
 }
 
 const ITEM =
   'squircle flex min-h-10 w-full items-center rounded-[12px] border-0 bg-transparent px-2.5 text-left text-callout text-ink hover:bg-quiet aria-[current=page]:font-semibold'
 
-export function MoreMenu({ open, onOpenChange, view, onNavigate, coachMode, onCoachMode, visibility, onVisibility, onNewGame }: MoreMenuProps) {
+export function MoreMenu({
+  open,
+  onOpenChange,
+  view,
+  onNavigate,
+  coachMode,
+  onCoachMode,
+  visibility,
+  onVisibility,
+  engine,
+  onEngine,
+  tableEngine,
+  onNewGame,
+}: MoreMenuProps) {
   const id = useId()
   const button = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLDivElement>(null)
@@ -119,6 +143,15 @@ export function MoreMenu({ open, onOpenChange, view, onNavigate, coachMode, onCo
             Opponents
           </span>
           <Segmented labelledBy={`${id}-opp`} options={OPPONENT_OPTIONS} value={visibility} onChange={onVisibility} />
+        </div>
+        <div className="border-t border-sheet-line px-2 pt-2 pb-2.5">
+          <span id={`${id}-bots`} className="mb-2 ml-0.5 block text-foot font-semibold text-fog">
+            Bots
+          </span>
+          <Segmented labelledBy={`${id}-bots`} describedBy={`${id}-bots-now`} options={BOT_OPTIONS} value={engine} onChange={onEngine} />
+          <p id={`${id}-bots-now`} className="m-0 mt-2 ml-0.5 text-foot text-fog">
+            {tableEngine === 'v2' ? 'This table: new engine (beta)' : 'This table: current bots'}
+          </p>
         </div>
         <div className="mt-0.5 border-t border-sheet-line pt-1.5">
           {MORE_VIEWS.map((v) => (

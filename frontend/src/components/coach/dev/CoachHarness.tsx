@@ -60,7 +60,7 @@ function usePrefsValue(): PrefsValue {
   const [coachMode, setCoachMode] = useState<CoachMode>(() => normalizeCoachMode(q.get('mode')))
   const [visibility, setVisibility] = useState<VisibilityMode>(() => normalizeVisibility(q.get('vis')))
   return useMemo(
-    () => ({ deckId: 'standard', deck: DECKS[0], setDeckId: () => {}, visibility, setVisibility, coachMode, setCoachMode }),
+    () => ({ deckId: 'standard', deck: DECKS[0], setDeckId: () => {}, visibility, setVisibility, coachMode, setCoachMode, engine: 'v1', setEngine: () => {} }),
     [visibility, coachMode],
   )
 }

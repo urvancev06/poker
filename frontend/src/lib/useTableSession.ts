@@ -31,7 +31,7 @@
 // The clock and the generation are plain classes in lib/sessionGuards.ts (tested there).
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, type ActionType, type Coaching, type Reads, type SessionState } from '../api'
+import { api, type ActionType, type Coaching, type EngineChoice, type Reads, type SessionState } from '../api'
 import { toApiError, type ApiError } from './apiError'
 import { coachSlot, type CoachStatus } from './coachStatus'
 import { usePrefs } from './prefsContext'
@@ -49,6 +49,8 @@ export type SessionErrors = Partial<Record<SessionErrorScope, ApiError>>
 export interface TableSession {
   /** The latest snapshot from the backend; null until the first deal. */
   session: SessionState | null
+  /** The bots this table seats (from the session; 'v1' until it arrives or on an older server). */
+  engine: EngineChoice
   /** HUD reads keyed by player ("1".."5"); refreshed after each hand and hero action. */
   reads: Reads | undefined
   /** No session yet and no boot error: "Dealing you in". */
@@ -106,7 +108,13 @@ function runningHandKey(s: SessionState | null): string | null {
 }
 
 export function useTableSession(): TableSession {
-  const { coachMode, setCoachMode: savePrefMode } = usePrefs()
+  const { coachMode, setCoachMode: savePrefMode, engine: enginePref } = usePrefs()
+  // Read at the moment a game starts, so changing the preference never re-runs the boot
+  // effect: it applies to the next new game.
+  const engineRef = useRef(enginePref)
+  useEffect(() => {
+    engineRef.current = enginePref
+  }, [enginePref])
   const [session, setSession] = useState<SessionState | null>(null)
   const [reads, setReads] = useState<Reads>()
   // The coach's answer and the decision it answers; an error and the decision it was for.
@@ -172,7 +180,7 @@ export function useTableSession(): TableSession {
     (scope: 'boot' | 'newGame') => {
       const alive = gen.current()
       return api
-        .createSession({ auto_advance: false })
+        .createSession({ auto_advance: false, engine: engineRef.current })
         .then((s) => {
           if (!alive()) return
           setSession(s)
@@ -432,6 +440,7 @@ export function useTableSession(): TableSession {
 
   return {
     session,
+    engine: session?.engine ?? 'v1',
     reads,
     booting: !session && !errors.boot,
     busy: acting || dealing || starting,

@@ -89,13 +89,18 @@ export interface VillainLineOptions {
   priced: boolean
 }
 
+/** The archetype the reduced coach gives every villain (it never reads a seat's type). */
+export const POOL_AVERAGE = 'Pool average'
+
 export function villainLines(c: Pick<Coaching, 'villains'>, { visibility, positions, priced }: VillainLineOptions): VillainLine[] {
   const many = c.villains.length > 1
   return c.villains.map((v, i) => {
     const r = parseRange(v.description)
     const combos = `${count(v.combos)} combos`
+    // The reduced coach (new-engine tables) models every seat as the pool average, so the
+    // seat is named by its position in every mode.
     const name =
-      visibility === 'labeled'
+      visibility === 'labeled' && v.archetype !== POOL_AVERAGE
         ? (SHORT[v.archetype] ?? v.archetype)
         : (positions?.[v.seat] ?? (many ? `Opponent ${i + 1}` : 'Opponent'))
     // unparseable: the backend's words, minus a leading archetype in HUD / Live

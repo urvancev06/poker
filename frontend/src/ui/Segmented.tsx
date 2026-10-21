@@ -26,13 +26,15 @@ export interface SegmentedProps<T extends string> {
   onChange: (value: T) => void
   label?: string
   labelledBy?: string
+  /** The id of a note that describes the group (aria-describedby). */
+  describedBy?: string
   size?: 'sm' | 'md'
   className?: string
 }
 
 const STEP: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
 
-export function Segmented<T extends string>({ options, value, onChange, label, labelledBy, size = 'sm', className = '' }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ options, value, onChange, label, labelledBy, describedBy, size = 'sm', className = '' }: SegmentedProps<T>) {
   const group = useRef<HTMLDivElement>(null)
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -53,6 +55,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, l
       role="radiogroup"
       aria-label={labelledBy ? undefined : label}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       className={`seg ${size === 'md' ? 'seg--md' : ''} ${className}`}
       onKeyDown={onKeyDown}
     >

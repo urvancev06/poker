@@ -1390,9 +1390,239 @@ export const COACH_SAMPLES: readonly CoachSample[] = [
   }
 ]
 
+// Reduced answers (new-engine tables, D24), captured from the P3.12 backend: odds only
+// after the flop, the chart advice preflop. Kept apart from COACH_SAMPLES, whose tests
+// cover the nine full-coach verdicts.
+export const REDUCED_SAMPLES: readonly CoachSample[] = [
+  {
+    "name": "reduced_flop_facing_bet",
+    "heroCards": [
+      "Kh",
+      "6s"
+    ],
+    "board": [
+      "9d",
+      "4h",
+      "2h",
+      "5h"
+    ],
+    "positions": [
+      "SB",
+      "BB",
+      "UTG",
+      "MP",
+      "CO",
+      "BTN"
+    ],
+    "heroSeat": 5,
+    "coach": {
+      "hand_label": "king high + flush draw + gutshot",
+      "made_tier": "HIGH_CARD",
+      "draws": [
+        "flush_draw",
+        "gutshot"
+      ],
+      "equity_pct": 48.0,
+      "realized_equity_pct": 48.0,
+      "realization_pct": 100,
+      "win_pct": 47,
+      "tie_pct": 1,
+      "lose_pct": 51,
+      "to_call": 19,
+      "pot": 44,
+      "required_equity_pct": 30.2,
+      "required_direct_pct": 30.2,
+      "implied_note": "",
+      "pot_odds": "2.3 : 1",
+      "call_ev": null,
+      "in_position": true,
+      "action_closed": false,
+      "players_behind": 0,
+      "villains": [
+        {
+          "seat": 1,
+          "archetype": "Pool average",
+          "combos": 992,
+          "description": "BB, preflop range → ~top 74.8% (992 combos)",
+          "bluff_pct": 0.0
+        }
+      ],
+      "verdict": "Odds only.",
+      "rationale": "Your equity is 48.0% against the pool-average ranges; a call needs 30.2%.",
+      "tone": "neutral",
+      "basis": [
+        "Hand classification is computed from your cards and the board.",
+        "Equity is exact: every runout is counted.",
+        "Pot odds and required equity are exact arithmetic.",
+        "Villain ranges are the pool average: every player type's range for the preflop line taken, equally weighted.",
+        "No realization, implied odds or call EV: the coach is not yet calibrated for the new bots."
+      ],
+      "winnable": 63,
+      "big_blind": 10,
+      "closes_on_call": true,
+      "equity_method": "exact",
+      "equity_se_pct": null,
+      "hole_tier": "HIGH_CARD",
+      "mode": "reduced",
+      "mode_note": "Not yet calibrated for the new bots",
+      "advice": null
+    }
+  },
+  {
+    "name": "reduced_preflop_open",
+    "heroCards": [
+      "2h",
+      "2d"
+    ],
+    "board": [],
+    "positions": [
+      "SB",
+      "BB",
+      "UTG",
+      "MP",
+      "CO",
+      "BTN"
+    ],
+    "heroSeat": 4,
+    "coach": {
+      "hand_label": "pocket 2s",
+      "made_tier": "PAIR",
+      "draws": [],
+      "equity_pct": 50.4,
+      "realized_equity_pct": 50.4,
+      "realization_pct": 100,
+      "win_pct": 50,
+      "tie_pct": 0,
+      "lose_pct": 50,
+      "to_call": 10,
+      "pot": 15,
+      "required_equity_pct": 40.0,
+      "required_direct_pct": 40.0,
+      "implied_note": "",
+      "pot_odds": "1.5 : 1",
+      "call_ev": null,
+      "in_position": true,
+      "action_closed": false,
+      "players_behind": 3,
+      "villains": [
+        {
+          "seat": 1,
+          "archetype": "Pool average",
+          "combos": 1225,
+          "description": "BB, preflop range → ~top 92.4% (1225 combos)",
+          "bluff_pct": 0.0
+        }
+      ],
+      "verdict": "Open-raise to 2.5 bb.",
+      "rationale": "22 is in your CO chart.",
+      "tone": "good",
+      "basis": [
+        "Hand classification is computed from your cards and the board.",
+        "Preflop equity comes from a precomputed table (±0.4 pp).",
+        "Pot odds and required equity are exact arithmetic.",
+        "Villain ranges are the pool average: every player type's range for the preflop line taken, equally weighted.",
+        "Preflop advice is the baseline chart the new bots play (STRATEGY.md §2).",
+        "No realization, implied odds or call EV: the coach is not yet calibrated for the new bots."
+      ],
+      "winnable": 25,
+      "big_blind": 10,
+      "closes_on_call": false,
+      "equity_method": "preflop_table",
+      "equity_se_pct": null,
+      "hole_tier": "PAIR",
+      "mode": "reduced",
+      "mode_note": "Preflop chart advice; odds only after the flop",
+      "advice": {
+        "action": "raise",
+        "to_amount": 25,
+        "chart": "CO open",
+        "in_chart": true,
+        "hand": "22",
+        "position": "CO",
+        "all_in": false
+      }
+    }
+  },
+  {
+    "name": "reduced_preflop_3bet",
+    "heroCards": [
+      "Jc",
+      "Jd"
+    ],
+    "board": [],
+    "positions": [
+      "SB",
+      "BB",
+      "UTG",
+      "MP",
+      "CO",
+      "BTN"
+    ],
+    "heroSeat": 0,
+    "coach": {
+      "hand_label": "pocket Js",
+      "made_tier": "PAIR",
+      "draws": [],
+      "equity_pct": 70.9,
+      "realized_equity_pct": 70.9,
+      "realization_pct": 100,
+      "win_pct": 71,
+      "tie_pct": 0,
+      "lose_pct": 29,
+      "to_call": 22,
+      "pot": 42,
+      "required_equity_pct": 34.4,
+      "required_direct_pct": 34.4,
+      "implied_note": "",
+      "pot_odds": "1.9 : 1",
+      "call_ev": null,
+      "in_position": false,
+      "action_closed": false,
+      "players_behind": 1,
+      "villains": [
+        {
+          "seat": 4,
+          "archetype": "Pool average",
+          "combos": 409,
+          "description": "CO, raised pre → ~top 30.9% (409 combos)",
+          "bluff_pct": 0.0
+        }
+      ],
+      "verdict": "3-bet to 10.8 bb.",
+      "rationale": "JJ is in your value 3-bet vs CO chart.",
+      "tone": "good",
+      "basis": [
+        "Hand classification is computed from your cards and the board.",
+        "Preflop equity comes from a precomputed table (±0.4 pp).",
+        "Pot odds and required equity are exact arithmetic.",
+        "Villain ranges are the pool average: every player type's range for the preflop line taken, equally weighted.",
+        "Preflop advice is the baseline chart the new bots play (STRATEGY.md §2).",
+        "No realization, implied odds or call EV: the coach is not yet calibrated for the new bots."
+      ],
+      "winnable": 64,
+      "big_blind": 10,
+      "closes_on_call": false,
+      "equity_method": "preflop_table",
+      "equity_se_pct": null,
+      "hole_tier": "PAIR",
+      "mode": "reduced",
+      "mode_note": "Preflop chart advice; odds only after the flop",
+      "advice": {
+        "action": "3bet",
+        "to_amount": 108,
+        "chart": "value 3-bet vs CO",
+        "in_chart": true,
+        "hand": "JJ",
+        "position": "SB",
+        "all_in": false
+      }
+    }
+  }
+]
+
 /** A sample by name; throws for an unknown name (tests and the harness only). */
 export function coachSample(name: string): CoachSample {
-  const s = COACH_SAMPLES.find((x) => x.name === name)
+  const s = COACH_SAMPLES.find((x) => x.name === name) ?? REDUCED_SAMPLES.find((x) => x.name === name)
   if (!s) throw new Error(`No coach sample named ${name}`)
   return s
 }

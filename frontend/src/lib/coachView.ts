@@ -109,14 +109,27 @@ export interface GlanceView {
   ev: EvView | null
   /** The accessible name of the glance button (and what a screen reader announces). */
   spoken: string
+  /** A new-engine table's coach (D24): odds only, plus the preflop chart advice. */
+  reduced: boolean
+  /** Reduced only: the quiet line under the verdict. Preflop it says whether the hand is in
+   *  the chart ("22 is in your CO chart."), after the flop why there is no verdict. */
+  caption: string | null
+}
+
+/** The coach on a new-engine table: odds only, and the chart advice preflop. */
+export function isReduced(c: Pick<Coaching, 'mode'>): boolean {
+  return c.mode === 'reduced'
 }
 
 export function glanceView(c: Coaching): GlanceView {
   const tone = normalizeTone(c.tone)
   const priced = isPriced(c)
-  const { pct: eq, label: eqLabel } = headlineEquity(c)
+  const reduced = isReduced(c)
+  // Reduced: raw equity, no realization, so the figure is plain "Equity" and there is no EV.
+  const { pct: eq, label: eqLabel } = reduced ? { pct: c.equity_pct, label: 'Equity' as const } : headlineEquity(c)
   const need = priced ? (c.required_equity_pct as number) : null
-  const ev = evView(c)
+  const ev = reduced ? null : evView(c)
+  const caption = reduced ? (c.advice ? c.rationale.trim() || null : (c.mode_note ?? null)) : null
   const figures: Figure[] = [{ kind: 'eq', value: pct(eq), label: eqLabel, tone, note: null }]
   if (need != null) figures.push({ kind: 'need', value: pct(need), label: 'Need', tone: 'need', note: null })
   if (ev) figures.push({ kind: 'ev', value: ev.text, unit: 'bb', label: 'Call EV', tone: ev.tone, note: ev.note })
@@ -124,6 +137,7 @@ export function glanceView(c: Coaching): GlanceView {
   if (need != null) parts.push(`need ${pct(need)}`)
   if (ev) parts.push(`call EV ${ev.text} big blinds${ev.note ? ` ${ev.note}` : ''}`)
   const verdict = c.verdict.trim() || 'No verdict'
+  if (caption) parts.unshift(caption)
   return {
     tone,
     verdict,
@@ -136,5 +150,7 @@ export function glanceView(c: Coaching): GlanceView {
     figures,
     ev,
     spoken: `${verdict} ${parts.join(', ')}.`,
+    reduced,
+    caption,
   }
 }

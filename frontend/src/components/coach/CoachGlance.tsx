@@ -284,6 +284,8 @@ function Summary({ view, row, ringSize, tight, expanded, revealDelay, autoFocus,
         >
           {view.verdict}
         </span>
+        {/* new-engine tables: the chart membership preflop, why there is no verdict after */}
+        {view.caption && <span className={`text-foot text-fog ${row ? 'basis-full -mt-0.5' : 'mt-1.5'}`}>{view.caption}</span>}
         <span className={`flex shrink-0 ${row ? 'gap-3.5' : 'mt-3 gap-[22px]'}`}>
           {figures.map((f) => (
             <FigureView key={f.kind} figure={f} small={row} />
