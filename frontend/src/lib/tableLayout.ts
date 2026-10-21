@@ -8,7 +8,7 @@
 //
 // Ported from the approved Stage prototype (round2/stage/table.js, section 2), plus:
 //   - bets sit on the seat-to-pot vector, clear of the full board and the pot block, with
-//     their air from the backs and from each other kept on screen (betAnchor, betAir);
+//     their air from the backs and from each other kept on screen (placeBets, airKept);
 //   - the slab's outline as the browser draws it (a rounded rectangle without corner-shape);
 //   - the street label has one fixed place (just above the pot block), in every state;
 //   - the top-centre seat's showdown reveal sits higher, so it never meets the board;
@@ -30,9 +30,10 @@ export interface SeatGeo {
   cards: UV
   /** Where its cards turn face up at a showdown. */
   rev: UV
-  /** Which side of the chip its bet label reads on. */
+  /** Which side of the chip its bet label reads on (placeBets flips it where only the other
+   * side has room). */
   betSide: BetSide
-  /** The prototype's hand-placed bet anchor: the fallback if the vector has no room. */
+  /** The prototype's hand-placed bet anchor: a candidate where the vector has no room. */
   bet: UV
 }
 
@@ -302,12 +303,21 @@ export const chipStackZ = (s: number) => 4.8 * s + 1.2
 /** Air kept on screen, px: between a bet's chip (its whole stack) and any seat's backs, and
  * its footprint on the felt (what the chip element's box measures) and any backs; between
  * its label and any backs; between two bets; and the most asked of the board (where the
- * table-space clearance would ask more, the far rim's squash makes it waste). */
+ * table-space clearance would ask more, the far rim's squash makes it waste), its label's
+ * ink included. */
 export const CHIP_AIR_PX = 6
 export const FOOT_AIR_PX = 8
 export const LABEL_AIR_PX = 4
 export const BET_AIR_PX = 4
 export const BOARD_AIR_PX = 4
+
+/** The shares of that air (all but BET_AIR_PX) a bet may keep, best first. A small table
+ * (s under about 0.5: a portrait tablet, a laptop with a side panel open) can leave a seat no
+ * spot with all of it: the 42 px label and the air are fixed px while the felt shrinks with s
+ * (at 768x1024 the band between the centre seat's backs and the board is 14 px; a chip with
+ * full air needs 18). The solver then gives up the least it must, never past the last step.
+ * Two bets never come within BET_AIR_PX, at any size. */
+export const AIR_STEPS: readonly number[] = [1, 0.8, 0.6, 0.45, 0.3]
 
 export interface ScreenRect {
   x0: number
@@ -316,18 +326,50 @@ export interface ScreenRect {
   y1: number
 }
 
-/** A box on the felt as the camera draws it (about the scene origin), raised by each z. */
-function screenRect(g: Geo, s: number, b: BoxUV, zs: readonly number[]): ScreenRect {
+/** The camera's constants at one scale, about the scene origin: projectWith without the
+ * trigonometry per point (the bet search projects thousands of points per layout). */
+export interface Camera {
+  pw: number
+  ph: number
+  ct: number
+  st: number
+  p: number
+}
+
+export function cameraAt(g: Geo, s: number): Camera {
+  const t = (g.tilt * Math.PI) / 180
+  return { pw: 1000 * s, ph: 1000 * s * g.aspect, ct: Math.cos(t), st: Math.sin(t), p: g.persp * s }
+}
+
+/** Widen r by a box's edge at v, raised z px off the felt (projectWith, inlined). */
+function widen(c: Camera, r: ScreenRect, b: BoxUV, v: number, z: number) {
+  const y = (v - 0.5) * c.ph
+  const f = c.p / (c.p - (y * c.st + z * c.ct))
+  const sy = (y * c.ct - z * c.st) * f
+  const xa = (b.u0 - 0.5) * c.pw * f
+  const xb = (b.u1 - 0.5) * c.pw * f
+  if (xa < r.x0) r.x0 = xa
+  if (xb > r.x1) r.x1 = xb
+  if (sy < r.y0) r.y0 = sy
+  if (sy > r.y1) r.y1 = sy
+}
+
+/** A point on the felt (z px above it) as the camera draws it, about the scene origin. */
+function pointAt(c: Camera, u: number, v: number, z: number): [number, number] {
+  const y = (v - 0.5) * c.ph
+  const f = c.p / (c.p - (y * c.st + z * c.ct))
+  return [(u - 0.5) * c.pw * f, (y * c.ct - z * c.st) * f]
+}
+
+/** A box on the felt as the camera draws it (about the scene origin), from z0 up to z1. */
+function screenRect(c: Camera, b: BoxUV, z0: number, z1 = z0): ScreenRect {
   const r = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }
-  for (const z of zs)
-    for (const u of [b.u0, b.u1])
-      for (const v of [b.v0, b.v1]) {
-        const [x, y] = projectWith(g, s, 0, 0, u, v, z)
-        r.x0 = Math.min(r.x0, x)
-        r.x1 = Math.max(r.x1, x)
-        r.y0 = Math.min(r.y0, y)
-        r.y1 = Math.max(r.y1, y)
-      }
+  widen(c, r, b, b.v0, z0)
+  widen(c, r, b, b.v1, z0)
+  if (z1 !== z0) {
+    widen(c, r, b, b.v0, z1)
+    widen(c, r, b, b.v1, z1)
+  }
   return r
 }
 
@@ -340,89 +382,101 @@ export function rectGap(a: ScreenRect, b: ScreenRect): number {
 }
 
 /** A seat's two backs on screen, the lit near edge under them included. */
-export function backsRect(g: Geo, s: number, at: UV): ScreenRect {
+export function backsRect(g: Geo, s: number, at: UV, c: Camera = cameraAt(g, s)): ScreenRect {
   const hu = (g.back * (1 + BACKS_OFFSET)) / 2
   const hv = (g.back * 1.4) / g.aspect / 2
-  const r = screenRect(g, s, { u0: at[0] - hu, u1: at[0] + hu, v0: at[1] - hv, v1: at[1] + hv }, [0.6])
+  const r = screenRect(c, { u0: at[0] - hu, u1: at[0] + hu, v0: at[1] - hv, v1: at[1] + hv }, 0.6)
   return { ...r, y1: r.y1 + 0.5 + 0.5 * s }
 }
 
-/** What a bet must keep clear of, at a layout's scale: the pot block, the label's size,
- * every seat's backs and the bets already placed (on screen). */
+/** What a bet must keep clear of, at a layout's scale: the board, the pot block, the label's
+ * size, every seat's backs and the bets already placed (on screen). */
 export interface BetRoom {
   s: number
-  pot: BoxUV
+  cam: Camera
   /** The widest label and half its ink's height, px. */
   label: number
   ink: number
   backs: readonly ScreenRect[]
   taken?: readonly ScreenRect[]
+  /** The full board in table space and on screen, and its clearance along v (the
+   * table-space one, but never more than BOARD_AIR_PX on screen at its far edge). */
+  board: BoxUV
+  boardRect: ScreenRect
+  boardV: number
+  /** The pot block grown by its clearance. */
+  potClear: BoxUV
 }
 
-export const betRoom = (L: Pick<TableLayout, 'g' | 'gk' | 's' | 'pot'>, taken?: readonly ScreenRect[]): BetRoom => ({
-  s: L.s,
-  pot: L.pot.box,
-  label: BET_LABEL_PX[L.gk],
-  ink: BET_LABEL_INK_PX[L.gk],
-  backs: VILLAIN_SLOTS.map((k) => backsRect(L.g, L.s, L.g.seats[k].cards)),
-  taken,
-})
+export function betRoom(L: Pick<TableLayout, 'g' | 'gk' | 's' | 'pot'>, taken?: readonly ScreenRect[]): BetRoom {
+  const { g, s } = L
+  const cam = cameraAt(g, s)
+  const board = boardBox(g)
+  const pxPerV = (pointAt(cam, 0.5, board.v0, 0.6)[1] - pointAt(cam, 0.5, board.v0 - 0.01, 0.6)[1]) / 0.01
+  const clearV = BET_CLEAR_U / g.aspect
+  return {
+    s,
+    cam,
+    label: BET_LABEL_PX[L.gk],
+    ink: BET_LABEL_INK_PX[L.gk],
+    backs: VILLAIN_SLOTS.map((k) => backsRect(g, s, g.seats[k].cards, cam)),
+    taken,
+    board,
+    boardRect: screenRect(cam, board, 0.6),
+    boardV: Math.min(clearV, BOARD_AIR_PX / pxPerV),
+    potClear: grow(L.pot.box, BET_CLEAR_U * 0.5, clearV * 0.5),
+  }
+}
 
-/** A bet on screen: its chip, from the base disc on the felt to the top of the stack, and
- * its upright label on one side. */
+/** A bet on screen: its chip, from the base disc on the felt to the top of the stack, its
+ * footprint, and its upright label on one side. */
 export function betRects(g: Geo, at: UV, side: BetSide, room: BetRoom): { chip: ScreenRect; foot: ScreenRect; label: ScreenRect } {
-  const { s } = room
+  const { s, cam } = room
   const ru = g.chip / 2
   const rv = g.chip / 2 / g.aspect
   const disc = { u0: at[0] - ru, u1: at[0] + ru, v0: at[1] - rv, v1: at[1] + rv }
-  const chip = screenRect(g, s, disc, [0.6, 0.6 + chipStackZ(s)])
-  const foot = screenRect(g, s, disc, [0.6])
-  const [x, y] = projectWith(g, s, 0, 0, at[0], at[1], 0.6)
+  const foot = screenRect(cam, disc, 0.6)
+  const chip = screenRect(cam, disc, 0.6, 0.6 + chipStackZ(s))
+  const [x, y] = pointAt(cam, at[0], at[1], 0.6)
   const off = (1000 * s * g.chip) / 2 + 8 // Stage.css .bet-label --gap
   const x0 = side === 'right' ? x + off : x - off - room.label
   return { chip, foot, label: { x0, x1: x0 + room.label, y0: y - room.ink, y1: y + room.ink } }
 }
 
-/** The least on-screen air between a bet's chip (its stack, and its footprint), and its
- * label, and any seat's backs. */
-export function betAir(g: Geo, slot: VillainSlot, at: UV, room: BetRoom): { chip: number; foot: number; label: number } {
-  const { chip, foot, label } = betRects(g, at, g.seats[slot].betSide, room)
-  const out = { chip: Infinity, foot: Infinity, label: Infinity }
-  for (const b of room.backs) {
-    out.chip = Math.min(out.chip, rectGap(chip, b))
-    out.foot = Math.min(out.foot, rectGap(foot, b))
-    out.label = Math.min(out.label, rectGap(label, b))
-  }
-  return out
-}
-
-/** The board's clearance in v at a scale: the table-space one, but never more than
- * BOARD_AIR_PX on screen at its far edge. */
-function boardClearV(g: Geo, s: number): number {
-  const v0 = boardBox(g).v0
-  const pxPerV = (projectWith(g, s, 0, 0, 0.5, v0)[1] - projectWith(g, s, 0, 0, 0.5, v0 - 0.01)[1]) / 0.01
-  return Math.min(BET_CLEAR_U / g.aspect, BOARD_AIR_PX / pxPerV)
-}
-
-/** Whether a bet (chip + label) at `at` clears the board, the pot block, the rim (of either
- * outline the browser draws) and, on screen, every seat's backs and the bets already placed. */
-export function betClear(g: Geo, slot: VillainSlot, at: UV, room: BetRoom): boolean {
-  const sg = g.seats[slot]
-  const clearV = BET_CLEAR_U / g.aspect
-  const box = betBox(g, at, sg.betSide, room.label / (1000 * room.s))
-  if (overlaps(box, grow(boardBox(g), BET_CLEAR_U, boardClearV(g, room.s)))) return false
-  if (overlaps(box, grow(room.pot, BET_CLEAR_U * 0.5, clearV * 0.5))) return false
-  if (box.u0 < 0.03 || box.u1 > 0.97) return false
+/**
+ * How much of the air a bet at `at`, its label on `side`, keeps: the least share (0..1), over
+ * every seat's backs and the board, of the air asked. 0 where a hard rule fails: on the board
+ * or the pot block, over the rim (of either outline the browser draws), within BET_AIR_PX of
+ * a bet already placed. Gives up (0) as soon as the share drops under `floor`.
+ */
+export function airKept(g: Geo, at: UV, side: BetSide, room: BetRoom, floor = 0): number {
+  const box = betBox(g, at, side, room.label / (1000 * room.s))
+  if (box.u0 < 0.03 || box.u1 > 0.97) return 0
+  if (overlaps(box, room.potClear)) return 0
   const rim = Math.max(rimIn(box.u0), rimIn(box.u1))
-  if (box.v0 < rim + 0.02) return false
-  if (box.v1 > 1 - rim - 0.03) return false
-  const air = betAir(g, slot, at, room)
-  if (air.chip < CHIP_AIR_PX || air.foot < FOOT_AIR_PX || air.label < LABEL_AIR_PX) return false
-  if (room.taken?.length) {
-    const { chip, label } = betRects(g, at, sg.betSide, room)
-    for (const t of room.taken) if (rectGap(chip, t) < BET_AIR_PX || rectGap(label, t) < BET_AIR_PX) return false
+  if (box.v0 < rim + 0.02 || box.v1 > 1 - rim - 0.03) return 0
+  let kept = 1
+  const b = room.board
+  if (box.u0 < b.u1 + BET_CLEAR_U && b.u0 - BET_CLEAR_U < box.u1) {
+    const gap = Math.max(b.v0 - box.v1, box.v0 - b.v1)
+    if (gap <= 0) return 0
+    kept = Math.min(kept, gap / room.boardV)
+    if (kept < floor) return 0
   }
-  return true
+  const r = betRects(g, at, side, room)
+  if (room.taken) for (const t of room.taken) if (rectGap(r.chip, t) < BET_AIR_PX || rectGap(r.label, t) < BET_AIR_PX) return 0
+  // kept = Math.min(kept, rectGap(r.label, room.boardRect) / BOARD_AIR_PX)
+  for (const k of room.backs) {
+    kept = Math.min(kept, rectGap(r.chip, k) / CHIP_AIR_PX, rectGap(r.foot, k) / FOOT_AIR_PX, rectGap(r.label, k) / LABEL_AIR_PX)
+    if (kept < floor) return 0
+  }
+  return kept > 0 ? Math.min(1, kept) : 0
+}
+
+/** The step of AIR_STEPS a share of the air reaches (its index; -1 under the last). */
+export function airStep(kept: number): number {
+  for (let i = 0; i < AIR_STEPS.length; i++) if (kept >= AIR_STEPS[i] - 1e-9) return i
+  return -1
 }
 
 /** The seat laid out as this one's mirror image (desk: 2 and 4, 1 and 5), if any: its bet
@@ -437,20 +491,62 @@ export function twinOf(g: Geo, slot: VillainSlot): VillainSlot | null {
 }
 
 const mirror = ([u, v]: UV): UV => [round4(1 - u), v]
+const flip = (side: BetSide): BetSide => (side === 'left' ? 'right' : 'left')
+
+/** A bet's spot and how much air it keeps (its AIR_STEPS index; -1: no rule kept). */
+interface Spot {
+  at: UV
+  step: number
+}
+
+/** Whether a bet at `at` reads as seat `slot`'s: on screen its chip's centre lies within
+ * OWN_REACH_PX of that seat's backs, and nearer them than any other seat's (by OWN_MARGIN). */
+function owns(slot: VillainSlot, at: UV, room: BetRoom): boolean {
+  const [x, y] = pointAt(room.cam, at[0], at[1], 0.6)
+  const p = { x0: x, x1: x, y0: y, y1: y }
+  const own = rectGap(p, room.backs[slot - 1])
+  if (own > OWN_REACH_PX) return false
+  for (let k = 0; k < room.backs.length; k++) if (k !== slot - 1 && rectGap(p, room.backs[k]) * OWN_MARGIN <= own) return false
+  return true
+}
+
+/** How far from its own seat's backs a bet's chip may lie (centre to their nearest edge, px:
+ * 12 to 24 wherever the table has room), and how much nearer them than any other seat's. */
+export const OWN_REACH_PX = 30
+const OWN_MARGIN = 0.8
+
+/** The step a seat's bet at `at` keeps, with its twin's (both clear, both theirs, and clear
+ * of each other), giving up under step `worst` (cheaper: the share stops being worked out). */
+function spotStep(g: Geo, slot: VillainSlot, at: UV, side: BetSide, room: BetRoom, twin: { slot: VillainSlot; side: BetSide; at: UV } | null, worst: number): number {
+  if (!owns(slot, at, room) || (twin && !owns(twin.slot, twin.at, room))) return -1
+  const floor = AIR_STEPS[worst]
+  let kept = airKept(g, at, side, room, floor)
+  if (twin && kept > 0) {
+    kept = Math.min(kept, airKept(g, twin.at, twin.side, room, floor))
+    if (kept > 0) {
+      const a = betRects(g, at, side, room)
+      const b = betRects(g, twin.at, twin.side, room)
+      for (const r of [a.chip, a.label]) if (rectGap(r, b.chip) < BET_AIR_PX || rectGap(r, b.label) < BET_AIR_PX) kept = 0
+    }
+  }
+  return airStep(kept)
+}
 
 /**
- * A seat's bet: on the vector from where its cards lie toward the pot, as close to the
- * seat as the clearances allow (the backs, the full five-card board, the pot block, the
- * rim, the bets already placed). Where there is no room on the vector itself (the side
- * seats: the board spans the felt; the top centre: its backs and the board leave too
- * little), it steps off it by the least it must. The full board is used on every street,
- * so a bet never moves when a card lands. With a twin (twinOf), the spot must suit the
- * twin mirrored too. Falls back to the hand-placed anchor.
+ * A seat's bet, its label on `side`: on the vector from where its cards lie toward the pot,
+ * as close to the seat as the clearances allow (the backs, the full five-card board, the pot
+ * block, the rim, the bets already placed). Where there is no room on the vector itself (the
+ * side seats: the board spans the felt; the top centre: its backs and the board leave too
+ * little), it steps off it by the least it must, never so far that it reads as another
+ * seat's (owns). The full board is used on every street, so a bet never moves when a card
+ * lands. With a twin (twinOf), the spot must suit the twin mirrored too (its label on the
+ * mirrored side). The most air kept wins (AIR_STEPS), then the least t + 2|d|. The cells are
+ * visited in order of that cost, so the search stops at the first that keeps all the air.
+ * Null if no spot keeps even the last step.
  */
-export function betAnchor(g: Geo, slot: VillainSlot, room: BetRoom, twin: VillainSlot | null = null): UV {
-  const sg = g.seats[slot]
+export function betSpot(g: Geo, slot: VillainSlot, side: BetSide, room: BetRoom, twin: VillainSlot | null = null): Spot | null {
+  const a = g.seats[slot].cards
   const ph = g.aspect // plane px per table unit, relative to u
-  const a = sg.cards
   const p: UV = [g.pot[0], g.pot[1] - 0.03]
   // work in isotropic plane units, so "perpendicular" means perpendicular on the felt
   const dx = p[0] - a[0]
@@ -458,36 +554,126 @@ export function betAnchor(g: Geo, slot: VillainSlot, room: BetRoom, twin: Villai
   const len = Math.hypot(dx, dy)
   const ux = dx / len
   const uy = dy / len
-  let best: UV | null = null
-  let bestCost = Infinity
-  // in front of the seat (at least clear of its backs along the line), then the least
-  // total of distance from the seat and distance off the line
-  for (let i = 0; i <= 160; i++) {
-    const t = Math.max(0.05, (i / 200) * len)
-    if (t >= bestCost) break
-    for (let j = -24; j <= 24; j++) {
-      const d = j * 0.005
-      const cost = t + 2 * Math.abs(d)
-      if (cost >= bestCost) continue
-      const x = a[0] + ux * t - uy * d
-      const y = a[1] + (uy * t + ux * d) / ph
-      const at: UV = [round4(x), round4(y)]
-      if (!betClear(g, slot, at, room)) continue
-      if (twin) {
-        const m = mirror(at)
-        if (!betClear(g, twin, m, room)) continue
-        const a = betRects(g, at, sg.betSide, room)
-        const b = betRects(g, m, g.seats[twin].betSide, room)
-        if ([a.chip, a.label].some((r) => rectGap(r, b.chip) < BET_AIR_PX || rectGap(r, b.label) < BET_AIR_PX)) continue
-      }
-      best = at
-      bestCost = cost
-    }
+  // rows: t from just in front of the seat to most of the way to the pot; columns: d off the
+  // line, 0.005 apart
+  const T0 = 0
+  const dt = len / 200
+  const rows = Math.max(0, Math.floor((0.8 * len - T0) / dt))
+  const J = 32
+  const last = AIR_STEPS.length - 1
+  const found: { best: (Spot & { cost: number }) | null } = { best: null }
+  const visit = (i: number, j: number) => {
+    const { best } = found
+    const t = T0 + i * dt
+    const d = j * 0.005
+    const cost = t + 2 * Math.abs(d)
+    // only a spot that keeps more air, or as much nearer the seat, can win
+    const worst = !best ? last : cost < best.cost ? best.step : best.step - 1
+    if (worst < 0) return
+    const at: UV = [round4(a[0] + ux * t - uy * d), round4(a[1] + (uy * t + ux * d) / ph)]
+    const step = spotStep(g, slot, at, side, room, twin ? { slot: twin, side: flip(side), at: mirror(at) } : null, worst)
+    if (step < 0 || step > worst || (best && step === best.step && cost >= best.cost)) return
+    found.best = { at, step, cost }
   }
-  return best ?? sg.bet
+  // in order of cost: each column (|j|, the left cell first) keeps its own next row, and a
+  // sweep takes every cell under the next threshold, one row's cost (dt) at a time
+  const next: number[] = new Array<number>(J + 1).fill(0)
+  for (let c = T0 + dt; ; c += dt) {
+    let left = false
+    for (let k = 0; k <= J; k++) {
+      while (next[k] <= rows && T0 + next[k] * dt + 0.01 * k < c) {
+        visit(next[k], -k)
+        if (k) visit(next[k], k)
+        next[k]++
+      }
+      if (next[k] <= rows) left = true
+    }
+    if (found.best?.step === 0 || !left) break
+  }
+  const { best } = found
+  return best && { at: best.at, step: best.step }
 }
 
 const round4 = (n: number) => Math.round(n * 1e4) / 1e4
+
+/** The order the bets are placed in: the top-centre seat first (its bet has the least room,
+ * between its backs and the board), then its neighbours, then the sides. */
+const BET_ORDER: readonly VillainSlot[] = [3, 2, 4, 1, 5]
+
+export interface BetPlan {
+  bets: Record<VillainSlot, UV>
+  sides: Record<VillainSlot, BetSide>
+  /** The share of the air each bet keeps (AIR_STEPS; 0: none found, the hand-placed anchor). */
+  kept: Record<VillainSlot, number>
+}
+
+/**
+ * Every villain's bet, one seat at a time (BET_ORDER), each keeping clear on screen of the
+ * bets already placed (the hero's first). Per seat, the most air kept wins; at equal air, in
+ * this order: its own side on the vector (twins mirrored), the hand-placed anchor, the label
+ * on the other side (twins both flipped), and last, for twins, each placed on its own.
+ */
+export function placeBets(g: Geo, room: BetRoom, heroBet: UV): BetPlan {
+  const plan: BetPlan = { bets: {} as BetPlan['bets'], sides: {} as BetPlan['sides'], kept: {} as BetPlan['kept'] }
+  const taken: ScreenRect[] = []
+  const put = (k: VillainSlot, at: UV, side: BetSide, step: number) => {
+    plan.bets[k] = at
+    plan.sides[k] = side
+    plan.kept[k] = step < 0 ? 0 : AIR_STEPS[step]
+    const r = betRects(g, at, side, room)
+    taken.push(r.chip, r.label)
+  }
+  const r = betRects(g, heroBet, 'right', room)
+  taken.push(r.chip, r.label)
+  for (const k of BET_ORDER) {
+    if (plan.bets[k]) continue
+    const sg = g.seats[k]
+    const side = sg.betSide
+    const twin = twinOf(g, k)
+    const here = { ...room, taken: [...taken] }
+    // this seat (and its twin, mirrored) as one choice
+    let pick = choice(betSpot(g, k, side, here, twin), side)
+    if (pick?.step !== 0) {
+      const anchor = { at: sg.bet, side, step: spotStep(g, k, sg.bet, side, here, twin ? { slot: twin, side: flip(side), at: mirror(sg.bet) } : null, AIR_STEPS.length - 1) }
+      pick = better(pick, anchor)
+    }
+    if (pick?.step !== 0) pick = better(pick, choice(betSpot(g, k, flip(side), here, twin), flip(side)))
+    if (twin && pick?.step !== 0) {
+      // each on its own: this seat, then its twin clear of it
+      const mine = alone(g, k, here)
+      const theirs = mine && (!pick || mine.step < pick.step) ? alone(g, twin, { ...room, taken: [...taken, ...rectsOf(g, mine, room)] }) : null
+      if (mine && theirs && (!pick || Math.max(mine.step, theirs.step) < pick.step)) {
+        put(k, mine.at, mine.side, mine.step)
+        put(twin, theirs.at, theirs.side, theirs.step)
+        continue
+      }
+    }
+    // nothing keeps even the last step (a table far smaller than any supported size): the
+    // hand-placed anchors
+    const at = pick?.at ?? sg.bet
+    put(k, at, pick?.side ?? side, pick?.step ?? -1)
+    if (twin) put(twin, pick ? mirror(at) : g.seats[twin].bet, flip(pick?.side ?? side), pick?.step ?? -1)
+  }
+  return plan
+}
+
+interface Choice extends Spot {
+  side: BetSide
+}
+
+const choice = (s: Spot | null, side: BetSide): Choice | null => (s ? { ...s, side } : null)
+const better = (a: Choice | null, b: Choice | null): Choice | null => (b && b.step >= 0 && (!a || b.step < a.step) ? b : a)
+const rectsOf = (g: Geo, c: Choice, room: BetRoom) => {
+  const r = betRects(g, c.at, c.side, room)
+  return [r.chip, r.label]
+}
+
+/** A seat's bet on its own (no twin): its side, or the other where that keeps more air. */
+function alone(g: Geo, k: VillainSlot, room: BetRoom): Choice | null {
+  const side = g.seats[k].betSide
+  const a = choice(betSpot(g, k, side, room), side)
+  return a?.step === 0 ? a : better(a, choice(betSpot(g, k, flip(side), room), flip(side)))
+}
 
 /* ---------- the layout ---------- */
 
@@ -549,16 +735,16 @@ export interface TableLayout {
   coach: { left: number; top: number; width: number; height: number }
   /** The street label, the pot and its "in bets" line. */
   pot: PotBlock
-  /** Each villain's bet anchor and the hero's, in table space (betAnchor). */
+  /** Each villain's bet anchor and the hero's, in table space (placeBets). */
   bets: Readonly<Record<VillainSlot, UV>>
+  /** The side each villain's bet label reads on (its seat's, unless that had no room). */
+  betSides: Readonly<Record<VillainSlot, BetSide>>
+  /** The share of the air each villain's bet keeps (AIR_STEPS; 1 on any table not small). */
+  betKept: Readonly<Record<VillainSlot, number>>
   heroBet: UV
 }
 
 const PANEL_W = 360
-
-/** The order the bets are placed in: the top-centre seat first (its bet has the least room,
- * between its backs and the board), then its neighbours, then the sides. */
-const BET_ORDER: readonly VillainSlot[] = [3, 2, 4, 1, 5]
 
 /** The coach's ring size beside the hand (the coach builder draws 112 px). */
 export const COACH_RING_SIDE = 112
@@ -638,25 +824,8 @@ export function computeLayout(input: LayoutInput): TableLayout {
 
   const pot = potBlock({ g, s, ox, oy, kind })
   const heroBet = heroBetAnchor(g, pot.box)
-  // one at a time, each keeping clear (on screen) of the bets already placed
-  const bets = {} as Record<VillainSlot, UV>
-  const taken: ScreenRect[] = []
-  const place = (at: UV, side: BetSide) => {
-    const r = betRects(g, at, side, betRoom({ g, gk, s, pot }))
-    taken.push(r.chip, r.label)
-  }
-  place(heroBet, 'right')
-  for (const k of BET_ORDER) {
-    if (bets[k]) continue
-    const twin = twinOf(g, k)
-    bets[k] = betAnchor(g, k, betRoom({ g, gk, s, pot }, taken), twin)
-    place(bets[k], g.seats[k].betSide)
-    if (twin) {
-      bets[twin] = mirror(bets[k])
-      place(bets[twin], g.seats[twin].betSide)
-    }
-  }
-  return { kind, gk, g, outline, W, H, Weff, panelW, s, axis, ox, oy, tableW, tableH, objTop, objBottom, hw, lift, barH, dockBottom, dockH, coachAt, tight, heroTop, coach, pot, bets, heroBet }
+  const { bets, sides: betSides, kept: betKept } = placeBets(g, betRoom({ g, gk, s, pot }), heroBet)
+  return { kind, gk, g, outline, W, H, Weff, panelW, s, axis, ox, oy, tableW, tableH, objTop, objBottom, hw, lift, barH, dockBottom, dockH, coachAt, tight, heroTop, coach, pot, bets, betSides, betKept, heroBet }
 }
 
 /** The hero's bet: straight up from your hand toward the pot, just below the pot block,

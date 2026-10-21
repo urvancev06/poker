@@ -468,7 +468,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
             const p = s?.player ?? i
             const spot = p === 0 ? L.heroBet : L.bets[p as VillainSlot]
             const [x, y] = pt(spot[0], spot[1])
-            const side = p === 0 ? 'right' : g.seats[p as VillainSlot].betSide
+            const side = p === 0 ? 'right' : L.betSides[p as VillainSlot]
             return (
               <span
                 key={`bet-${p}`}
