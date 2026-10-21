@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { equityMargin, equityMethodNote, equityMethodSpoken, equityMethodTag } from './equityMethod'
+import { equityMargin, equityMethodNote, equityMethodSpoken, equityMethodChip, equityMethodTag } from './equityMethod'
 
 describe('equity method wording', () => {
   it('names how the equity was computed', () => {
@@ -34,5 +34,16 @@ describe('equity method wording', () => {
     expect(equityMethodSpoken({ equity_method: 'sampled' })).toBe('sampled')
     expect(equityMethodSpoken({ equity_method: 'preflop_table' })).toBe('from the preflop table')
     expect(equityMethodSpoken({})).toBeNull()
+  })
+})
+
+describe('the chip on the maths sheet', () => {
+  it('names the equity when it sits beside realized equity', () => {
+    expect(equityMethodChip({ equity_method: 'exact' }, 'Equity')).toBe('Exact')
+    expect(equityMethodChip({ equity_method: 'exact' }, 'Realized')).toBe('Exact equity')
+    expect(equityMethodChip({ equity_method: 'preflop_table' }, 'Realized')).toBe('Table equity')
+    expect(equityMethodChip({ equity_method: 'sampled', equity_se_pct: 0.5 }, 'Realized')).toBe('Equity ±1.0 pp')
+    expect(equityMethodChip({ equity_method: 'sampled', equity_se_pct: 0.5 }, 'Equity')).toBe('±1.0 pp')
+    expect(equityMethodChip({}, 'Realized')).toBeNull()
   })
 })

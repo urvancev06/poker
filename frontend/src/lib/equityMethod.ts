@@ -53,3 +53,13 @@ export function equityMethodSpoken(f: EquityMethodFields): string | null {
   const m = equityMargin(f)
   return m != null ? `sampled, plus or minus ${m.toFixed(1)} points` : 'sampled'
 }
+
+/** The maths sheet's chip beside the headline bar. Beside raw equity it is the tag; beside
+ *  realized equity (an estimate made from it) it says it is the equity's method: "Exact
+ *  equity", "Table equity", "Equity ±0.4 pp". */
+export function equityMethodChip(f: EquityMethodFields, beside: 'Equity' | 'Realized'): string | null {
+  const tag = equityMethodTag(f)
+  if (!tag || beside === 'Equity') return tag
+  if (f.equity_method === 'sampled') return tag === 'Sampled' ? 'Sampled equity' : `Equity ${tag}`
+  return `${tag} equity`
+}

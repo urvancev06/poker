@@ -36,7 +36,7 @@ import { useShowWorking } from '../../lib/coachPrefs'
 import { villainLines, type VillainLine } from '../../lib/coachRange'
 import { glanceView, type GlanceView } from '../../lib/coachView'
 import { PROVENANCE_LABEL, workingRows, type WorkingRow } from '../../lib/coachWorking'
-import { equityMethodSpoken, equityMethodTag } from '../../lib/equityMethod'
+import { equityMethodChip, equityMethodSpoken } from '../../lib/equityMethod'
 import { pct } from '../../lib/format'
 import { usePrefs } from '../../lib/prefsContext'
 import { Disclosure } from '../../ui/Disclosure'
@@ -84,7 +84,7 @@ export function MathsSheet({ coaching, open, onClose, bottomInset, mediumTop, po
         view.priced ? <Ring realizedPct={view.eq} needPct={view.need} rawPct={view.raw} tone={view.tone} size={SHEET_RING_PX} /> : undefined
       }
     >
-      <Bars view={view} method={equityMethodTag(c)} spoken={equityMethodSpoken(c)} />
+      <Bars view={view} method={equityMethodChip(c, view.eqLabel)} spoken={equityMethodSpoken(c)} />
       <p className="mt-[22px] mb-0 text-body leading-[1.45] text-ink">{c.rationale}</p>
       {lines.length > 0 && <TheirRange lines={lines} />}
       <Disclosure summary="Show working" open={working} onOpenChange={setWorking} className="mt-[18px]" panelClassName="mb-1.5 mt-1">
