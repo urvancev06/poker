@@ -254,8 +254,8 @@ export function vAtY(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy'>, y: number): 
  * pot figure, then "26 in bets". Type does not scale with the table, so it is placed in
  * viewport px from the board's lower edge, not in table units.
  */
-export function potBlock(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy' | 'kind'>): PotBlock {
-  const phone = L.kind === 'phone'
+export function potBlock(L: Pick<TableLayout, 'g' | 's' | 'ox' | 'oy' | 'gk'>): PotBlock {
+  const phone = L.gk === 'phone'
   const bottom = project(L, 0.5, boardBox(L.g).v1, 0)[1]
   const streetY = bottom + (phone ? 14 : 20)
   const potY = streetY + (phone ? 23 : 28)
@@ -700,8 +700,9 @@ export interface LayoutInput {
   limb: number
   /** env(safe-area-inset-bottom), when known. */
   safeBottom?: number
-  /** Tallest top-seat label (px); depends on the visibility mode (HUD adds a line). */
-  topSeatH: number
+  /** Tallest top-seat label (px); depends on the visibility mode (HUD adds a line). Per
+   * geometry when a tablet may draw either (the phone's labels are smaller). */
+  topSeatH: number | Readonly<Record<GeoKind, number>>
   /** Widest side-seat label (px). */
   sideSeatW: number
   /** The outline the browser draws (slabOutline). */
@@ -710,6 +711,8 @@ export interface LayoutInput {
 
 export interface TableLayout {
   kind: LayoutKind
+  /** The table's geometry: the phone's on a phone and on a tablet too small for the desk's
+   * (TABLET_PHONE_GEO_S). The chrome (bar, dock, sheets) still follows `kind`. */
   gk: GeoKind
   g: Geo
   /** The slab's outline as this browser draws it. */
@@ -761,13 +764,32 @@ const PANEL_W = 360
 /** The coach's ring size beside the hand (the coach builder draws 112 px). */
 export const COACH_RING_SIDE = 112
 
+/** Below this desk scale a tablet draws its table with the phone's geometry, when that one
+ * reaches it: a portrait tablet 600-650 px wide (the desk's s is about 0.21-0.25 there, the
+ * phone's 0.5). The desk's fixed-px labels and air outgrow so small a felt, its bets overlap
+ * and its pot block runs past the near rim; the phone's deeper, nearer table spends the width
+ * on the felt. A landscape phone (360-430 px tall) is too short for either: it keeps the desk's. */
+export const TABLET_PHONE_GEO_S = 0.3
+
+/** The table, seats, hand, pot and bets for a viewport. A phone draws the phone's geometry and
+ * a desktop the desk's; a tablet the desk's unless TABLET_PHONE_GEO_S says otherwise. */
 export function computeLayout(input: LayoutInput): TableLayout {
-  const { w: W, h: H, kind, panelOpen, limb, safeBottom = 0, topSeatH, sideSeatW, outline = 'superellipse' } = input
+  if (input.kind !== 'tablet') return layoutAs(input, input.kind === 'phone' ? 'phone' : 'desk')
+  const desk = layoutAs(input, 'desk')
+  if (desk.s >= TABLET_PHONE_GEO_S) return desk
+  const phone = layoutAs(input, 'phone')
+  return phone.s >= TABLET_PHONE_GEO_S ? phone : desk
+}
+
+function layoutAs(input: LayoutInput, gk: GeoKind): TableLayout {
+  const { w: W, h: H, kind, panelOpen, limb, safeBottom = 0, sideSeatW, outline = 'superellipse' } = input
+  const topSeatH = typeof input.topSeatH === 'number' ? input.topSeatH : input.topSeatH[gk]
+  // the chrome (bar, dock, coach row) follows the breakpoint; the table follows its geometry
   const phone = kind === 'phone'
-  const gk: GeoKind = phone ? 'phone' : 'desk'
+  const pg = gk === 'phone'
   const g = GEO[gk]
   const unit = unitBounds(g)
-  const lift = phone ? 10 : 16
+  const lift = pg ? 10 : 16
   const barH = phone ? 56 : 64
   // the dock floats fully above the limb with clear air; on a phone the limb sinks below it
   const dockGap = phone ? Math.max(12, safeBottom) : 18
@@ -776,22 +798,22 @@ export function computeLayout(input: LayoutInput): TableLayout {
   const panelW = kind === 'desk' && panelOpen ? PANEL_W : 0
   const Weff = W - (panelW ? panelW + 16 : 0)
   const regionTop = barH + (phone ? 6 : 14)
-  const sideL = phone ? 0 : Math.max(W >= 1700 ? 140 : 116, sideSeatW + 22)
-  const margin = phone ? 0 : W >= 1700 ? 64 : 32
-  const topSeats = topSeatH + (phone ? 6 : 12)
-  const topAir = phone ? 10 : 14
-  const heroAir = (phone ? 14 : 24) + lift
-  const heroLabelH = phone ? 8 + 22 + 4 + 18 : 12 + 26 + 6 + 20
+  const sideL = pg ? 0 : Math.max(W >= 1700 ? 140 : 116, sideSeatW + 22)
+  const margin = pg ? 0 : W >= 1700 ? 64 : 32
+  const topSeats = topSeatH + (pg ? 6 : 12)
+  const topAir = pg ? 10 : 14
+  const heroAir = (pg ? 14 : 24) + lift
+  const heroLabelH = pg ? 8 + 22 + 4 + 18 : 12 + 26 + 6 + 20
 
   const fit = (rowH: number) => {
     const regionBottom = dockBottom - dockH - (phone ? 12 : 18) - rowH
     const avail = regionBottom - regionTop
-    let s = phone ? (W - 64) / unit.w : Math.min((Weff - 2 * margin - 2 * sideL) / unit.w, (Weff * 0.66) / unit.w)
+    let s = pg ? (W - 64) / unit.w : Math.min((Weff - 2 * margin - 2 * sideL) / unit.w, (Weff * 0.66) / unit.w)
     s = Math.min(s, 1.05)
     let hw = 0
     for (let i = 0; i < 8; i++) {
       const boardPx = g.card * 1000 * s
-      hw = phone ? clamp(boardPx * 1.25, 54, Math.min(66, (W - 260) / 2.1)) : clamp(boardPx * 1.04, 76, 116)
+      hw = pg ? clamp(boardPx * 1.25, 54, Math.min(66, (W - 260) / 2.1)) : clamp(boardPx * 1.04, 76, 116)
       const need = topSeats + topAir + unit.h * s + heroAir + hw * 1.4 + heroLabelH
       if (need <= avail) break
       s *= Math.max(0.8, (avail - (need - unit.h * s)) / (unit.h * s))
@@ -806,7 +828,8 @@ export function computeLayout(input: LayoutInput): TableLayout {
   const axis = phone ? W / 2 : Weff / 2
   const coachW = (t: boolean) => COACH_RING_SIDE + 24 + (t ? 170 : 236)
   const roomRight = Weff - 16 - (axis + f.hw * 1.05 + 48)
-  if (phone) coachAt = 'row'
+  // (on the phone's geometry the corner seats flank your hand, so the coach takes the row)
+  if (phone || pg) coachAt = 'row'
   else if (roomRight < coachW(false)) {
     tight = true
     if (roomRight < coachW(true)) coachAt = 'row'
@@ -818,7 +841,7 @@ export function computeLayout(input: LayoutInput): TableLayout {
   const stackH = topSeats + topAir + tableH + heroAir + hw * 1.4 + heroLabelH
   // the leftover air is shared out, so no band of void opens on either side (a desktop
   // sits a little high)
-  const stackTop = regionTop + Math.max(0, (avail - stackH) * (phone ? 0.5 : 0.46))
+  const stackTop = regionTop + Math.max(0, (avail - stackH) * (pg ? 0.5 : 0.46))
   const objTop = stackTop + topSeats + topAir
   const ox = axis
   const oy = objTop - unit.top * s
@@ -834,7 +857,7 @@ export function computeLayout(input: LayoutInput): TableLayout {
     coach = { left: axis - width / 2, top: dockBottom - dockH - 10 - 64, width, height: 64 }
   }
 
-  const pot = potBlock({ g, s, ox, oy, kind })
+  const pot = potBlock({ g, s, ox, oy, gk })
   const heroBet = heroBetAnchor(g, pot.box)
   const { bets, sides: betSides, kept: betKept } = placeBets(g, betRoom({ g, gk, s, pot }), heroBet)
   return { kind, gk, g, outline, W, H, Weff, panelW, s, axis, ox, oy, tableW, tableH, objTop, objBottom, hw, lift, barH, dockBottom, dockH, coachAt, tight, heroTop, coach, pot, bets, betSides, betKept, heroBet }
@@ -878,7 +901,7 @@ export interface SeatPlacement {
  */
 export function placeSeats(L: TableLayout, sizes: Readonly<Partial<Record<VillainSlot, SeatSize>>>): Record<VillainSlot, SeatPlacement> {
   const g = L.g
-  const phone = L.kind === 'phone'
+  const phone = L.gk === 'phone'
   const size = (k: VillainSlot) => sizes[k] ?? { w: 0, h: 0 }
   const out = {} as Record<VillainSlot, SeatPlacement>
   for (const k of VILLAIN_SLOTS) {

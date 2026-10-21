@@ -149,8 +149,14 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   /* ---------- model and layout ---------- */
   const model = useMemo(() => (session ? buildTableModel(session, reads, visibility) : null), [session, reads, visibility])
   const panelOpen = desk && (logShown || mathsShown)
-  const topSeatH = TOP_SEAT_H[phone ? 'phone' : 'desk'][visibility === 'hud' && model ? 'three' : 'two']
-  const L = useMemo(() => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH, sideSeatW: 140, outline: OUTLINE }), [W, H, kind, panelOpen, topSeatH])
+  const seatRows = visibility === 'hud' && model ? 'three' : 'two'
+  const L = useMemo(
+    () => computeLayout({ w: W, h: H, kind, panelOpen, limb: limbHeight(H), topSeatH: { desk: TOP_SEAT_H.desk[seatRows], phone: TOP_SEAT_H.phone[seatRows] }, sideSeatW: 140, outline: OUTLINE }),
+    [W, H, kind, panelOpen, seatRows],
+  )
+  // the table's type follows its geometry: a narrow portrait tablet draws the phone's table
+  // (TABLET_PHONE_GEO_S), so its seats, hand, pot and bets take the phone's sizes too
+  const phoneGeo = L.gk === 'phone'
 
   // seat labels: their natural sizes push the top three apart (measured after each render)
   const seatEls = useRef<(HTMLDivElement | null)[]>([])
@@ -353,12 +359,12 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
   const avoid = useMemo(() => {
     const rects: (Rect | null)[] = VILLAIN_SLOTS.map((k) => seatRect(places[k], sizes[k]))
     const heroW = L.hw * 2.1 + 40
-    rects.push({ x: L.axis - heroW / 2, y: L.heroTop - L.lift - 10, w: heroW, h: L.hw * 1.4 + (phone ? 62 : 80) + L.lift })
+    rects.push({ x: L.axis - heroW / 2, y: L.heroTop - L.lift - 10, w: heroW, h: L.hw * 1.4 + (phoneGeo ? 62 : 80) + L.lift })
     if (coachVisible) rects.push(L.coachAt === 'side' ? { x: L.coach.left - 18, y: L.coach.top - 18, w: L.coach.width + 36, h: L.coach.height + 36 } : { x: L.coach.left, y: L.coach.top, w: L.coach.width, h: L.coach.height })
     const dw = phone ? L.W - 16 : 480
     rects.push({ x: L.axis - dw / 2 - 16, y: L.dockBottom - L.dockH - 16, w: dw + 32, h: L.dockH + 32 })
     return rects
-  }, [places, sizes, L, phone, coachVisible])
+  }, [places, sizes, L, phone, phoneGeo, coachVisible])
   useSpaceAvoid('table', avoid)
 
   /* ---------- render ---------- */
@@ -455,7 +461,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
           )}
           <div className="centred flex items-baseline gap-2" data-pot-label="" hidden={!showPot} style={{ left: L.pot.x, top: L.pot.potY }}>
             <span className="text-foot font-semibold text-fog">Pot</span>
-            <span className={`font-strong tabular-nums tracking-[-0.02em] ${phone ? 'text-[24px]' : 'text-title'}`}>{bb(model?.pot ?? 0, big)}</span>
+            <span className={`font-strong tabular-nums tracking-[-0.02em] ${phoneGeo ? 'text-[24px]' : 'text-title'}`}>{bb(model?.pot ?? 0, big)}</span>
             <span className="text-foot font-semibold text-fog">bb</span>
           </div>
           {showBets && (
@@ -471,7 +477,7 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
             return (
               <span
                 key={`bet-${p}`}
-                className={`bet-label font-strong tabular-nums tracking-[-0.01em] ${phone ? 'text-[14px]' : 'text-callout'}`}
+                className={`bet-label font-strong tabular-nums tracking-[-0.01em] ${phoneGeo ? 'text-[14px]' : 'text-callout'}`}
                 data-bet={p}
                 data-side={side}
                 hidden={!s || !(s.bet > 0)}
@@ -494,14 +500,14 @@ export function TableView({ table, logOpen, onLogOpenChange }: TableViewProps) {
                 bigBlind={big}
                 identity={identity}
                 place={places[k]}
-                phone={phone}
+                phone={phoneGeo}
                 labelRef={(el) => {
                   seatEls.current[i] = el
                 }}
               />
             )
           })}
-          <HeroHand hero={model?.hero ?? null} bigBlind={big} turn={!!model?.heroTurn} phone={phone} x={L.axis} y={L.heroTop} />
+          <HeroHand hero={model?.hero ?? null} bigBlind={big} turn={!!model?.heroTurn} phone={phoneGeo} x={L.axis} y={L.heroTop} />
         </div>
       </div>
 

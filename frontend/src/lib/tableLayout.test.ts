@@ -30,7 +30,7 @@ import {
 import { limbHeight } from './space'
 
 const layout = (w: number, h: number, kind: LayoutKind, panelOpen = false, outline: Outline = 'superellipse') =>
-  computeLayout({ w, h, kind, panelOpen, limb: limbHeight(h), topSeatH: kind === 'phone' ? 36 : 43, sideSeatW: 140, outline })
+  computeLayout({ w, h, kind, panelOpen, limb: limbHeight(h), topSeatH: kind === 'phone' ? 36 : kind === 'tablet' ? { desk: 43, phone: 36 } : 43, sideSeatW: 140, outline })
 
 const OUTLINES: Outline[] = ['superellipse', 'rounded']
 
@@ -39,14 +39,18 @@ const SIZES: [number, number, LayoutKind][] = [
   [1280, 720, 'desk'],
   [1920, 1080, 'desk'],
   [1024, 768, 'tablet'],
+  // portrait tablets too small for the desk's geometry draw the phone's (TABLET_PHONE_GEO_S)
+  [600, 960, 'tablet'],
+  [640, 960, 'tablet'],
   [390, 844, 'phone'],
   [390, 664, 'phone'],
 ]
 
 /** Small tables (s under about 0.5): portrait tablets, a laptop minus its browser chrome, a
  * desktop with a side panel open, the smallest phone. A bet may give up some of its air to
- * the backs there (AIR_STEPS), never its 4 px from another bet. (A 600 px wide tablet,
- * s about 0.21, is below this: its pot block alone runs past the near rim.) */
+ * the backs there (AIR_STEPS), never its 4 px from another bet. (A 600-650 px wide tablet
+ * would draw the desk's table at s about 0.21-0.25, its pot block past the near rim, so it
+ * draws the phone's instead: SIZES.) */
 const SMALL: [number, number, boolean][] = [
   [768, 1024, false],
   [820, 1180, false],
@@ -112,7 +116,7 @@ describe('computeLayout', () => {
     expect(L.objTop).toBeGreaterThan(L.barH)
     expect(L.heroTop).toBeGreaterThan(L.objBottom)
     // hand + label end above the dock (and above the coach row when it is one)
-    const handBottom = L.heroTop + L.hw * 1.4 + (kind === 'phone' ? 52 : 64)
+    const handBottom = L.heroTop + L.hw * 1.4 + (L.gk === 'phone' ? 52 : 64)
     const ceiling = L.coachAt === 'row' ? L.coach.top : L.dockBottom - L.dockH
     expect(handBottom).toBeLessThanOrEqual(ceiling + 1)
     expect(L.dockBottom).toBeLessThan(h - limbHeight(h))
@@ -126,6 +130,19 @@ describe('computeLayout', () => {
     expect(layout(390, 844, 'phone').coachAt).toBe('row')
     expect(layout(1024, 768, 'tablet')).toMatchObject({ coachAt: 'side', tight: true })
     expect(layout(700, 900, 'tablet').coachAt).toBe('row')
+  })
+  it("draws a narrow portrait tablet's table with the phone's geometry, not a landscape phone's", () => {
+    for (const [w, h] of [[600, 960], [640, 960], [647, 900]]) {
+      const L = layout(w, h, 'tablet')
+      expect(L.gk, `${w}x${h}`).toBe('phone')
+      expect(L.s).toBeGreaterThan(0.45)
+      // the chrome is still a tablet's
+      expect(L).toMatchObject({ kind: 'tablet', barH: 64, dockH: 64, coachAt: 'row' })
+    }
+    for (const [w, h] of [[700, 900], [768, 1024], [1024, 768]]) expect(layout(w, h, 'tablet').gk, `${w}x${h}`).toBe('desk')
+    // a landscape phone is too short for either geometry (the hand runs into the dock under
+    // both): it keeps the desk's rather than trade one overlap for another
+    for (const [w, h] of [[667, 375], [844, 390], [932, 430]]) expect(layout(w, h, 'tablet').gk, `${w}x${h}`).toBe('desk')
   })
   it('re-centres the table when a desktop panel opens', () => {
     const open = layout(1440, 900, 'desk', true)

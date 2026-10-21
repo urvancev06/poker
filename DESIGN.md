@@ -203,6 +203,12 @@ scale), so the slab reads as an object in depth, not an ellipse.
 | desk and tablet | 50° | 0.56 | 1800 | 34 | 0.11 of the plan width |
 | phone | 38° | 0.9 | 2000 | 36 | 0.168 (the board sits at v 0.465) |
 
+A tablet draws the desk's table unless that would come out below s 0.3 and the phone's would not
+(`TABLET_PHONE_GEO_S`): a portrait tablet 600-650 px wide draws the phone's table, seats, hand,
+pot and bets (s about 0.5 instead of 0.21-0.25) under the tablet's own bar, dock and sheets. A
+landscape phone (360-430 px tall) is too short for either table, as the hand runs into the dock
+under both, so it keeps the desk's; it needs a layout of its own.
+
 `project(u, v, z)` is the same camera written as arithmetic: CSS `rotateX`, then perspective,
 centred on the scene origin. That is what lets upright 2D things (seat type, the pot, bet labels,
 your hand) sit at projected points, so type is never scaled, skewed or blurred by the 3D. The tests
@@ -251,7 +257,8 @@ two side seats of a desktop mirror each other (`twinOf`). On a small table (s un
 portrait tablet, a laptop with a panel open) the fixed-px label and air can outgrow the felt, so a
 bet gives up the least of its air from the backs it must (`AIR_STEPS`, down to touching), and its
 label may read on the other side; two bets never come within 4 px, at any supported size (a
-600 px wide tablet is below that range: its pot block alone runs past the near rim). The
+600-650 px wide portrait tablet gets there by drawing the phone's table; a landscape phone is
+outside that range). The
 street label has one fixed place, above the pot.
 
 **Seats** are floating type, not panels: the name and stack on one line, the position and the
