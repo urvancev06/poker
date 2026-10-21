@@ -157,3 +157,23 @@ def test_rfi_text_unchanged():
         m = re.search(rf"^- \*\*{re.escape(label)} \([^)]*\):\*\* `([^`]*)`", text, re.M)
         assert m, pos
         assert m.group(1) == _RANGE_TEXT[pos], pos
+
+
+def test_reg_fold_to_3bet_lands_in_the_pool_band():
+    """Owner decision (c): a reg's fold-to-3-bet is inside the §5 band 45-62% from
+    every opening seat, in and out of position, and out of position still folds
+    at least as much as in position. Exact over the chart (combo-weighted by
+    P(open)), at the TAG type mean."""
+    from poker.strategy.dials import TYPE_DIALS
+
+    tag = TYPE_DIALS["tag"]
+    for opener in POSITIONS[:-1]:
+        ip, oop = [], []
+        for threebettor in preflop.heroes_after(opener):
+            f = preflop.fold_to_3bet(
+                opener, threebettor, open_mult=tag.open, call=tag.call, threebet=tag.threebet
+            )
+            assert 0.45 <= f <= 0.62, (opener, threebettor, f)
+            (ip if preflop.in_position(opener, threebettor) else oop).append(f)
+        if ip and oop:
+            assert min(oop) >= max(ip) - 1e-9, (opener, ip, oop)

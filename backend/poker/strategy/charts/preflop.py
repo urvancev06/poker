@@ -126,7 +126,11 @@ FOURBET_BLUFF_CAP = 0.6
 JAM_VS_4BET = _set("KK+, AKs")
 CONTINUE_VS_4BET = _set("QQ, AKo")
 CONTINUE_VS_4BET_PRICE = 0.38
-CALL_3BET_FRAC: dict[str, float] = {"ip": 0.45, "oop": 0.35}
+# The call cut is this share of the opener's own opening cut (4-bets included).
+# Owner decision (c), 2026-10: out of position is 0.42, not the spec's 0.35, which
+# left a TAG folding 64-65% out of position, above the §5 reg band (45-62%). At
+# the TAG mean this gives 54-55% in position and 57-58% out of position.
+CALL_3BET_FRAC: dict[str, float] = {"ip": 0.45, "oop": 0.42}
 
 # --- Squeeze and cold 4-bet ------------------------------------------------------
 SQUEEZE_VALUE = _set("QQ+, AKs, AKo")
