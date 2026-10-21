@@ -251,6 +251,17 @@ def _postflop_node(level: int, last, earlier: list, aggressor: int | None, seats
     return Node.VS_BET
 
 
+def faced_chips(spot: Spot) -> tuple[int, int]:
+    """(the pot before the faced bet, the faced bet's chips) at a postflop spot
+    facing a bet."""
+    entries = _street_entries(spot.history, spot.street)
+    faced = _faced(entries)
+    if spot.street == "preflop" or faced is None or spot.to_call == 0:
+        raise ValueError("faced_chips needs a postflop spot facing a bet")
+    idx, last = faced
+    return _pot_before(spot.pot, entries, idx), last.added
+
+
 def with_faced_size(spot: Spot, frac: float) -> Spot:
     """The same spot as if the faced bet had been ``frac`` × the pot before it,
     capped at the bettor's stack. Rebuilds pot, to_call, legal, facing_frac,
@@ -268,12 +279,31 @@ def with_faced_size(spot: Spot, frac: float) -> Spot:
     added = min(max(round(frac * before), floor), available)
     level = level_before + added
     pot = before + added
+    # Rewrite the faced bet and the calls after it, so the result is a consistent
+    # spot (resizing it again starts from the right pot before the bet).
+    rewritten = {id(last): dataclasses.replace(
+        last, added=added, street_total=level, to_amount=level,
+        all_in=added >= available, stack_after=available - added,
+    )}
+    seats = list(spot.seats)
+    seats[last.seat] = dataclasses.replace(
+        seats[last.seat], stack=available - added, bet=level, all_in=added >= available
+    )
     for e in entries[idx + 1 :]:
         if e.action == "call":
             had = e.street_total - e.added
-            pot += min(level - had, e.added + (e.stack_after or 0))
+            chips = e.added + (e.stack_after or 0)
+            paid = min(level - had, chips)
+            pot += paid
+            rewritten[id(e)] = dataclasses.replace(
+                e, added=paid, street_total=had + paid, all_in=paid >= chips, stack_after=chips - paid,
+            )
+            seats[e.seat] = dataclasses.replace(
+                seats[e.seat], stack=chips - paid, bet=had + paid, all_in=paid >= chips
+            )
         else:
             pot += e.added
+    history = tuple(rewritten.get(id(e), e) for e in spot.history)
     to_call = max(0, min(level - spot.street_bet, spot.stack))
     increment = max(level - prior_level, spot.big_blind)
     max_to = spot.stack + spot.street_bet
@@ -290,7 +320,7 @@ def with_faced_size(spot: Spot, frac: float) -> Spot:
     )
     bettor_behind = available - added
     others = [i for i in spot.opponents if i != last.seat]
-    behind = min(spot.stack, max([bettor_behind] + [spot.seats[i].stack for i in others]))
+    behind = min(spot.stack, max([bettor_behind] + [seats[i].stack for i in others]))
     unmatched = max(0, (level - spot.street_bet) - to_call)
     facts = spot.facts
     if facts is not None:
@@ -307,5 +337,7 @@ def with_faced_size(spot: Spot, frac: float) -> Spot:
         size_bucket=size_bucket(new_frac) if new_frac is not None else None,
         spr=behind / pot if pot else float("inf"),
         facts=facts,
+        history=history,
+        seats=tuple(seats),
     )
 

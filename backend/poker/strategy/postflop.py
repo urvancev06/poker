@@ -32,7 +32,7 @@ from .bettor import prior
 from .dials import Dials
 from .private import draw_term
 from .sizing import bet_frac
-from .spot import Spot, with_faced_size
+from .spot import Spot, faced_chips, with_faced_size
 from .types import ActionDist, Choice, Kind, Private
 
 _FOLD, _CHECK, _CALL = Choice(Kind.FOLD), Choice(Kind.CHECK), Choice(Kind.CALL)
@@ -182,8 +182,47 @@ def _margin(sp: Spot, h_used: float, dt: float, multiway: bool, d: Dials, imp: s
     realize = 1.0 if street == "river" or all_in else K.R_BOT[(street, _side(sp))]
     lo, hi = K.SUSPICION_BAND
     band = 1.0 if lo <= h_used <= hi else 0.0
-    m = eq * realize - price_used + d.suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
+    # Disbelief discounts bluff-catchers, not a flush draw's or open-ender's outs
+    # (§5 L2: a draw whose equity covers the price continues).
+    suspicion = 0.0 if d.suspicion < 0 and imp in ("nut", "draw") else d.suspicion
+    m = eq * realize - price_used + suspicion * (1 - eq) * band - K.TO_ACT_PENALTY * sp.players_to_act
     return {"m": m, "prior": (v, beta), "eq": eq, "price": price_used, "r": r, "behind": behind, "R": realize}
+
+
+def _short_of_all_in(spot: Spot, before: int, added: int) -> int | None:
+    """The largest faced-bet size in chips, below ``added``, whose call still
+    leaves chips in play behind (``None`` if every size is all-in)."""
+    lo, hi = 1, added - 1
+    if hi < lo or _behind_after_call(with_faced_size(spot, lo / before)) <= 0:
+        return None
+    while lo < hi:  # behind shrinks as the bet grows
+        mid = (lo + hi + 1) // 2
+        if _behind_after_call(with_faced_size(spot, mid / before)) > 0:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo
+
+
+def _envelope(spot: Spot, f: float, now: dict, margin) -> float:
+    """D32: the least margin over the smaller sizes that can hold a lower one.
+
+    The raw margin falls as the bet grows within a size bucket and while the
+    call leaves chips behind; it can step up only where the bucket changes (the
+    bettor priors' bluff share may rise, D34) or where the call puts the hero
+    all-in (R jumps to 1). So the grid points are taken from below (a grid point
+    on a bucket edge never rounds past it), plus the size just short of all-in:
+    then P(fold) never decreases with size, at every chip size."""
+    before, added = faced_chips(spot)
+    m = math.inf
+    for g in K.ENVELOPE_GRID:
+        if g <= f:
+            m = min(m, margin(with_faced_size(spot, math.floor(g * before + 1e-9) / before)))
+    if now["behind"] <= 0 and spot.street != "river":
+        short = _short_of_all_in(spot, before, added)
+        if short is not None:
+            m = min(m, margin(with_faced_size(spot, short / before)))
+    return m
 
 
 def _facing(spot: Spot, priv: Private, d: Dials) -> tuple[ActionDist, dict]:
@@ -197,9 +236,7 @@ def _facing(spot: Spot, priv: Private, d: Dials) -> tuple[ActionDist, dict]:
     m = now["m"]
     f = spot.facing_frac
     if f is not None:
-        for g in K.ENVELOPE_GRID:
-            if g <= f:
-                m = min(m, _margin(with_faced_size(spot, g), h_used, dt, multiway, d, imp)["m"])
+        m = min(m, _envelope(spot, f, now, lambda sp: _margin(sp, h_used, dt, multiway, d, imp)["m"]))
     p_cont = sigmoid(m / d.tau)
     sticky = d.sticky is not None and priv.s >= d.sticky
     if sticky:
@@ -233,7 +270,9 @@ def _facing(spot: Spot, priv: Private, d: Dials) -> tuple[ActionDist, dict]:
         p_call, p_fold = p_call + p_fold, 0.0
     behind = now["behind"]
     pot_after = spot.pot + spot.to_call
-    committed = can_raise and behind > 0 and behind / pot_after < K.COMMIT_SPR
+    # Committed: the continue is a jam, but never a raise the hand may not make
+    # (level 2+ with one pair or less calls, §5 L2).
+    committed = allowed and can_raise and behind > 0 and behind / pot_after < K.COMMIT_SPR
     dist: dict = {}
     _add(dist, _FOLD, p_fold)
     if committed:

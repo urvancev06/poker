@@ -179,3 +179,21 @@ def test_v1_context_fields_unchanged():
         "my_stack", "my_bet", "preflop_raises", "num_limpers", "folded_to_me", "is_pfr",
         "players_in_hand", "first_to_act",
     }
+
+
+def test_with_faced_size_composes():
+    """Resizing a resized spot is the same as resizing the original: the faced
+    bet (and the calls after it) are rewritten in the history, so the pot before
+    the bet is still right. The policy's D32 envelope resizes whatever spot it
+    gets, so a resized spot must be a consistent spot."""
+    base = spot("Th9h", "Kd7c2h", hero_pos="BB", line=SRP_FLOP + ["BB check", "BTN bet 0.33"])
+    multi = spot("Th9h", "Kd7c2h", hero_pos="BB",
+                 line=["CO raise 2.5", "BTN call", "BB call", "flop", "BB check", "CO bet 0.5", "BTN call"])
+    keys = ("pot", "to_call", "legal", "facing_frac", "size_bucket", "spr", "facts")
+    for s in (base, multi):
+        for a in (0.1, 1.0, 3.0, 100.0):
+            for b in (0.25, 0.66, 1.5, 100.0):
+                twice, once = with_faced_size(with_faced_size(s, a), b), with_faced_size(s, b)
+                assert {k: getattr(twice, k) for k in keys} == {k: getattr(once, k) for k in keys}, (a, b)
+        same = with_faced_size(s, s.facing_frac)
+        assert {k: getattr(same, k) for k in keys} == {k: getattr(s, k) for k in keys}

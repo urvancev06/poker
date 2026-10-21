@@ -11,7 +11,7 @@ from poker.strategy.dials import TYPE_DIALS
 from poker.strategy.postflop import decide_postflop
 from poker.strategy.private import build_private, clean_factor, p_hit
 from poker.strategy.scenario import scenario
-from poker.strategy.spot import build_spot, with_faced_size
+from poker.strategy.spot import build_spot, faced_chips, with_faced_size
 from poker.strategy.types import Kind, Node
 
 TAG, NIT, STATION, LAG, MANIAC = (TYPE_DIALS[t] for t in ("tag", "nit", "station", "lag", "maniac"))
@@ -151,6 +151,62 @@ def test_fold_monotone_in_size():
     for dials in (TAG, NIT, STATION, LAG, MANIAC):
         folds = [fold(decide_postflop(with_faced_size(s, f), priv, dials)[0]) for f in grid]
         assert all(b >= a - 1e-12 for a, b in zip(folds, folds[1:])), folds
+
+
+def _fold_by_chip(s, priv, dials):
+    """(to_call, frac, P(fold)) for every chip size of the faced bet up to 3x pot."""
+    before, _ = faced_chips(s)
+    out = []
+    for chips in range(1, 3 * before + 1):
+        sp = with_faced_size(s, chips / before)
+        out.append((sp.to_call, round(sp.facing_frac, 4), fold(decide_postflop(sp, priv, dials)[0])))
+    return out
+
+
+@pytest.mark.parametrize("case", ["river_bucket_edge", "flop_all_in"])
+def test_fold_monotone_at_every_chip_size(case):
+    """D32's grid alone misses two up-steps of the raw margin: a size bucket
+    whose bluff share rises (river L→O, D34) when the grid point rounds past the
+    edge, and the call that puts the hero all-in (R jumps to 1). The envelope
+    probes each bucket edge from below and the size just short of all-in."""
+    if case == "river_bucket_edge":
+        s, priv = setup("7c7s", "As9d4d2d2h", hero_pos="BB", line=SRP + CHECKS_TO_RIVER + ["BB check", "BTN bet 0.5"])
+    else:
+        s, priv = setup("6h4h", "9d6s3s", hero_pos="BB", line=SRP + ["BB check", "BTN bet 0.5"],
+                        stacks_bb={"BB": 14})
+    for dials in (TAG, NIT, STATION, LAG, MANIAC):
+        folds = _fold_by_chip(s, priv, dials)
+        bad = [(a, b) for a, b in zip(folds, folds[1:]) if b[2] < a[2] - 1e-12]
+        assert not bad, bad[:3]
+
+
+def test_priced_flush_draw_never_folds_for_a_nit():
+    """§5 L2: a draw whose equity covers the price continues. A nit's negative
+    suspicion (it disbelieves bluffs) discounts bluff-catchers, not the outs of a
+    flush draw or open-ender, so it no longer folds this K-high flush draw."""
+    line = ["BTN call", "SB fold", "BB check", "flop", "BB check", "BTN check", "turn", "BB check", "BTN bet 0.88"]
+    s, priv = setup("4sKc", "JsAh7s8s", hero_pos="BB", line=line)
+    assert priv.draws.flush
+    for dials in (NIT, TAG, LAG, STATION, MANIAC):
+        dist, tr = decide_postflop(s, priv, dials)
+        assert tr["eq"] * tr["features"]["R"] >= tr["price"] + 0.05
+        assert fold(dist) < 0.5, (dials, fold(dist))
+
+
+def test_committed_one_pair_calls_a_check_raise():
+    """§5 L2: no raise at level 2 with one pair or less, even when the call
+    commits the stack (the call stays a call; a set may still jam)."""
+    line = SRP + ["BB check", "BTN bet 0.5", "BB raise 3x"]
+    for hero in ("QsQd", "AhKh"):
+        s, priv = setup(hero, "2cTs8d", hero_pos="BTN", line=line, stacks_bb=20)
+        assert s.raise_level == 2
+        for dials in (NIT, TAG, LAG, STATION, MANIAC):
+            dist, tr = decide_postflop(s, priv, dials)
+            assert tr["features"]["committed"] is False
+            assert p(dist, Kind.RAISE, Kind.JAM) == 0, (hero, dials)
+    s, priv = setup("8h8c", "2cTs8d", hero_pos="BTN", line=line, stacks_bb=20)
+    dist, tr = decide_postflop(s, priv, TAG)
+    assert tr["features"]["committed"] and p(dist, Kind.JAM) > 0.9
 
 
 def test_station_calls_top_pair_vs_pot():
