@@ -192,7 +192,7 @@ Three independent checks, all in [`test_lab_and_cfr.py`](backend/tests/test_lab_
 
 ## What the tests assert
 
-**514 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
+**516 tests**, run with `.venv/bin/python -m pytest`. They are not smoke tests; the
 majority check a specific numeric or structural property:
 
 | Area | Tests | Examples of what is asserted |
@@ -209,7 +209,7 @@ majority check a specific numeric or structural property:
 | `test_session_*.py`, `test_stats_mixed_blinds.py` | 18 | a seeded session replays exactly, the stored pot is the ledger pot, the seed never leaves the server, concurrent requests on one session, the 5/10 defaults, and bb/100 counted in each hand's own big blinds across 1/2 and 5/10 |
 | `test_villain_model.py` | 8 | that a flop bet narrows the range, barrelling de-bluffs it, a 3-bet is tighter than an open, the river bluff slice is low and ordered by archetype, and the measured composition matches the recorded one |
 | `test_ranktable.py`, `test_vector.py`, `test_board.py`, `test_classify_v2.py`, `test_classify_legacy.py`, `test_texture.py`, `test_equity_exact.py`, `test_preflop_table.py`, `test_ranges_weighted.py` | 268 | the phase-2 maths: the rank table and the vector evaluator against treys, the hole-aware classifier (board pairs, kickers, draws that need a hole card), the frozen v1 classifier, texture, exact equity against enumeration, the preflop table (AA vs KK 0.8195 ± 0.006), weighted ranges |
-| `test_coach_v2_math.py` | 9 | a board two pair checked to is a check, no phantom flush draw, river equity exact and stable, the coach and the review agree on a decision, the basis names the method, the warm flop matrix, one villain selection |
+| `test_coach_v2_math.py` | 11 | a board two pair checked to is a check, no phantom flush draw, river equity exact and stable, the coach and the review agree on a decision (also when every modelled range is blocked: the same any-two fallback), the basis names the method, the warm flop matrix, one villain selection |
 | remainder | 40 | bot/sim behaviour, implied-odds spots (the set-value note in bb), leak detection, replay reconstruction, calibration, positions and history redaction, the rake hook, packaging and the PokerKit pin |
 
 Chip conservation is the one I would point at first: it plays randomised hands to
@@ -234,7 +234,7 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
   CDN), with tabular figures for every number. The table is a CSS 3D object whose camera is
   also written as a pure function, so type, your hand and the bet labels sit upright at
   projected points and are never skewed by the 3D. Cards are inline SVG, so there are no image assets and no per-card requests.
-  The pure logic in `frontend/src/lib` has 428 vitest tests, run with `npm test`.
+  The pure logic in `frontend/src/lib` has 541 vitest tests, run with `npm test`.
 
 ## Running it
 
@@ -242,14 +242,14 @@ the module map, [STRATEGY.md](STRATEGY.md) for the poker content, and
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"     # the poker package (editable), pytest, httpx
-.venv/bin/python -m pytest                        # 514 tests, about 4 minutes
+.venv/bin/python -m pytest                        # 516 tests, about 4 minutes
 .venv/bin/uvicorn poker.api.app:app --reload      # http://127.0.0.1:8000/health, docs at /docs
 ```
 
 ```bash
 cd frontend
 npm install
-npm test                                          # 444 tests (vitest)
+npm test                                          # 541 tests (vitest)
 npm run dev                                       # http://localhost:5173
 ```
 
