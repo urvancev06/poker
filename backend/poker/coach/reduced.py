@@ -24,7 +24,7 @@ from ..math.classify import classify
 from ..math.equity import equity_vs_ranges
 from ..math.odds import required_equity
 from ..math.suits import class_of
-from ..strategy.charts.preflop import chart_advice
+from ..strategy.charts.preflop import chart_advice, short_stacked, small_pairs_can_flat
 from ..strategy.dials import TYPE_DIALS, type_mean
 from ..strategy.preflop import range_array
 from ..strategy.sizing import _crumb, preflop_to_bb
@@ -71,12 +71,15 @@ def preflop_advice(spot: Spot, hole) -> dict | None:
     cls = class_of(hole)
     facts = spot.facts
     price = facts.to_call / facts.winnable_if_call if facts is not None and facts.winnable_if_call else None
+    eff_bb = spot.eff_stack / spot.big_blind  # the stack rules exactly as the bots read them
     try:
         adv = chart_advice(
             cls, spot.position, spot.node.value,
             opener=spot.opener_pos, threebettor=spot.threebettor_pos,
             limpers=spot.limpers, callers=spot.callers,
             open_size_bb=spot.open_size_bb, price=price,
+            short_stack=short_stacked(eff_bb),
+            small_pair_flat=small_pairs_can_flat(eff_bb, spot.big_blind, spot.to_call),
         )
     except (KeyError, ValueError, AssertionError):
         return None

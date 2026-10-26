@@ -30,7 +30,7 @@ import numpy as np
 from ..math.suits import HERO_CLASS
 from ..math.vector import INCIDENCE, card_index
 from .charts import preflop as ch
-from .charts.order import CLASSES, OPEN_ORDER, combos, p_in
+from .charts.order import CLASSES, OPEN_ORDER, p_in
 from .dials import Dials
 from .spot import Spot
 from .types import ActionDist, Choice, Kind, Node
@@ -101,12 +101,6 @@ def _limped(pos: str, opener: str) -> bool:
     return (pos, opener) not in ch.LIGHT_BASE
 
 
-def _own_open_cut(pos: str, d: Dials, limpers: int) -> float:
-    if pos == "BB":
-        return float(combos(ch.BB_ISO_VALUE))
-    return ch.open_cut(pos, d.open, limpers)
-
-
 def _probs(pn: PreNode, d: Dials) -> tuple[dict[str, tuple[float, float, float, float]], dict]:
     """Per class (fold, check, call, raise) before legality, and the trace cut."""
     out: dict[str, tuple[float, float, float, float]] = {}
@@ -146,7 +140,7 @@ def _probs(pn: PreNode, d: Dials) -> tuple[dict[str, tuple[float, float, float, 
             pn.pos, pn.opener, threebet=d.threebet, call=d.call, k=k, callers=pn.callers
         )
         trace["cut"], trace["light_cut"] = cut, light_cut
-        short = pn.to_call > 0 and pn.eff_bb * pn.big_blind < ch.SMALL_PAIR_STACK_X * pn.to_call
+        short = not ch.small_pairs_can_flat(pn.eff_bb, pn.big_blind, pn.to_call)
         small = set(ch.SMALL_PAIRS)
         for c in CLASSES:
             r, call = table[c]
@@ -157,7 +151,7 @@ def _probs(pn: PreNode, d: Dials) -> tuple[dict[str, tuple[float, float, float, 
 
     if node == Node.VS_3BET:
         assert pn.threebettor is not None
-        own = _own_open_cut(pn.pos, d, pn.limpers)
+        own = ch.own_open_cut(pn.pos, d.open, pn.limpers)
         table = ch.vs_3bet_probs(
             pn.pos, pn.threebettor, open_mult=d.open, call=d.call, threebet=d.threebet, own_cut=own
         )
@@ -199,7 +193,7 @@ def _legal_row(fold: float, check: float, call: float, raise_: float, pn: PreNod
 def _table(pn: PreNode, d: Dials) -> tuple[dict[str, _Row], dict]:
     raw, trace = _probs(pn, d)
     three_plus = pn.node != Node.UNOPENED
-    jam = pn.node in (Node.VS_4BET, Node.VS_5BET) or (three_plus and pn.eff_bb <= ch.SHORT_STACK_BB)
+    jam = pn.node in (Node.VS_4BET, Node.VS_5BET) or (three_plus and ch.short_stacked(pn.eff_bb))
     rows = {c: _legal_row(*raw[c], pn, jam) for c in CLASSES}
     return rows, trace
 

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from ...bots.preflop_ranges import RFI_COMBOS
 from ...math.ranges import parse_range
 from ...math.suits import class_of
-from .order import CLASSES, COMBOS_OF, OPEN_ORDER, by_playability, chen, gap_of, kind_of, p_in, ranks_of
+from .order import CLASSES, COMBOS_OF, OPEN_ORDER, by_playability, chen, combos, gap_of, kind_of, p_in, ranks_of
 
 POSITIONS: tuple[str, ...] = ("UTG", "MP", "CO", "BTN", "SB", "BB")
 EARLY = frozenset({"UTG", "MP"})
@@ -160,9 +160,27 @@ def size_factor(open_size_bb: float | None, opener: str | None = None) -> float:
     return (ref / open_size_bb) ** OPEN_SIZE_EXP
 
 
+def short_stacked(eff_bb: float) -> bool:
+    """At 25bb effective or less, a 3-bet (or bigger) is a jam (§4.6)."""
+    return eff_bb <= SHORT_STACK_BB
+
+
+def small_pairs_can_flat(eff_bb: float, big_blind: int, to_call: int) -> bool:
+    """Small pairs flat only when the effective stack is at least 18× the call (§4.6)."""
+    return not (to_call > 0 and eff_bb * big_blind < SMALL_PAIR_STACK_X * to_call)
+
+
 def open_cut(pos: str, open_mult: float = 1.0, limpers: int = 0) -> float:
     """Combos along OPEN_ORDER that open (or iso-raise over ``limpers``) from ``pos``."""
     return RFI_COMBOS.get(pos, 0) * open_mult * ISO_SHRINK**limpers
+
+
+def own_open_cut(pos: str, open_mult: float = 1.0, limpers: int = 0) -> float:
+    """The range an opener (or iso-raiser) defends from against a 3-bet: its open
+    or iso cut, or BB_ISO_VALUE for the BB, whose only raise is over limpers."""
+    if pos == "BB":
+        return float(combos(BB_ISO_VALUE))
+    return open_cut(pos, open_mult, limpers)
 
 
 def unopened_probs(pos: str, *, open_mult: float = 1.0, limpers: int = 0) -> dict[str, float]:
@@ -320,10 +338,33 @@ def chart_advice(
     callers: int = 0,
     open_size_bb: float | None = None,
     price: float | None = None,
+    short_stack: bool = False,
+    small_pair_flat: bool = True,
 ) -> ChartAdvice:
     """The baseline chart action for ``cls`` at ``node`` (``"unopened"``,
     ``"vs_open"``, ``"vs_3bet"``, ``"cold_vs_3bet"``, ``"vs_4bet"`` or ``"vs_5bet"``).
-    A hand mixing near a cut takes the likelier action."""
+    A hand mixing near a cut takes the likelier action. The §4.6 stack rules the
+    bots play: ``short_stack`` (``short_stacked``) turns a 3-bet or 4-bet into a
+    jam, and ``small_pair_flat=False`` (``small_pairs_can_flat``) folds a small
+    pair's flat."""
+    adv = _chart_advice(cls, hero, node, opener, threebettor, limpers, callers, open_size_bb, price, small_pair_flat)
+    if short_stack and node != "unopened" and adv.action in ("3bet", "4bet"):
+        return ChartAdvice("jam", adv.chart, adv.p)
+    return adv
+
+
+def _chart_advice(
+    cls: str,
+    hero: str,
+    node: str,
+    opener: str | None,
+    threebettor: str | None,
+    limpers: int,
+    callers: int,
+    open_size_bb: float | None,
+    price: float | None,
+    small_pair_flat: bool,
+) -> ChartAdvice:
     if node == "unopened":
         p = unopened_probs(hero, limpers=limpers)[cls]
         if hero == "BB":
@@ -333,6 +374,8 @@ def chart_advice(
     if node == "vs_open":
         assert opener is not None
         p3, p_call = vs_open_probs(hero, opener, k=size_factor(open_size_bb, opener), callers=callers)[cls]
+        if not small_pair_flat and cls in SMALL_PAIRS:
+            p_call = 0.0
         if callers:
             label3 = "squeeze value" if cls in SQUEEZE_VALUE else "squeeze bluff"
         else:
@@ -341,7 +384,8 @@ def chart_advice(
         return _likeliest(("3bet", label3, p3), ("call", label_call, p_call))
     if node == "vs_3bet":
         assert opener is not None and threebettor is not None
-        p4, p_call = vs_3bet_probs(opener, threebettor)[cls]
+        own = own_open_cut(hero, 1.0, limpers)
+        p4, p_call = vs_3bet_probs(hero, threebettor, own_cut=own)[cls]
         label4 = "4-bet bluff" if cls in FOURBET_BLUFF else "value 4-bet"
         side = "in position" if in_position(opener, threebettor) else "out of position"
         return _likeliest(("4bet", label4, p4), ("call", f"call a 3-bet {side}", p_call))
