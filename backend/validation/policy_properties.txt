@@ -1,0 +1,16 @@
+POLICY PROPERTIES (P3.9, recorded in P3.15): PYTHONPATH=. .venv/bin/python -m scripts.policy_properties --nodes 5000
+policy 78c72c04a0c7, 2026-10-21
+
+5000 nodes (seed 1) in 24.9s: {'preflop': 2205, 'flop': 1413, 'turn': 866, 'river': 516}
+  ok   distributions_sum_to_one_and_are_legal: 0 violations (8.3s)
+  ok   nuts_never_fold: 0 violations (4.2s)
+  ok   fold_never_decreases_with_size: 0 violations (3.3s)
+  ok   fold_never_increases_with_strength: 0 violations (11.1s)
+  ok   value_bet_weight_monotone_in_strength: 0 violations (11.5s)
+  ok   priced_draws_continue: 0 violations (0.0s)
+  ok   no_one_pair_raise_at_level_two: 0 violations (0.0s)
+  ok   no_crumb_bets: 0 violations (7.8s)
+  ok   lead_threshold_above_checked_to: 0 violations (4.1s)
+  ok   multiway_air_cbet_at_most_0_4x_heads_up: 0 violations (0.2s)
+  ok   short_stacks_always_legal: 300 hands at 1-6bb, 1980 decisions, 0 illegal, 0 unbalanced
+PASS

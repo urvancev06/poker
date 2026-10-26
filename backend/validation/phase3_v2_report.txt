@@ -1,0 +1,96 @@
+PHASE-3 VALIDATION REPORT (P3.15): engine v2 (beta)
+  date    : 2026-10-21, branch engine-v2, this container (4 cores), policy 78c72c04a0c7
+  re-run  : 2026-10-26, same code and policy hash: the 50k smoke, the properties, the spot book
+            and the v2 coach latency re-ran with identical counts (only timings differ: smoke
+            181 s wall, 73 hands/s per process; coach flop p50 38 / p90 60 / max 166 ms)
+  records : v2_smoke.txt (50k-hand smoke, every stat with its CI), policy_properties.txt,
+            spotbook_report.txt, coach_latency.txt (v1, P2.10; v2 figures below)
+
+1. TEST SUITES
+  backend  : PYTHONPATH=. .venv/bin/python -m pytest -q          -> 820 passed, 1 xfailed,
+             2 deselected (slow), 340 s (re-run 2026-10-26)
+  frontend : npx tsc -b && npm run lint && npm test && npm run build -> clean; 41 files,
+             550 tests passed; build OK (re-run 2026-10-26)
+  open xfail (strict): test_postflop_policy::test_station_folds_seven_high_to_a_jam,
+            measured P(fold) 0.92 against the plan's 0.95 (P3.5; D34 note, constants unchanged).
+
+2. V1 UNTOUCHED (v1 stays the default engine)
+  tests/test_v1_frozen.py tests/test_villain_model.py tests/test_coach_calibration.py: 14 passed.
+  The v1 gate was not re-run: no v1 path changed in phase 3 (the fingerprint pin proves it).
+
+3. SPOT BOOK (P3.10)       PYTHONPATH=. .venv/bin/python -m scripts.spotbook_report
+  60 rows, 109 (row, type) values, 0 outside their bounds: 100% pass, no owner-review xfails.
+  sb09 (reg fold to a 3-bet) 0.550, sb02 (board pair heads-up) 0.920.
+
+4. POLICY PROPERTIES (P3.9)  PYTHONPATH=. .venv/bin/python -m scripts.policy_properties --nodes 5000
+  5,000 nodes (preflop 2205, flop 1413, turn 866, river 516), 10 properties, 0 violations;
+  short-stack fuzz 300 hands at 1-6bb, 1,980 decisions, 0 illegal. PASS.
+
+5. V2 SMOKE (P3.15 step 1): 50,000 hands, seed 0, Classic lineup, 5/10, 100bb, no rake
+  PYTHONPATH=. .venv/bin/python -m scripts.v2_validation --hands 50000 --seed 0 --workers 4
+  WARN-only (the v2 gate is phase 4). Rule (design §5): PASS point in band, FAIL whole 95% CI
+  outside, else WARN. 38 banded cells: PASS 17, WARN 1, FAIL 20.
+
+  type        VPIP        PFR         3-bet      F3B           AF          WTSD        c-bet  bb/100
+  Nit         10.5 P      8.4 P       3.3 F      71.6          2.82 F      41.5 F      49.6    +3.8
+              [10-15]     [8-12]      [1-3]                    [1-2]       [26-32]
+  TAG         18.2 F      13.4 F      4.5 F      49.0 P        2.92 P      42.4 F      47.9   +22.4
+              [20-24]     [17-21]     [6-9]      [45-62]       [2.5-3.5]   [25-30]
+  LAG         24.3 F      20.5 F      5.5 F      54.4          3.07 P      41.5 F      53.8    -2.2
+              [27-33]     [22-28]     [9-13]                   [3-4.5]     [27-33]
+  Station     43.1 P      6.6 P       2.3 P      0.0           0.38 P      52.0 F      22.0   -14.0
+              [40-55]     [6-13]      [1-3]                    [<1.5]      [38-50]
+  Maniac      47.2 F      37.6 W      6.7 F      39.1          5.23 P      40.3        65.1   -32.4
+              [50-65]     [38-50]     [14-22]                  [>4]        [none]
+
+  Design §5 pool bands (reg = TAG):
+    fold to 3-bet 45-62 ............ 49.0 [46.8, 51.1] PASS   (owner decision c holds in play)
+    BB fold vs a BTN open 35-55 .... 35.2 [32.0, 38.4] PASS   (at the bottom edge)
+    fold to a flop c-bet HU 40-60 .. 44.0 [41.7, 46.3] PASS
+    lead into the raiser <= 10 ..... 13.4 [12.4, 14.4] FAIL
+    river fold vs 33% pot 15-30 .... 47.7 [34.8, 60.6] FAIL   (n=44)
+    river fold vs 75% pot 35-50 .... 71.7 [68.3, 75.1] FAIL
+    river fold vs 150% pot 55-70 ... 88.3 [82.5, 94.2] FAIL   (monotone in size, as required)
+    river bluff share >= 75% 20-40 . 15.9 [13.4, 18.4] FAIL
+    Station river bluff share <= 8 . 11.4 [9.6, 13.1]  FAIL
+    crumb bets = 0 (every type) .... 0 of 40,306 postflop bets and raises  PASS
+
+  Findings for phase-4 calibration (reported, not tuned: no code bug found behind them):
+  - WTSD is 40-52% for every type, 10-14 points over the §4 bands (known since P3.14).
+  - TAG, LAG and Maniac are tighter than §4: lower VPIP, PFR and especially 3-bet (TAG 4.5,
+    LAG 5.5, Maniac 6.7). The TAG never limps, so its VPIP-PFR gap (4.8) is all flats and
+    BB calls.
+  - Regs over-fold the river by about 20 points at every size. That follows from the D34
+    river priors: the bettor's bluff share is 0.27 at 3/4 pot, 0.26 at pot and 0.34 at
+    1.5x, each below a pure bluff-catcher's price (0.30, 0.33, 0.375), so the policy folds
+    bluff-catchers. Under these priors the reg river-fold bands can't hold. That is a
+    decision for the owner: raise the river bluff priors, or accept regs who over-fold the
+    river.
+  - The Station never folds to a BTN open from the BB, or to a 3-bet after opening: its
+    call width (2.6×) is more than 100% of hands.
+  - Win rates (Classic lineup, no rake) are not the §5 economy: TAG +22.4 bb/100 (band
+    -2 to +10 after rake in the Realistic pool).
+
+6. PERFORMANCE (§4.10)
+  simulator   : 55 hands/s per process with 4 processes (238 s wall for 50k), 66 hands/s
+                single-process warm; target >= 300, below the 150 "profile" line, so profiled:
+                bot build_private 47% of play time (bluff ranking per board 31%, draws over
+                all holdings 16%), PokerKit apply and showdown 22%, policy 14%, context 9%.
+                It is a phase-4 item (gate v2 needs ~1.6M hands); the table is unaffected.
+  bot decision: about 1.4 ms mean (P3.8 fuzz), target <= 0.25 ms.
+  coach, v2 session, cold process, flop matrix not warmed (scripts/coach_latency.py --engine v2,
+  60 seeded hands, hero checks or calls):
+    preflop (chart advice) n 82   p50 3 ms   p90 18 ms   max 102 ms
+    flop (odds only)       n 74   p50 67 ms  p90 105 ms  max 250 ms
+    turn                   n 63   p50 4 ms   p90 5 ms    max 9 ms
+    river                  n 58   p50 2 ms   p90 2 ms    max 4 ms
+    target p50 <= 80, p90 <= 250, max <= 400 ms: PASS on every street.
+  coach over HTTP (live-DB smoke below): preflop p50 6 / max 21 ms, postflop p50 8 / max 285 ms.
+
+7. LIVE-DB SMOKE (P3.15 step 5), against a copy (scratchpad/db/p3.db), uvicorn :8013
+  239 old reviews: 239 x 200. One v2 game (seed 11) of 30 hands: 239 -> 269 hands listed; all
+  30 stored with engine v2 and policy_hash 78c72c04a0c7, GET 200 without the server-only
+  truth, 30 replayable action logs, 30 reviews 200; /stats/me 200, /stats/leaks 200.
+  Coach verdicts seen: "Odds only." 127, "Fold." 16, "Open-raise to 2.5 bb." 6,
+  "Open-raise to 3 bb." 3, "Call." 2, "3-bet to 9.6 bb." 1, "3-bet to 7.8 bb." 1,
+  "All-in, 5.5 bb." 1.
