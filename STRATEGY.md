@@ -70,7 +70,7 @@ One order holds every RFI list above as an exact prefix: the UTG tier, then MP�
 
 #### Facing an open
 
-Three disjoint sets per seat pair, at a 2.5bb open: value 3-bets always 3-bet, light 3-bets come off an ordered list by a cut (`threebet` dial), and flats come off a flat order that skips the value 3-bets (`call` dial). An open above 2.5bb shrinks every cut by ×(2.5bb/open)^0.8. From the SB it is mostly 3-bet or fold (flat base 12 combos).
+Three disjoint sets per seat pair, at a 2.5bb open: value 3-bets always 3-bet, light 3-bets come off an ordered list by a cut (`threebet` dial), and flats come off a flat order that skips the value 3-bets (`call` dial). An open above the opener's standard size (2.5bb, 3bb from the SB) shrinks every cut by ×(standard/open)^0.8. From the SB it is mostly 3-bet or fold (flat base 12 combos).
 
 | Hero vs opener | 3-bet value | 3-bet light | Flat |
 |---|---|---|---|

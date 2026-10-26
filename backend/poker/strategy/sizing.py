@@ -17,7 +17,7 @@ from typing import Literal
 
 from ..engine.types import Action, ActionType
 from ..math.texture import texture
-from .charts.preflop import in_position
+from .charts.preflop import OPEN_SIZE_REF_BB, SB_OPEN_SIZE_REF_BB, in_position
 from .dials import Dials
 from .spot import Spot
 from .types import Choice, Kind, Node
@@ -36,8 +36,8 @@ TELL_PIVOT = 0.85
 TELL_CLAMP = (0.25, 1.5)
 JITTER = (0.95, 1.05)
 
-OPEN_BB = 2.5
-SB_OPEN_BB = 3.0
+OPEN_BB = OPEN_SIZE_REF_BB  # the size factor measures an open against these
+SB_OPEN_BB = SB_OPEN_SIZE_REF_BB
 BB_ISO_BB = 3.0
 PER_LIMPER_BB = 1.0
 THREEBET_X = {"ip": 3.0, "oop": 4.0}

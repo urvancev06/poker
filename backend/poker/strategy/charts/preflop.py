@@ -145,16 +145,19 @@ COLD_CALL_3BET_BASE = 18
 # --- Stacks and sizes ------------------------------------------------------------
 SMALL_PAIRS = _set("66-22")
 SMALL_PAIR_STACK_X = 18  # flat only when the effective stack ≥ 18 × the call
-OPEN_SIZE_REF_BB = 2.5
+OPEN_SIZE_REF_BB = 2.5     # the standard open (sizing.OPEN_BB)
+SB_OPEN_SIZE_REF_BB = 3.0  # the SB's standard open (sizing.SB_OPEN_BB)
 OPEN_SIZE_EXP = 0.8
 SHORT_STACK_BB = 25
 
 
-def size_factor(open_size_bb: float | None) -> float:
-    """``k = min(1, (2.5bb/open)^0.8)``: a bigger open shrinks the cuts facing it."""
-    if not open_size_bb or open_size_bb <= OPEN_SIZE_REF_BB:
+def size_factor(open_size_bb: float | None, opener: str | None = None) -> float:
+    """``k = min(1, (standard/open)^0.8)``: an open above the opener's standard
+    size (2.5bb, 3bb from the SB) shrinks the cuts facing it."""
+    ref = SB_OPEN_SIZE_REF_BB if opener == "SB" else OPEN_SIZE_REF_BB
+    if not open_size_bb or open_size_bb <= ref:
         return 1.0
-    return (OPEN_SIZE_REF_BB / open_size_bb) ** OPEN_SIZE_EXP
+    return (ref / open_size_bb) ** OPEN_SIZE_EXP
 
 
 def open_cut(pos: str, open_mult: float = 1.0, limpers: int = 0) -> float:
@@ -329,7 +332,7 @@ def chart_advice(
         return ChartAdvice("raise", name, p) if p >= 0.5 else ChartAdvice("fold", "", 1.0 - p)
     if node == "vs_open":
         assert opener is not None
-        p3, p_call = vs_open_probs(hero, opener, k=size_factor(open_size_bb), callers=callers)[cls]
+        p3, p_call = vs_open_probs(hero, opener, k=size_factor(open_size_bb, opener), callers=callers)[cls]
         if callers:
             label3 = "squeeze value" if cls in SQUEEZE_VALUE else "squeeze bluff"
         else:

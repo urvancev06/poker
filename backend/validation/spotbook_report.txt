@@ -1,4 +1,4 @@
-Spot book: 60 rows, policy 78c72c04a0c7
+Spot book: 60 rows, policy d9f831c7e256
 
 sb01  4s4h AsAd9d3c6s BTN  fold  (underpair on a double-paired-looking A-A river vs pot)
     tag       0.9998  in [0.900, 1.000]  ok

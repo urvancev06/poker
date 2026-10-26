@@ -77,7 +77,8 @@ def _facing_open() -> list[str]:
         "Three disjoint sets per seat pair, at a 2.5bb open: value 3-bets always "
         "3-bet, light 3-bets come off an ordered list by a cut (`threebet` dial), and "
         "flats come off a flat order that skips the value 3-bets (`call` dial). An open "
-        f"above 2.5bb shrinks every cut by ×(2.5bb/open)^{P.OPEN_SIZE_EXP}. From the SB it "
+        f"above the opener's standard size ({P.OPEN_SIZE_REF_BB:g}bb, {P.SB_OPEN_SIZE_REF_BB:g}bb from the SB) "
+        f"shrinks every cut by ×(standard/open)^{P.OPEN_SIZE_EXP}. From the SB it "
         f"is mostly 3-bet or fold (flat base {P.SB_FLAT_BASE} combos).",
         "",
         "| Hero vs opener | 3-bet value | 3-bet light | Flat |",

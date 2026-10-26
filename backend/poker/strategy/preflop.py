@@ -129,7 +129,7 @@ def _probs(pn: PreNode, d: Dials) -> tuple[dict[str, tuple[float, float, float, 
 
     if node == Node.VS_OPEN:
         assert pn.opener is not None
-        k = ch.size_factor(pn.open_size_bb)
+        k = ch.size_factor(pn.open_size_bb, pn.opener)
         if _limped(pn.pos, pn.opener):
             value = set(ch.VALUE_3BET.get(pn.opener, ch.VALUE_3BET["CO"]))
             cut = LIMP_CALL_FRAC * ch.open_cut(pn.pos, d.open) * d.call * k

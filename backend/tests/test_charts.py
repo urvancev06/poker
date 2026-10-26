@@ -136,6 +136,10 @@ def test_bb_defend_share_matches_target(opener):
 def test_open_size_shrinks_cuts():
     assert preflop.size_factor(2.5) == 1.0 == preflop.size_factor(2.0)
     assert preflop.size_factor(3.5) == pytest.approx((2.5 / 3.5) ** 0.8)
+    # Measured against the opener's standard size: the SB's 3bb open is standard.
+    assert preflop.size_factor(3.0, "SB") == 1.0
+    assert preflop.size_factor(3.5, "SB") == pytest.approx((3.0 / 3.5) ** 0.8)
+    assert preflop.size_factor(3.0, "CO") == pytest.approx((2.5 / 3.0) ** 0.8)
 
 
 def test_iso_cut_shrinks_per_limper():
